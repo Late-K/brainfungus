@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import SignInButton from "./signInButton";
 
 export default function Navbar() {
   const { data: session } = useSession();
