@@ -4,24 +4,24 @@ import { redirect } from "next/navigation";
 import SignInButton from "@/app/components/signInButton";
 
 interface LoginPageProps {
-  searchParams: { callbackUrl?: string };
+  searchParams: Promise<{ callbackUrl?: string }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
   const session = await getServerSession(authOptions);
 
-  // if we're already logged in, just jump to wherever we were headed
   if (session) {
-    redirect(searchParams.callbackUrl || "/");
+    redirect(params.callbackUrl || "/");
   }
 
-  const callbackUrl = searchParams.callbackUrl || "/";
+  const callbackUrl = params.callbackUrl || "/";
 
   return (
     <>
       {" "}
-      <main className="mx-auto max-w-xl p-4">
-        <h1 className="text-2xl font-semibold mb-4">Log in</h1>
+      <main>
+        <h1>Log in</h1>
         <SignInButton callbackUrl={callbackUrl} />
       </main>
     </>

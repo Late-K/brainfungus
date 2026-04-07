@@ -11,9 +11,11 @@ export default async function HomePage() {
 
   return (
     <>
-      <div>
-        <h1>Welcome to the Home Page</h1>
-      </div>
+      <section className="card">
+        <div>
+          <h1>Welcome to the Home Page</h1>
+        </div>
+      </section>
       <Navbar />
     </>
   );

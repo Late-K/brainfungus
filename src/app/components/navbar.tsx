@@ -7,16 +7,16 @@ export default function Navbar() {
   const { data: session } = useSession();
 
   return (
-    <nav className="flex items-center justify-between bg-gray-100 p-4">
-      <div className="space-x-4">
-        <Link href="/" className="font-medium hover:underline">
-          Home
+    <nav className="navbar">
+      <div className="navbar-inner">
+        <Link href="/" className="nav-item">
+          <img src="/home.svg" alt="Home" width={22} height={22} />
+          <span>Home</span>
         </Link>
-        <Link
-          href={session ? "/profile" : "/login"}
-          className="font-medium hover:underline"
-        >
-          Profile
+
+        <Link href={session ? "/profile" : "/login"} className="nav-item">
+          <img src="/user.svg" alt="Profile" width={22} height={22} />
+          <span>Profile</span>
         </Link>
       </div>
     </nav>
