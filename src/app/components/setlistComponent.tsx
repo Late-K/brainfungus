@@ -1,0 +1,122 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Setlist, LearntMap } from "@/app/types";
+import { getProgress } from "@/app/lib/setlistUtils";
+
+export default function SetlistComponent({ bandId }: { bandId: string }) {
+  const [activeSetlist, setActiveSetlist] = useState<Setlist | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [learntMap, setLearntMap] = useState<LearntMap>({});
+  const [memberCount, setMemberCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setIsLoading(true);
+
+        const [setlistRes, learntRes, bandRes] = await Promise.all([
+          fetch(`/api/setlists?bandId=${bandId}`),
+          fetch(`/api/learnt-songs?bandId=${bandId}`),
+          fetch(`/api/bands/${bandId}`),
+        ]);
+
+        if (setlistRes.ok) {
+          const data = await setlistRes.json();
+          const setlists: Setlist[] = data.setlists || [];
+          setTotalCount(setlists.length);
+          setActiveSetlist(setlists.find((s) => s.isActive) || null);
+        }
+
+        if (learntRes.ok) {
+          const learntData = await learntRes.json();
+          setLearntMap(learntData.learntMap || {});
+        }
+
+        if (bandRes.ok) {
+          const bandData = await bandRes.json();
+          setMemberCount(bandData.band?.memberIds?.length || 0);
+        }
+      } catch {
+        // silently fail — the dedicated page handles errors
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (bandId) fetchData();
+  }, [bandId]);
+
+  if (isLoading) {
+    return (
+      <section className="card">
+        <div className="setlist-header">
+          <h2>Setlists</h2>
+        </div>
+        <p className="empty-state">Loading setlists...</p>
+      </section>
+    );
+  }
+
+  const progress = activeSetlist
+    ? getProgress(activeSetlist, learntMap, memberCount)
+    : 0;
+
+  return (
+    <section className="card">
+      <div className="setlist-header">
+        <h2>Setlists</h2>
+        {totalCount > 0 && (
+          <Link href={`/bands/${bandId}/setlists`} className="btn btn--primary">
+            View All
+          </Link>
+        )}
+      </div>
+
+      {activeSetlist ? (
+        <div className="setlist-card setlist-card--active">
+          <div className="setlist-card-header">
+            <h4>{activeSetlist.name}</h4>
+            <span className="badge badge--active">Active</span>
+          </div>
+          <p className="setlist-songs-count">
+            {activeSetlist.songs.length} songs
+          </p>
+          <div className="progress-bar-wrap">
+            <div className="progress-bar">
+              <div
+                className="progress-bar-fill"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="progress-label">{progress}% learnt</span>
+          </div>
+          <div className="setlist-actions">
+            <Link
+              href={`/bands/${bandId}/setlists/${activeSetlist._id}`}
+              className="btn btn--tertiary"
+            >
+              View Details
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <p className="empty-state">
+          {totalCount === 0 ? (
+            <>
+              No setlists yet.{" "}
+              <Link href={`/bands/${bandId}/setlists/create`}>Create one!</Link>
+            </>
+          ) : (
+            <>
+              No active setlist.{" "}
+              <Link href={`/bands/${bandId}/setlists`}>View all setlists</Link>
+            </>
+          )}
+        </p>
+      )}
+    </section>
+  );
+}

@@ -1,0 +1,73 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Band } from "@/app/types";
+
+interface BandListProps {
+  refresh?: number;
+}
+
+export default function BandList({ refresh = 0 }: BandListProps) {
+  const [bands, setBands] = useState<Band[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function fetchBands() {
+      try {
+        setIsLoading(true);
+        setError("");
+
+        const res = await fetch("/api/bands");
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch bands");
+        }
+
+        const data = await res.json();
+        setBands(data.bands ?? []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load bands");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchBands();
+  }, [refresh]);
+
+  if (isLoading) {
+    return <div>Loading bands...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
+
+  if (bands.length === 0) {
+    return <div>No bands yet. Create one to get started!</div>;
+  }
+
+  return (
+    <div>
+      {bands.map((band) => (
+        <Link key={band._id} href={`/bands/${band._id}`} className="card">
+          <div className="band-card-content">
+            <div className="band-card-left">
+              <h3 className="band-card-title">{band.name}</h3>
+              {band.description && (
+                <p className="band-card-description">{band.description}</p>
+              )}
+            </div>
+
+            <div className="band-card-right">
+              {band.memberIds.length} member
+              {band.memberIds.length === 1 ? "" : "s"}
+            </div>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}

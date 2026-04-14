@@ -1,22 +1,29 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/lib/auth";
-import { redirect } from "next/navigation";
-import Navbar from "./components/navbar";
+// main page (band page)
 
-export default async function HomePage() {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    redirect("/login");
-  }
+"use client";
+
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import BandList from "./components/bandList";
+
+export default function HomePage() {
+  const { data: session, status } = useSession();
+
+  if (status === "loading") return null;
+  if (!session) redirect("/login");
 
   return (
     <>
-      <section className="card">
-        <div>
-          <h1>Welcome to the Home Page</h1>
-        </div>
-      </section>
-      <Navbar />
+      <h2>Bands</h2>
+      <div className="flex-center">
+        <BandList />
+      </div>
+      <div className="flex-center">
+        <Link href="/bands/create" className="button-link">
+          Create Band
+        </Link>
+      </div>
     </>
   );
 }

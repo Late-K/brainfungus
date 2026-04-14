@@ -1,4 +1,7 @@
+// root layout, wraps all pages, provides auth context and navbar
+
 import { AuthProvider } from "./providers";
+import Navbar from "./components/navbar";
 import "./globals.css";
 
 export default function RootLayout({
@@ -9,7 +12,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <Navbar />
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,6 +1,9 @@
+// auth setup with next-auth and google
+
 import { NextAuthOptions } from "next-auth";
 import Google from "next-auth/providers/google";
-import clientPromise from "@/app/lib/mongodb";
+import { getDb } from "@/app/lib/mongodb";
+import { getServerSession } from "next-auth/next";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -20,8 +23,7 @@ export const authOptions: NextAuthOptions = {
       if (!user.email) return false;
 
       try {
-        const client = await clientPromise;
-        const db = client.db(process.env.MONGODB_DB);
+        const db = await getDb();
         const users = db.collection("users");
 
         await users.updateOne(
@@ -73,3 +75,17 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
+
+// helper func to get current authenticated user sessions and db instance
+export async function getAuthUser() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+
+  const db = await getDb();
+  const user = await db
+    .collection("users")
+    .findOne({ email: session.user.email });
+  if (!user) throw new Error("User not found");
+
+  return { db, user, session };
+}

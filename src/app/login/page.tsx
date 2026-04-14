@@ -1,3 +1,5 @@
+//login page
+
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/lib/auth";
 import { redirect } from "next/navigation";
@@ -20,10 +22,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <>
       {" "}
-      <main>
-        <h1>Log in</h1>
+      <div className="login-container">
         <SignInButton callbackUrl={callbackUrl} />
-      </main>
+      </div>
     </>
   );
 }
