@@ -144,7 +144,9 @@ export default function BandChatComponent({
                 <div className="chat-message-meta">
                   <strong className="chat-message-name">{msg.userName}</strong>
                   <span className="chat-message-time">
-                    {new Date(msg.createdAt).toLocaleTimeString()}
+                    {new Date(msg.createdAt).toLocaleTimeString("en-GB", {
+                      timeZone: "Europe/London",
+                    })}
                   </span>
                 </div>
                 <p className="chat-message-text">{msg.message}</p>

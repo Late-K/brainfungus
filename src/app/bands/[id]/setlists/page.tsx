@@ -183,7 +183,9 @@ export default function SetlistsPage({
                   </p>
 
                   <p className="setlist-date">
-                    {new Date(setlist.createdAt).toLocaleDateString()}
+                    {new Date(setlist.createdAt).toLocaleDateString("en-GB", {
+                      timeZone: "Europe/London",
+                    })}
                   </p>
 
                   <div className="progress-bar-wrap">

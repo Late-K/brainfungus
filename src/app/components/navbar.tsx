@@ -13,6 +13,11 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <div className="navbar-inner">
+        <Link href={session ? "/calendar" : "/login"} className="nav-item">
+          <img src="/calendar.svg" alt="Calendar" width={22} height={22} />
+          <span>Calendar</span>
+        </Link>
+
         <Link href="/" className="nav-item">
           <img src="/home.svg" alt="Home" width={22} height={22} />
           <span>Home</span>

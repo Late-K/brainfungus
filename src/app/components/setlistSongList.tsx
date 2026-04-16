@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
-import { Song, LearntMap } from "@/app/types";
+import { Song, LearntMap, AvailUser } from "@/app/types";
 import { formatDuration, currentUserLearnt } from "@/app/lib/setlistUtils";
+import ExpandedUserList from "@/app/components/expandedUserList";
+
+const MAX_VISIBLE_AVATARS = 5;
 
 interface SetlistSongListProps {
   songs: Song[];
@@ -19,6 +23,10 @@ export default function SetlistSongList({
   togglingIds,
   onToggleLearnt,
 }: SetlistSongListProps) {
+  const [expandedLearners, setExpandedLearners] = useState<AvailUser[] | null>(
+    null,
+  );
+
   if (songs.length === 0) {
     return <p className="empty-state">No songs in this setlist</p>;
   }
@@ -57,7 +65,7 @@ export default function SetlistSongList({
 
               {learners.length > 0 && (
                 <div className="learnt-avatars">
-                  {learners.map((learner) => (
+                  {learners.slice(0, MAX_VISIBLE_AVATARS).map((learner) => (
                     <div
                       key={learner.userId}
                       className="learnt-avatar"
@@ -78,6 +86,15 @@ export default function SetlistSongList({
                       )}
                     </div>
                   ))}
+                  {learners.length > MAX_VISIBLE_AVATARS && (
+                    <button
+                      className="available-avatar-more"
+                      onClick={() => setExpandedLearners(learners)}
+                      title="Show all"
+                    >
+                      +{learners.length - MAX_VISIBLE_AVATARS}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -92,6 +109,16 @@ export default function SetlistSongList({
           </div>
         );
       })}
+
+      {/* Expanded learners modal */}
+      {expandedLearners && (
+        <ExpandedUserList
+          title="Learnt By"
+          users={expandedLearners}
+          onClose={() => setExpandedLearners(null)}
+          avatarVariant="learnt"
+        />
+      )}
     </div>
   );
 }

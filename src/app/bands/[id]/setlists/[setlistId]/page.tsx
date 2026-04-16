@@ -275,7 +275,9 @@ export default function SetlistDetailPage({
           <div className="setlist-stat">
             <span className="setlist-stat-label">Created</span>
             <span className="setlist-stat-value">
-              {new Date(setlist.createdAt).toLocaleDateString()}
+              {new Date(setlist.createdAt).toLocaleDateString("en-GB", {
+                timeZone: "Europe/London",
+              })}
             </span>
           </div>
         </div>

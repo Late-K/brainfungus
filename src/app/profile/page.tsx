@@ -5,6 +5,7 @@ import { authOptions } from "@/app/lib/auth";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import SignOutButton from "@/app/components/signOutButton";
+import AlwaysAvailableToggle from "@/app/components/alwaysAvailableToggle";
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions);
@@ -36,6 +37,8 @@ export default async function ProfilePage() {
             <p>{session.user?.email || "No email"}</p>
           </div>
         </div>
+
+        <AlwaysAvailableToggle />
 
         <div className="profile-actions">
           <SignOutButton />

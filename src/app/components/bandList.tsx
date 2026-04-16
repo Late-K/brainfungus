@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Band } from "@/app/types";
+import BandRehearsals from "@/app/components/bandRehearsals";
 
 interface BandListProps {
   refresh?: number;
@@ -52,21 +53,24 @@ export default function BandList({ refresh = 0 }: BandListProps) {
   return (
     <div>
       {bands.map((band) => (
-        <Link key={band._id} href={`/bands/${band._id}`} className="card">
-          <div className="band-card-content">
-            <div className="band-card-left">
-              <h3 className="band-card-title">{band.name}</h3>
-              {band.description && (
-                <p className="band-card-description">{band.description}</p>
-              )}
-            </div>
+        <div key={band._id} className="card">
+          <Link href={`/bands/${band._id}`}>
+            <div className="band-card-content">
+              <div className="band-card-left">
+                <h3 className="band-card-title">{band.name}</h3>
+                {band.description && (
+                  <p className="band-card-description">{band.description}</p>
+                )}
+              </div>
 
-            <div className="band-card-right">
-              {band.memberIds.length} member
-              {band.memberIds.length === 1 ? "" : "s"}
+              <div className="band-card-right">
+                {band.memberIds.length} member
+                {band.memberIds.length === 1 ? "" : "s"}
+              </div>
             </div>
-          </div>
-        </Link>
+          </Link>
+          <BandRehearsals bandId={band._id} />
+        </div>
       ))}
     </div>
   );

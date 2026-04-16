@@ -52,10 +52,7 @@ export interface Setlist {
   updatedAt?: string;
 }
 
-export type LearntMap = Record<
-  string,
-  { userId: string; userName: string; userImage?: string }[]
->;
+export type LearntMap = Record<string, AvailUser[]>;
 
 export interface CustomSong {
   _id: string;
@@ -82,4 +79,37 @@ export interface User {
   name: string;
   email: string;
   image?: string;
+  alwaysAvailable?: boolean;
+}
+
+export type AvailUser = {
+  userId: string;
+  userName: string;
+  userImage?: string;
+};
+
+export type RehearsalRepeatType = "once" | "weekly" | "biweekly";
+
+export interface Rehearsal {
+  _id: string;
+  bandId: string;
+  createdBy: string;
+  date: string;
+  startTime?: string;
+  endTime?: string;
+  repeatType: RehearsalRepeatType;
+  notes?: string;
+  excludedDates?: string[];
+  endDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RehearsalAvailability {
+  _id: string;
+  rehearsalId: string;
+  userId: string;
+  available: boolean;
+  alwaysAvailable?: boolean;
+  occurrenceDate?: string;
 }
