@@ -8,7 +8,6 @@ import {
 import {
   doesRehearsalOccurOnDate,
   toDateStr,
-  getRepeatLabel,
   getNextOccurrence,
   updateRehearsalAvatars,
 } from "@/app/lib/rehearsalUtils";
@@ -157,15 +156,6 @@ export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
             <div className="band-rehearsal-row">
               <span className="band-rehearsal-date">
                 {formatShortDate(nextDate!)}
-                {r.repeatType !== "once" && (
-                  <>
-                    {" "}
-                    ·{" "}
-                    <span className="badge">
-                      {getRepeatLabel(r.repeatType)}
-                    </span>
-                  </>
-                )}
               </span>
               {r.startTime && (
                 <span className="band-rehearsal-time">

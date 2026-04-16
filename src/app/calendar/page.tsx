@@ -16,7 +16,6 @@ import { Rehearsal, AvailUser } from "@/app/types";
 import {
   doesRehearsalOccurOnDate,
   toDateStr,
-  getRepeatLabel,
   updateRehearsalAvatars,
 } from "@/app/lib/rehearsalUtils";
 import ExpandedUserList from "@/app/components/expandedUserList";
@@ -284,9 +283,6 @@ export default function CalendarPage() {
                   <div className="calendar-rehearsal-info">
                     <span className="calendar-rehearsal-band">
                       {r.bandName || "Unknown band"}
-                    </span>
-                    <span className="badge">
-                      {getRepeatLabel(r.repeatType)}
                     </span>
                   </div>
                   <div className="calendar-rehearsal-info">
