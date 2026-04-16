@@ -197,8 +197,12 @@ export default function BandManagement({
 
   return (
     <>
-      <button className="btn btn--tertiary btn-small" onClick={handleOpen}>
-        ⚙ Manage Band
+      <button
+        className="btn btn--tertiary btn-small band-mgmt-gear-btn"
+        onClick={handleOpen}
+        type="button"
+      >
+        ⚙
       </button>
 
       {isOpen && (
