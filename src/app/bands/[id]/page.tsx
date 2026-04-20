@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
-import UserCard from "@/app/components/usercard";
 import SetlistComponent from "@/app/components/setlistComponent";
 import CustomSongsComponent from "@/app/components/customSongsComponent";
 import BandChatComponent from "@/app/components/bandChatComponent";
@@ -65,7 +64,10 @@ export default function BandDetailsPage({
     }
   }
 
-  if (status === "loading") return null;
+  const handleLeaveBand = () => {
+    router.push("/");
+  };
+
   if (!session) redirect("/login");
 
   if (isLoading) {
@@ -75,13 +77,11 @@ export default function BandDetailsPage({
   if (error) {
     return (
       <div>
+        <div>{error}</div>
         <div>
-          <div>{error}</div>
-          <div>
-            <Link href="/">
-              <button>Back to Home</button>
-            </Link>
-          </div>
+          <Link href="/">
+            <button>Back to Home</button>
+          </Link>
         </div>
       </div>
     );
@@ -90,21 +90,15 @@ export default function BandDetailsPage({
   if (!band) {
     return (
       <div>
+        <div>Band not found</div>
         <div>
-          <div>Band not found</div>
-          <div>
-            <Link href="/">
-              <button>Back to Home</button>
-            </Link>
-          </div>
+          <Link href="/">
+            <button>Back to Home</button>
+          </Link>
         </div>
       </div>
     );
   }
-
-  const handleLeaveBand = () => {
-    router.push("/");
-  };
 
   return (
     <div>

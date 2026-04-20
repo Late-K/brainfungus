@@ -29,6 +29,7 @@ interface SetlistEditModeProps {
   isEditSongSelected: (songId: string) => boolean;
   title?: string;
   saveLabel?: string;
+  canSave?: boolean;
 }
 
 export default function SetlistEditMode({
@@ -53,6 +54,7 @@ export default function SetlistEditMode({
   isEditSongSelected,
   title = "Edit Setlist",
   saveLabel = "Save",
+  canSave = true,
 }: SetlistEditModeProps) {
   return (
     <>
@@ -64,7 +66,7 @@ export default function SetlistEditMode({
           <div className="setlist-detail-actions">
             <button
               onClick={onSave}
-              disabled={isSaving || !editName.trim()}
+              disabled={isSaving || !editName.trim() || !canSave}
               className="btn btn--primary btn-small"
             >
               {isSaving ? "Saving..." : saveLabel}

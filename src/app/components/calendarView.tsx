@@ -7,6 +7,7 @@ import { doesRehearsalOccurOnDate, toDateStr } from "@/app/lib/rehearsalUtils";
 
 interface CalendarViewProps {
   rehearsals: Rehearsal[];
+  selectedDate: string;
   onSelectDate: (date: string) => void;
 }
 
@@ -14,15 +15,14 @@ const DAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function CalendarView({
   rehearsals,
+  selectedDate,
   onSelectDate,
 }: CalendarViewProps) {
   const today = new Date();
-  const [selectedDate, setSelectedDate] = useState("");
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
   const handleDateClick = (date: string) => {
-    setSelectedDate(date);
     onSelectDate(date);
   };
 

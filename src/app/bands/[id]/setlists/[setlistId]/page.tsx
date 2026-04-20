@@ -14,10 +14,10 @@ import {
   deactivateSetlistAction,
 } from "@/app/actions/setlists";
 import { toggleLearntSongAction } from "@/app/actions/learntSongs";
-import { formatDuration, getProgress } from "@/app/lib/setlistUtils";
+import { getProgress } from "@/app/lib/setlistUtils";
 import { useSetlistEditor } from "@/app/hooks/useSetlistEditor";
-import SetlistSongList from "@/app/components/setlistSongList";
 import SetlistEditMode from "@/app/components/setlistEditMode";
+import SetlistViewMode from "@/app/components/setlistViewMode";
 
 export default function SetlistDetailPage({
   params,
@@ -226,84 +226,20 @@ export default function SetlistDetailPage({
   // ===================== VIEW MODE =====================
   return (
     <div className="page-container">
-      <Link href={`/bands/${bandId}/setlists`} className="back-link">
-        ← Back to Setlists
-      </Link>
-
-      <div className="card setlist-detail-card">
-        <div className="setlist-detail-header">
-          <div className="setlist-detail-title-row">
-            <h1>{setlist.name}</h1>
-            {setlist.isActive && (
-              <span className="badge badge--active">Active</span>
-            )}
-          </div>
-          <div className="setlist-detail-actions">
-            <button
-              onClick={() => editor.startEditing(setlist.name, setlist.songs)}
-              className="btn btn--tertiary"
-            >
-              {" "}
-              Edit
-            </button>
-            <button onClick={handleToggleActive} className="btn btn--tertiary">
-              {setlist.isActive ? "Deactivate" : "Set Active"}
-            </button>
-            {!setlist.isActive && (
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="btn btn--tertiary btn--tertiary-danger"
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="setlist-stats-row">
-          <div className="setlist-stat">
-            <span className="setlist-stat-label">Songs</span>
-            <span className="setlist-stat-value">{setlist.songs.length}</span>
-          </div>
-          <div className="setlist-stat">
-            <span className="setlist-stat-label">Duration</span>
-            <span className="setlist-stat-value">
-              {formatDuration(totalDuration)}
-            </span>
-          </div>
-          <div className="setlist-stat">
-            <span className="setlist-stat-label">Created</span>
-            <span className="setlist-stat-value">
-              {new Date(setlist.createdAt).toLocaleDateString("en-GB", {
-                timeZone: "Europe/London",
-              })}
-            </span>
-          </div>
-        </div>
-
-        <div className="progress-bar-wrap">
-          <div className="progress-bar">
-            <div
-              className="progress-bar-fill"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <span className="progress-label">{progress}% learnt by band</span>
-        </div>
-      </div>
-
-      <div className="card">
-        <h2 className="setlist-title">Songs</h2>
-
-        <SetlistSongList
-          songs={setlist.songs}
-          learntMap={learntMap}
-          userName={session.user?.name}
-          togglingIds={togglingIds}
-          onToggleLearnt={handleToggleLearnt}
-        />
-      </div>
+      <SetlistViewMode
+        bandId={bandId!}
+        setlist={setlist}
+        isDeleting={isDeleting}
+        learntMap={learntMap}
+        togglingIds={togglingIds}
+        userName={session.user?.name}
+        totalDuration={totalDuration}
+        progress={progress}
+        onStartEdit={() => editor.startEditing(setlist.name, setlist.songs)}
+        onToggleActive={handleToggleActive}
+        onDelete={handleDelete}
+        onToggleLearnt={handleToggleLearnt}
+      />
     </div>
   );
 }

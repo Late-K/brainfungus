@@ -113,3 +113,14 @@ export interface RehearsalAvailability {
   alwaysAvailable?: boolean;
   occurrenceDate?: string;
 }
+
+export interface CalendarRehearsal extends Rehearsal {
+  bandName?: string;
+  available?: boolean;
+  occurrenceAvailability?: Record<string, boolean>;
+  availableUsersBase?: AvailUser[];
+  availableUsersOcc?: Record<string, AvailUser[]>;
+}
+
+export type CalendarChoiceAction = "edit" | "delete";
+export type CalendarEditMode = "all" | "this";
