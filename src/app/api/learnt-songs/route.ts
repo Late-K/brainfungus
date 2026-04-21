@@ -39,9 +39,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const memberObjectIds = band.memberIds
+      .filter((id: string) => ObjectId.isValid(id))
+      .map((id: string) => new ObjectId(id));
+
     const learnt = await db
       .collection("learnt_songs")
-      .find({ bandId: new ObjectId(bandId) })
+      .find({
+        bandId: new ObjectId(bandId),
+        userId: { $in: memberObjectIds },
+        active: { $ne: false },
+      })
       .toArray();
 
     // get user details for each learnt song

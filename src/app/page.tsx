@@ -1,16 +1,16 @@
 // main page (band page)
-
-"use client";
-
-import { useSession } from "next-auth/react";
+import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import BandList from "./components/bandList";
+import { authOptions } from "@/app/lib/auth";
 
-export default function HomePage() {
-  const { data: session, status } = useSession();
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
 
-  if (!session) redirect("/login");
+  if (!session) {
+    redirect("/login");
+  }
 
   return (
     <>

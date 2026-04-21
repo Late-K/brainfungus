@@ -42,7 +42,6 @@ export default function BandChatPage({
     fetchBand();
   }, [bandId]);
 
-  if (status === "loading") return null;
   if (!session) redirect("/login");
 
   if (!bandId) {

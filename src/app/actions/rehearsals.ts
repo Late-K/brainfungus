@@ -75,6 +75,7 @@ export async function createRehearsalAction(
         userId: user._id,
         available: true,
         alwaysAvailable: false,
+        active: true,
       });
     } else {
       await db.collection("rehearsal_availability").insertMany([
@@ -83,12 +84,14 @@ export async function createRehearsalAction(
           userId: user._id,
           available: false,
           alwaysAvailable: false,
+          active: true,
         },
         {
           rehearsalId: result.insertedId,
           userId: user._id,
           occurrenceDate: date,
           available: true,
+          active: true,
         },
       ]);
     }
@@ -161,6 +164,7 @@ export async function getUserRehearsalsAction() {
       .collection("rehearsal_availability")
       .find({
         rehearsalId: { $in: rehearsalIds },
+        active: { $ne: false },
         $or: [{ userId: user._id }, { available: true }],
       })
       .toArray();
@@ -301,6 +305,7 @@ export async function setRehearsalAvailabilityAction(
         {
           $set: {
             available,
+            active: true,
             ...(alwaysAvailable !== undefined ? { alwaysAvailable } : {}),
             occurrenceDate,
           },
@@ -320,6 +325,7 @@ export async function setRehearsalAvailabilityAction(
           {
             $set: {
               available,
+              active: true,
               ...(alwaysAvailable !== undefined ? { alwaysAvailable } : {}),
             },
           },
@@ -329,6 +335,7 @@ export async function setRehearsalAvailabilityAction(
           rehearsalId: new ObjectId(rehearsalId),
           userId: user._id,
           available,
+          active: true,
           ...(alwaysAvailable !== undefined ? { alwaysAvailable } : {}),
         });
       }
@@ -508,6 +515,7 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
       .collection("rehearsal_availability")
       .find({
         rehearsalId: { $in: rehearsalIds },
+        active: { $ne: false },
         $or: [{ userId: user._id }, { available: true }],
       })
       .toArray();
@@ -626,7 +634,7 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
                       occurrenceDate: { $exists: false },
                     },
                     update: {
-                      $set: { available: true },
+                      $set: { available: true, active: true },
                       $setOnInsert: {
                         rehearsalId: r._id,
                         userId: user._id,
@@ -650,7 +658,11 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
                       occurrenceDate: dateStr,
                     },
                     update: {
-                      $set: { available: true, occurrenceDate: dateStr },
+                      $set: {
+                        available: true,
+                        active: true,
+                        occurrenceDate: dateStr,
+                      },
                     },
                     upsert: true,
                   },

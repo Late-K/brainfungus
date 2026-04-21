@@ -3,6 +3,42 @@
 import { getAuthUser } from "@/app/lib/auth";
 import { ObjectId, Db } from "mongodb";
 
+async function setMemberBandDataActiveState(
+  db: Db,
+  bandId: string,
+  memberId: string,
+  active: boolean,
+) {
+  if (!ObjectId.isValid(memberId)) return;
+
+  const bandObjectId = new ObjectId(bandId);
+  const memberObjectId = new ObjectId(memberId);
+
+  await db
+    .collection("learnt_songs")
+    .updateMany(
+      { bandId: bandObjectId, userId: memberObjectId },
+      { $set: { active, updatedAt: new Date() } },
+    );
+
+  const rehearsalIds = (
+    await db
+      .collection("rehearsals")
+      .find({ bandId: bandObjectId })
+      .project({ _id: 1 })
+      .toArray()
+  ).map((r) => r._id);
+
+  if (rehearsalIds.length === 0) return;
+
+  await db
+    .collection("rehearsal_availability")
+    .updateMany(
+      { rehearsalId: { $in: rehearsalIds }, userId: memberObjectId },
+      { $set: { active, updatedAt: new Date() } },
+    );
+}
+
 // delete a band and all its related data
 async function deleteBandCascade(db: Db, bandId: string) {
   const oid = new ObjectId(bandId);
@@ -190,6 +226,8 @@ export async function addMemberAction(bandId: string, userId: string) {
         { $addToSet: { memberIds: userId } },
       );
 
+    await setMemberBandDataActiveState(db, bandId, userId, true);
+
     return { success: true, message: "Member added" };
   } catch (error) {
     console.error("Error adding member:", error);
@@ -215,6 +253,8 @@ export async function removeMemberAction(bandId: string, memberId: string) {
         } as any,
       },
     );
+
+    await setMemberBandDataActiveState(db, bandId, memberId, false);
 
     return { success: true, message: "Member removed" };
   } catch (error) {
@@ -305,6 +345,8 @@ export async function leaveBandAction(bandId: string) {
         } as any,
       },
     );
+
+    await setMemberBandDataActiveState(db, bandId, userId, false);
 
     // if the leaving user is the creator, transfer to the last member in memberIds
     if (isCreator) {
