@@ -28,6 +28,7 @@ export interface Song {
   duration: number;
   preview?: string;
   image?: string;
+  audioUrl?: string;
   isCustom?: boolean;
 }
 
@@ -60,6 +61,8 @@ export interface CustomSong {
   notes: string;
   album?: string;
   order?: number;
+  duration?: number;
+  audioUrl?: string;
   createdAt?: string;
 }
 

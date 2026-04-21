@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { Song, DeezerResult } from "@/app/types";
 import { updateSetlistAction } from "@/app/actions/setlists";
+import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 
 interface UseSetlistEditorOptions {
   onSaveSuccess?: (name: string, songs: Song[]) => void;
@@ -15,25 +16,26 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
   const [editName, setEditName] = useState("");
   const [editSongs, setEditSongs] = useState<Song[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<DeezerResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState("");
+  const {
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    isSearching,
+    searchError,
+    handleSearch,
+    resetSearch,
+  } = useDeezerSearch();
 
   const startEditing = (name: string, songs: Song[]) => {
     setEditName(name);
     setEditSongs([...songs]);
-    setSearchQuery("");
-    setSearchResults([]);
-    setSearchError("");
+    resetSearch();
     setIsEditing(true);
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
-    setSearchQuery("");
-    setSearchResults([]);
-    setSearchError("");
+    resetSearch();
   };
 
   const handleSave = async (setlistId: string) => {
@@ -67,28 +69,6 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     });
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    try {
-      setIsSearching(true);
-      setSearchError("");
-      setSearchResults([]);
-      const res = await fetch(
-        `/api/deezer/search?q=${encodeURIComponent(searchQuery)}&type=track`,
-      );
-      if (!res.ok) throw new Error("Failed to search songs");
-      const data = await res.json();
-      setSearchResults(data.results || []);
-    } catch (err) {
-      setSearchError(
-        err instanceof Error ? err.message : "Failed to search songs",
-      );
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
   const handleAddFromSearch = (result: DeezerResult) => {
     setEditSongs((prev) => {
       if (prev.some((s) => s.id === result.id)) {
@@ -108,7 +88,11 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     });
   };
 
-  const handleToggleCustomSong = (songId: string, title: string) => {
+  const handleToggleCustomSong = (
+    songId: string,
+    title: string,
+    duration?: number,
+  ) => {
     setEditSongs((prev) => {
       if (prev.some((s) => s.id === songId)) {
         return prev.filter((s) => s.id !== songId);
@@ -116,7 +100,7 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
       const song: Song = {
         id: songId,
         title,
-        duration: 0,
+        duration: duration ?? 0,
         isCustom: true,
       };
       return [...prev, song];
@@ -125,7 +109,7 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
 
   const handleToggleCustomAlbum = (
     albumName: string,
-    songs: Array<{ id: string; title: string }>,
+    songs: Array<{ id: string; title: string; duration?: number }>,
   ) => {
     setEditSongs((prev) => {
       const albumSongIds = songs.map((song) => song.id);
@@ -145,7 +129,7 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
           id: song.id,
           title: song.title,
           album: albumName,
-          duration: 0,
+          duration: song.duration ?? 0,
           isCustom: true,
         }));
 

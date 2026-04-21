@@ -41,7 +41,60 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ setlist }, { status: 200 });
+    // Enrich custom songs with their current audio metadata from customSongs collection
+    const songs: Array<{
+      id: string;
+      isCustom?: boolean;
+      [key: string]: unknown;
+    }> = setlist.songs || [];
+    const customIds = songs
+      .filter((s) => s.isCustom)
+      .map((s) => {
+        try {
+          return new ObjectId(s.id);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    const customMeta: Record<string, { audioUrl?: string; duration?: number }> =
+      {};
+    if (customIds.length > 0) {
+      const customDocs = await db
+        .collection("customSongs")
+        .find(
+          { _id: { $in: customIds } },
+          { projection: { _id: 1, audioUrl: 1, duration: 1 } },
+        )
+        .toArray();
+      for (const doc of customDocs) {
+        customMeta[doc._id.toString()] = {
+          audioUrl: doc.audioUrl,
+          duration:
+            typeof doc.duration === "number" && Number.isFinite(doc.duration)
+              ? doc.duration
+              : undefined,
+        };
+      }
+    }
+
+    const enrichedSongs = songs.map((song) => {
+      if (!song.isCustom) return song;
+      const meta = customMeta[song.id];
+      if (!meta) return song;
+      return {
+        ...song,
+        audioUrl: meta.audioUrl,
+        duration:
+          typeof meta.duration === "number" ? meta.duration : song.duration,
+      };
+    });
+
+    return NextResponse.json(
+      { setlist: { ...setlist, songs: enrichedSongs } },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("Error fetching setlist:", error);
     return NextResponse.json(

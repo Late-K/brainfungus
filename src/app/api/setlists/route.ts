@@ -50,7 +50,47 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .toArray();
 
-    return NextResponse.json({ setlists: bandSetlists }, { status: 200 });
+    const allSongs: Array<{ id: string; isCustom?: boolean }> =
+      bandSetlists.flatMap((setlist) => setlist.songs || []);
+    const customIds = Array.from(
+      new Set(allSongs.filter((song) => song.isCustom).map((song) => song.id)),
+    )
+      .map((id) => {
+        try {
+          return new ObjectId(id);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    const durationMap: Record<string, number> = {};
+    if (customIds.length > 0) {
+      const customDocs = await db
+        .collection("customSongs")
+        .find(
+          { _id: { $in: customIds } },
+          { projection: { _id: 1, duration: 1 } },
+        )
+        .toArray();
+      for (const doc of customDocs) {
+        if (typeof doc.duration === "number" && Number.isFinite(doc.duration)) {
+          durationMap[doc._id.toString()] = doc.duration;
+        }
+      }
+    }
+
+    const enrichedSetlists = bandSetlists.map((setlist) => ({
+      ...setlist,
+      songs: (setlist.songs || []).map(
+        (song: { id: string; isCustom?: boolean; duration?: number }) =>
+          song.isCustom && durationMap[song.id] !== undefined
+            ? { ...song, duration: durationMap[song.id] }
+            : song,
+      ),
+    }));
+
+    return NextResponse.json({ setlists: enrichedSetlists }, { status: 200 });
   } catch (error) {
     console.error("Error fetching setlists:", error);
     return NextResponse.json(

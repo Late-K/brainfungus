@@ -1,12 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
-import { Song, LearntMap, AvailUser } from "@/app/types";
-import { formatDuration, currentUserLearnt } from "@/app/lib/setlistUtils";
-import ExpandedUserList from "@/app/components/expandedUserList";
-
-const MAX_VISIBLE_AVATARS = 5;
+import { Song, LearntMap } from "@/app/types";
+import { formatDuration } from "@/app/lib/setlistUtils";
+import SongLearntStatus from "@/app/components/songLearntStatus";
 
 interface SetlistSongListProps {
   songs: Song[];
@@ -23,10 +19,6 @@ export default function SetlistSongList({
   togglingIds,
   onToggleLearnt,
 }: SetlistSongListProps) {
-  const [expandedLearners, setExpandedLearners] = useState<AvailUser[] | null>(
-    null,
-  );
-
   if (songs.length === 0) {
     return <p className="empty-state">No songs in this setlist</p>;
   }
@@ -34,10 +26,6 @@ export default function SetlistSongList({
   return (
     <div className="setlist-song-list">
       {songs.map((song, index) => {
-        const learners = learntMap[song.id] || [];
-        const isLearnt = currentUserLearnt(song.id, learntMap, userName);
-        const isToggling = togglingIds.has(song.id);
-
         return (
           <div key={song.id} className="setlist-song-item">
             <div className="setlist-song-main">
@@ -54,50 +42,13 @@ export default function SetlistSongList({
               </span>
             </div>
 
-            <div className="setlist-song-learnt-row">
-              <button
-                onClick={() => onToggleLearnt(song.id)}
-                disabled={isToggling}
-                className={`btn btn-small ${isLearnt ? "btn--learnt" : "btn--tertiary"}`}
-              >
-                {isToggling ? "..." : isLearnt ? "✓ Learnt" : "Mark as Learnt"}
-              </button>
-
-              {learners.length > 0 && (
-                <div className="learnt-avatars">
-                  {learners.slice(0, MAX_VISIBLE_AVATARS).map((learner) => (
-                    <div
-                      key={learner.userId}
-                      className="learnt-avatar"
-                      title={learner.userName}
-                    >
-                      {learner.userImage ? (
-                        <Image
-                          src={learner.userImage}
-                          alt={learner.userName}
-                          width={24}
-                          height={24}
-                          className="learnt-avatar-img"
-                        />
-                      ) : (
-                        <span className="learnt-avatar-fallback">
-                          {learner.userName?.charAt(0) || "?"}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                  {learners.length > MAX_VISIBLE_AVATARS && (
-                    <button
-                      className="available-avatar-more"
-                      onClick={() => setExpandedLearners(learners)}
-                      title="Show all"
-                    >
-                      +{learners.length - MAX_VISIBLE_AVATARS}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+            <SongLearntStatus
+              songId={song.id}
+              learntMap={learntMap}
+              userName={userName}
+              togglingIds={togglingIds}
+              onToggleLearnt={onToggleLearnt}
+            />
 
             {song.preview && (
               <audio
@@ -106,19 +57,16 @@ export default function SetlistSongList({
                 className="setlist-song-audio"
               />
             )}
+            {song.isCustom && song.audioUrl && (
+              <audio
+                controls
+                src={song.audioUrl}
+                className="setlist-song-audio"
+              />
+            )}
           </div>
         );
       })}
-
-      {/* Expanded learners modal */}
-      {expandedLearners && (
-        <ExpandedUserList
-          title="Learnt By"
-          users={expandedLearners}
-          onClose={() => setExpandedLearners(null)}
-          avatarVariant="learnt"
-        />
-      )}
     </div>
   );
 }

@@ -10,10 +10,10 @@ interface CustomSongsListProps {
     title: string;
     isCustom?: boolean;
   }>;
-  onToggleSong: (songId: string, title: string, isCustom: boolean) => void;
+  onToggleSong: (songId: string, title: string, duration?: number) => void;
   onToggleAlbum?: (
     albumName: string,
-    songs: Array<{ id: string; title: string }>,
+    songs: Array<{ id: string; title: string; duration?: number }>,
   ) => void;
 }
 
@@ -102,7 +102,7 @@ export default function CustomSongsList({
         <input
           type="checkbox"
           checked={selectedCustomSongIds.includes(song._id)}
-          onChange={() => onToggleSong(song._id, song.title, true)}
+          onChange={() => onToggleSong(song._id, song.title, song.duration)}
         />
         <div className="song-details">
           <span className="song-title">{song.title}</span>
@@ -156,6 +156,7 @@ export default function CustomSongsList({
                         albumSongs.map((song) => ({
                           id: song._id,
                           title: song.title,
+                          duration: song.duration,
                         })),
                       )
                     }

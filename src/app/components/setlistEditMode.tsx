@@ -3,6 +3,7 @@
 import { Song, DeezerResult } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import CustomSongsList from "@/app/components/customSongsList";
+import DeezerSearch from "@/app/components/deezerSearch";
 
 interface SetlistEditModeProps {
   bandId: string;
@@ -21,10 +22,14 @@ interface SetlistEditModeProps {
   onMoveSong: (index: number, direction: "up" | "down") => void;
   onSearch: (e: React.FormEvent) => void;
   onAddFromSearch: (result: DeezerResult) => void;
-  onToggleCustomSong: (songId: string, title: string) => void;
+  onToggleCustomSong: (
+    songId: string,
+    title: string,
+    duration?: number,
+  ) => void;
   onToggleCustomAlbum?: (
     albumName: string,
-    songs: Array<{ id: string; title: string }>,
+    songs: Array<{ id: string; title: string; duration?: number }>,
   ) => void;
   isEditSongSelected: (songId: string) => boolean;
   title?: string;
@@ -168,62 +173,16 @@ export default function SetlistEditMode({
         onToggleAlbum={onToggleCustomAlbum}
       />
 
-      <div className="card">
-        <h2 className="setlist-title">Search Songs from Deezer</h2>
-        <form onSubmit={onSearch} className="edit-search-form">
-          <input
-            type="text"
-            className="input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search for songs..."
-          />
-          <button
-            type="submit"
-            disabled={isSearching}
-            className="btn btn--primary btn-small"
-          >
-            {isSearching ? "..." : "Search"}
-          </button>
-        </form>
-
-        {searchError && <p className="alert alert--error">{searchError}</p>}
-
-        {searchResults.length > 0 && (
-          <div className="setlist-song-list" style={{ marginTop: "1rem" }}>
-            {searchResults.map((result) => (
-              <div key={result.id} className="setlist-song-item">
-                <div className="setlist-song-main">
-                  <div className="setlist-song-info">
-                    <span className="song-title">{result.title}</span>
-                    <span className="song-artist">
-                      {result.artist} — {result.album}
-                    </span>
-                  </div>
-                  <span className="setlist-song-duration">
-                    {formatDuration(result.duration)}
-                  </span>
-                  <button
-                    onClick={() => onAddFromSearch(result)}
-                    className={`btn btn-small ${
-                      isEditSongSelected(result.id)
-                        ? "btn--learnt"
-                        : "btn--primary"
-                    }`}
-                  >
-                    {isEditSongSelected(result.id) ? "✓ Added" : "Add"}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {searchQuery &&
-          !isSearching &&
-          searchResults.length === 0 &&
-          !searchError && <p className="empty-state">No results found</p>}
-      </div>
+      <DeezerSearch
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        searchResults={searchResults}
+        isSearching={isSearching}
+        searchError={searchError}
+        onSearch={onSearch}
+        onAddFromSearch={onAddFromSearch}
+        isSongSelected={isEditSongSelected}
+      />
     </>
   );
 }
