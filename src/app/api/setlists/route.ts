@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
           return null;
         }
       })
-      .filter(Boolean);
+      .filter((id): id is ObjectId => id !== null);
 
     const durationMap: Record<string, number> = {};
     if (customIds.length > 0) {

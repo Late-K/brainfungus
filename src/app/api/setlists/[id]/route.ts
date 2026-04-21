@@ -56,7 +56,7 @@ export async function GET(
           return null;
         }
       })
-      .filter(Boolean);
+      .filter((id): id is ObjectId => id !== null);
 
     const customMeta: Record<string, { audioUrl?: string; duration?: number }> =
       {};
