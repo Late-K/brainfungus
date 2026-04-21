@@ -9,6 +9,7 @@ import Link from "next/link";
 import SetlistComponent from "@/app/components/setlistComponent";
 import CustomSongsComponent from "@/app/components/customSongsComponent";
 import BandChatComponent from "@/app/components/bandChatComponent";
+import BandCoversPreview from "../../components/bandCoversPreview";
 import BandManagement from "@/app/components/bandManagement";
 import { Band } from "@/app/types";
 
@@ -123,6 +124,8 @@ export default function BandDetailsPage({
       <SetlistComponent bandId={band._id} />
 
       <CustomSongsComponent bandId={band._id} />
+
+      <BandCoversPreview bandId={band._id} />
     </div>
   );
 }

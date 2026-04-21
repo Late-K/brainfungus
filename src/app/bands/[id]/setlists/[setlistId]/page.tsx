@@ -73,6 +73,7 @@ export default function SetlistDetailPage({
           onAddFromSearch={setlistDetailPage.editor.handleAddFromSearch}
           onToggleCustomSong={setlistDetailPage.editor.handleToggleCustomSong}
           onToggleCustomAlbum={setlistDetailPage.editor.handleToggleCustomAlbum}
+          onToggleCoverSong={setlistDetailPage.editor.handleToggleCoverSong}
           isEditSongSelected={setlistDetailPage.editor.isEditSongSelected}
           saveLabel="Save Changes"
         />

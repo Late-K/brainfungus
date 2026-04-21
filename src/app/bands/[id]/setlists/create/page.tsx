@@ -2,11 +2,13 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import SetlistEditMode from "@/app/components/setlistEditMode";
 import { useCreateSetlistPage } from "@/app/hooks/useCreateSetlistPage";
+import { Band } from "@/app/types";
 
 export default function CreateSetlistPage({
   params,
@@ -15,6 +17,16 @@ export default function CreateSetlistPage({
 }) {
   const { data: session, status } = useSession();
   const createSetlistPage = useCreateSetlistPage(params);
+  const [band, setBand] = useState<Band | null>(null);
+
+  useEffect(() => {
+    if (createSetlistPage.bandId) {
+      fetch(`/api/bands/${createSetlistPage.bandId}`)
+        .then((res) => res.json())
+        .then((data) => setBand(data.band))
+        .catch(() => setBand(null));
+    }
+  }, [createSetlistPage.bandId]);
 
   if (status === "loading") return null;
   if (!session) redirect("/login");
@@ -22,7 +34,7 @@ export default function CreateSetlistPage({
   return (
     <div className="page-container">
       <Link href={`/bands/${createSetlistPage.bandId}`} className="back-link">
-        ← Back to Band
+        ← Back to {band?.name || "Band"}
       </Link>
 
       {createSetlistPage.error && (
@@ -50,6 +62,7 @@ export default function CreateSetlistPage({
         onAddFromSearch={createSetlistPage.handleAddSong}
         onToggleCustomSong={createSetlistPage.handleToggleCustomSong}
         onToggleCustomAlbum={createSetlistPage.handleToggleCustomAlbum}
+        onToggleCoverSong={createSetlistPage.handleToggleCoverSong}
         isEditSongSelected={createSetlistPage.isSongSelected}
         title="Create New Setlist"
         saveLabel="Create Setlist"

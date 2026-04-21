@@ -31,7 +31,19 @@ export default function SetlistSongList({
             <div className="setlist-song-main">
               <span className="setlist-song-number">{index + 1}</span>
               <div className="setlist-song-info">
-                <span className="song-title">{song.title}</span>
+                <span className="song-title">
+                  {song.title}
+                  {song.isCustom && (
+                    <span className="badge" style={{ marginLeft: "0.5rem" }}>
+                      Custom
+                    </span>
+                  )}
+                  {song.isCover && (
+                    <span className="badge" style={{ marginLeft: "0.5rem" }}>
+                      Cover
+                    </span>
+                  )}
+                </span>
                 <span className="song-artist">
                   {song.artist}
                   {song.album ? ` — ${song.album}` : ""}

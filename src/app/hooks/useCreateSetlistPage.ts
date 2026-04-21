@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSetlistAction } from "@/app/actions/setlists";
-import { DeezerResult, Song } from "@/app/types";
+import { DeezerResult, Song, BandCover } from "@/app/types";
 import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 
 export function useCreateSetlistPage(params: Promise<{ id: string }>) {
@@ -144,6 +144,27 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
     });
   };
 
+  const handleToggleCoverSong = (cover: BandCover) => {
+    setSelectedSongs((prev) => {
+      if (prev.some((song) => song.id === cover.songId)) {
+        return prev.filter((song) => song.id !== cover.songId);
+      }
+
+      const song: Song = {
+        id: cover.songId,
+        title: cover.title,
+        artist: cover.artist,
+        album: cover.album,
+        duration: cover.duration ?? 0,
+        preview: cover.preview,
+        image: cover.image,
+        isCover: true,
+      };
+
+      return [...prev, song];
+    });
+  };
+
   return {
     bandId,
     setlistName,
@@ -164,6 +185,7 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
     handleMoveSong,
     handleRemoveSelectedSong,
     handleToggleCustomAlbum,
+    handleToggleCoverSong,
     handleCancel: () => router.push(`/bands/${bandId}`),
   };
 }

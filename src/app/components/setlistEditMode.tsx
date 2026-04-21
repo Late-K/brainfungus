@@ -1,8 +1,9 @@
 "use client";
 
-import { Song, DeezerResult } from "@/app/types";
+import { Song, DeezerResult, BandCover } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import CustomSongsList from "@/app/components/customSongsList";
+import BandCoversList from "@/app/components/bandCoversList";
 import DeezerSearch from "@/app/components/deezerSearch";
 
 interface SetlistEditModeProps {
@@ -31,6 +32,7 @@ interface SetlistEditModeProps {
     albumName: string,
     songs: Array<{ id: string; title: string; duration?: number }>,
   ) => void;
+  onToggleCoverSong: (cover: BandCover) => void;
   isEditSongSelected: (songId: string) => boolean;
   title?: string;
   saveLabel?: string;
@@ -56,6 +58,7 @@ export default function SetlistEditMode({
   onAddFromSearch,
   onToggleCustomSong,
   onToggleCustomAlbum,
+  onToggleCoverSong,
   isEditSongSelected,
   title = "Edit Setlist",
   saveLabel = "Save",
@@ -138,6 +141,14 @@ export default function SetlistEditMode({
                           Custom
                         </span>
                       )}
+                      {song.isCover && (
+                        <span
+                          className="badge"
+                          style={{ marginLeft: "0.5rem" }}
+                        >
+                          Cover
+                        </span>
+                      )}
                     </span>
                     {song.artist && (
                       <span className="song-artist">
@@ -171,6 +182,12 @@ export default function SetlistEditMode({
         selectedSongs={editSongs}
         onToggleSong={onToggleCustomSong}
         onToggleAlbum={onToggleCustomAlbum}
+      />
+
+      <BandCoversList
+        bandId={bandId || ""}
+        selectedSongs={editSongs}
+        onToggleCover={onToggleCoverSong}
       />
 
       <DeezerSearch

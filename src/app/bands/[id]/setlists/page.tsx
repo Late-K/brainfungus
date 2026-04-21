@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/setlists";
 import { Setlist, LearntMap } from "@/app/types";
 import { formatDuration, getProgress } from "@/app/lib/setlistUtils";
+import { Band } from "@/app/types";
 
 export default function SetlistsPage({
   params,
@@ -19,6 +20,7 @@ export default function SetlistsPage({
 }) {
   const { data: session, status } = useSession();
   const [bandId, setBandId] = useState<string | null>(null);
+  const [band, setBand] = useState<Band | null>(null);
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -59,6 +61,7 @@ export default function SetlistsPage({
         if (bandRes.ok) {
           const bandData = await bandRes.json();
           setMemberCount(bandData.band?.memberIds?.length || 0);
+          setBand(bandData.band || null);
         }
       } catch (err) {
         setError(
@@ -139,7 +142,7 @@ export default function SetlistsPage({
     <div className="page-container">
       <div className="setlist-page-header">
         <Link href={`/bands/${bandId}`} className="back-link">
-          ← Back to Band
+          ← Back to {band?.name || "Band"}
         </Link>
         <h1>Setlists</h1>
         <Link

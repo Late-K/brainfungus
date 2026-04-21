@@ -3,7 +3,7 @@
 "use client";
 
 import { useState } from "react";
-import { Song, DeezerResult } from "@/app/types";
+import { Song, DeezerResult, BandCover } from "@/app/types";
 import { updateSetlistAction } from "@/app/actions/setlists";
 import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 
@@ -137,6 +137,27 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     });
   };
 
+  const handleToggleCoverSong = (cover: BandCover) => {
+    setEditSongs((prev) => {
+      if (prev.some((song) => song.id === cover.songId)) {
+        return prev.filter((song) => song.id !== cover.songId);
+      }
+
+      const song: Song = {
+        id: cover.songId,
+        title: cover.title,
+        artist: cover.artist,
+        album: cover.album,
+        duration: cover.duration ?? 0,
+        preview: cover.preview,
+        image: cover.image,
+        isCover: true,
+      };
+
+      return [...prev, song];
+    });
+  };
+
   const isEditSongSelected = (songId: string) =>
     editSongs.some((s) => s.id === songId);
 
@@ -160,6 +181,7 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     handleAddFromSearch,
     handleToggleCustomSong,
     handleToggleCustomAlbum,
+    handleToggleCoverSong,
     isEditSongSelected,
   };
 }

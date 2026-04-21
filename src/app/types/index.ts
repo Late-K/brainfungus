@@ -30,6 +30,20 @@ export interface Song {
   image?: string;
   audioUrl?: string;
   isCustom?: boolean;
+  isCover?: boolean;
+}
+
+export interface BandCover {
+  _id: string;
+  songId: string;
+  title: string;
+  artist: string;
+  album?: string;
+  duration: number;
+  preview?: string;
+  image?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface DeezerResult {
