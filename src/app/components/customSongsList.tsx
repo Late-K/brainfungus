@@ -105,8 +105,12 @@ export default function CustomSongsList({
           onChange={() => onToggleSong(song._id, song.title, song.duration)}
         />
         <div className="song-details">
-          <span className="song-title">{song.title}</span>
-          {song.notes && <span className="song-notes">{song.notes}</span>}
+          <span className="item-title">{song.title}</span>
+          {song.notes && (
+            <span className="meta-text meta-text-small margin-top">
+              {song.notes}
+            </span>
+          )}
         </div>
       </label>
     </div>
@@ -123,7 +127,7 @@ export default function CustomSongsList({
           const allSelected = isAlbumSelected(albumSongs);
 
           return (
-            <div key={albumName} className="album-group">
+            <div key={albumName} className="accordion">
               <div
                 style={{
                   display: "flex",
@@ -134,16 +138,16 @@ export default function CustomSongsList({
               >
                 <button
                   type="button"
-                  className="album-header"
+                  className="accordion-trigger"
                   onClick={() => toggleAlbum(albumName)}
                 >
                   <span
-                    className={`album-arrow ${expandedAlbums.has(albumName) ? "album-arrow--open" : ""}`}
+                    className={`accordion-icon ${expandedAlbums.has(albumName) ? "accordion-icon-open" : ""}`}
                   >
                     &#9654;
                   </span>
-                  <span className="album-name">{albumName}</span>
-                  <span className="album-count">
+                  <span className="accordion-title">{albumName}</span>
+                  <span className="accordion-count">
                     {albumSongs.length} song{albumSongs.length !== 1 ? "s" : ""}
                   </span>
                 </button>
@@ -168,7 +172,7 @@ export default function CustomSongsList({
               </div>
 
               {expandedAlbums.has(albumName) && (
-                <div className="album-songs">
+                <div className="accordion-content">
                   {albumSongs.map(renderSongCheckbox)}
                 </div>
               )}

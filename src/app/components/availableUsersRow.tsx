@@ -20,8 +20,8 @@ export default function AvailableUsersRow({
   const extra = users.length - maxVisible;
 
   return (
-    <div className="available-users-row">
-      <span className="available-users-label">Available:</span>
+    <div className="avatar-row">
+      <span className="avatar-row-label">Available:</span>
       <div className="available-avatars">
         {visible.map((u) => (
           <div key={u.userId} className="available-avatar" title={u.userName}>

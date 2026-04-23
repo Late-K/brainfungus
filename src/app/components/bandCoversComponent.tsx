@@ -171,19 +171,19 @@ export default function BandCoversComponent({
             No covers yet. Search and add one above.
           </p>
         ) : (
-          <div className="setlist-song-list" style={{ marginTop: "1rem" }}>
+          <div className="list" style={{ marginTop: "1rem" }}>
             {covers.map((cover, index) => (
-              <div key={cover._id} className="setlist-song-item">
-                <div className="setlist-song-main">
-                  <span className="setlist-song-number">{index + 1}</span>
-                  <div className="setlist-song-info">
-                    <span className="song-title">{cover.title}</span>
-                    <span className="song-artist">
+              <div key={cover._id} className="card-item card-item-compact">
+                <div className="song-row">
+                  <span className="song-index">{index + 1}</span>
+                  <div className="song-body">
+                    <span className="item-title">{cover.title}</span>
+                    <span className="meta-text meta-text-small block">
                       {cover.artist}
                       {cover.album ? ` — ${cover.album}` : ""}
                     </span>
                   </div>
-                  <span className="setlist-song-duration">
+                  <span className="song-duration">
                     {formatDuration(cover.duration)}
                   </span>
                   <button
@@ -204,11 +204,7 @@ export default function BandCoversComponent({
                 />
 
                 {cover.preview && (
-                  <audio
-                    controls
-                    src={cover.preview}
-                    className="setlist-song-audio"
-                  />
+                  <audio controls src={cover.preview} className="song-audio" />
                 )}
               </div>
             ))}

@@ -103,7 +103,7 @@ export default function BandDetailsPage({
 
   return (
     <div>
-      <div className="band-header-actions">
+      <div className="row-end">
         {session?.user?.email && (
           <BandManagement
             band={band}
@@ -115,9 +115,7 @@ export default function BandDetailsPage({
       </div>
       <h2>{band.name}</h2>
 
-      {band.description && (
-        <p className="band-description">{band.description}</p>
-      )}
+      {band.description && <p className="text-center">{band.description}</p>}
 
       <BandChatComponent bandId={band._id} preview />
 

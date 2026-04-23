@@ -148,23 +148,23 @@ export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
   if (loading || upcoming.length === 0) return null;
 
   return (
-    <div className="band-card-rehearsals" onClick={(e) => e.preventDefault()}>
-      <p className="band-card-rehearsals-title">Upcoming Rehearsals</p>
-      <div className="band-rehearsal-list">
+    <div className="rehearsal-summary" onClick={(e) => e.preventDefault()}>
+      <p className="rehearsal-summary-title">Upcoming Rehearsals</p>
+      <div className="list-compact">
         {upcoming.map(({ rehearsal: r, nextDate }) => (
-          <div key={r._id} className="band-rehearsal-item">
-            <div className="band-rehearsal-row">
-              <span className="band-rehearsal-date">
+          <div key={r._id} className="rehearsal-summary-item card-item">
+            <div className="rehearsal-summary-row">
+              <span className="rehearsal-summary-date">
                 {formatShortDate(nextDate!)}
               </span>
               {r.startTime && (
-                <span className="band-rehearsal-time">
+                <span className="rehearsal-summary-time">
                   {r.startTime}
                   {r.endTime ? ` – ${r.endTime}` : ""}
                 </span>
               )}
             </div>
-            {r.notes && <p className="band-rehearsal-notes">{r.notes}</p>}
+            {r.notes && <p className="rehearsal-summary-notes">{r.notes}</p>}
             <AvailableUsersRow
               users={getAvailUsersForDate(r, nextDate!)}
               maxVisible={3}

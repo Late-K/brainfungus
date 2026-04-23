@@ -30,6 +30,27 @@ async function getAudioDurationSeconds(
   }
 }
 
+async function parseApiResponse<T = Record<string, unknown>>(
+  response: Response,
+): Promise<{ data?: T; errorMessage?: string }> {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    const json = (await response.json()) as T & { error?: string };
+    return { data: json, errorMessage: json.error };
+  }
+
+  const text = (await response.text()).trim();
+  const normalized = text.toLowerCase();
+  if (normalized.includes("request entity too large")) {
+    return {
+      errorMessage:
+        "Audio file is too large. Try a smaller file and upload again.",
+    };
+  }
+  return { errorMessage: text || undefined };
+}
+
 export function useBandSongsPage(params: Promise<{ id: string }>) {
   const [bandId, setBandId] = useState<string | null>(null);
   const [band, setBand] = useState<Band | null>(null);
@@ -163,9 +184,17 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
             method: "POST",
             body: formData,
           });
-          const uploadData = await uploadRes.json();
+          const { data: uploadData, errorMessage } = await parseApiResponse<{
+            audioUrl?: string;
+            duration?: number;
+            error?: string;
+          }>(uploadRes);
           if (!uploadRes.ok) {
-            throw new Error(uploadData.error || "Audio upload failed");
+            throw new Error(errorMessage || "Audio upload failed");
+          }
+
+          if (!uploadData) {
+            throw new Error("Audio upload failed");
           }
 
           createdSong = {
@@ -258,8 +287,13 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
+      const { data, errorMessage } = await parseApiResponse<{
+        audioUrl?: string;
+        duration?: number;
+        error?: string;
+      }>(res);
+      if (!res.ok) throw new Error(errorMessage || "Upload failed");
+      if (!data) throw new Error("Upload failed");
       setSongs((prev) =>
         prev.map((s) =>
           s._id === songId

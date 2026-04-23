@@ -88,24 +88,29 @@ export default function CustomSongsComponent({ bandId }: { bandId: string }) {
           <Link href={`/bands/${bandId}/songs`}>Add some!</Link>
         </p>
       ) : (
-        <div className="songs-list">
+        <div className="list">
           {previewSlice.map((item) => {
             if (item.type === "album") {
               return (
-                <div key={`album-${item.name}`} className="preview-album-row">
-                  <span className="preview-album-name">{item.name}</span>
-                  <span className="album-count">
+                <div key={`album-${item.name}`} className="preview-row">
+                  <span className="preview-title">{item.name}</span>
+                  <span className="accordion-count">
                     {item.count} song{item.count !== 1 ? "s" : ""}
                   </span>
                 </div>
               );
             }
             return (
-              <div key={item.song._id} className="custom-song-item">
+              <div
+                key={item.song._id}
+                className="card-item card-item-stack card-item-regular"
+              >
                 <div className="song-info">
-                  <h3>{item.song.title}</h3>
+                  <h3 className="item-title">{item.song.title}</h3>
                   {item.song.notes && (
-                    <p className="song-notes">{item.song.notes}</p>
+                    <p className="meta-text meta-text-small margin-top">
+                      {item.song.notes}
+                    </p>
                   )}
                 </div>
               </div>
@@ -113,7 +118,7 @@ export default function CustomSongsComponent({ bandId }: { bandId: string }) {
           })}
 
           {hasMore && (
-            <Link href={`/bands/${bandId}/songs`} className="preview-more-link">
+            <Link href={`/bands/${bandId}/songs`} className="preview-link">
               + {allItems.length - PREVIEW_LIMIT} more...
             </Link>
           )}

@@ -124,7 +124,7 @@ export default function RehearsalForm({
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="mgmt-header">
+        <div className="section-header">
           <h3>{title}</h3>
           {onCancel && (
             <button className="btn btn-small" onClick={onCancel}>

@@ -198,7 +198,7 @@ export default function BandManagement({
   return (
     <>
       <button
-        className="btn btn--tertiary btn-small band-mgmt-gear-btn"
+        className="btn btn--tertiary btn-small floating-gear-button"
         onClick={handleOpen}
         type="button"
       >
@@ -208,7 +208,7 @@ export default function BandManagement({
       {isOpen && (
         <div className="modal-overlay" onClick={() => setIsOpen(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="mgmt-header">
+            <div className="section-header">
               <h3>Manage Band</h3>
               <button
                 className="btn btn--tertiary btn-small"
@@ -219,15 +219,15 @@ export default function BandManagement({
             </div>
 
             {isAdmin && (
-              <div className="mgmt-tabs">
+              <div className="tab-group">
                 <button
-                  className={`mgmt-tab ${tab === "details" ? "mgmt-tab--active" : ""}`}
+                  className={`tab ${tab === "details" ? "tab-active" : ""}`}
                   onClick={() => handleTabChange("details")}
                 >
                   Details
                 </button>
                 <button
-                  className={`mgmt-tab ${tab === "members" ? "mgmt-tab--active" : ""}`}
+                  className={`tab ${tab === "members" ? "tab-active" : ""}`}
                   onClick={() => handleTabChange("members")}
                 >
                   Members
@@ -239,32 +239,30 @@ export default function BandManagement({
             {success && <div className="alert alert--success">{success}</div>}
 
             {!isAdmin && (
-              <div className="mgmt-section">
-                <h4 className="mgmt-subtitle">Members</h4>
-                <div className="mgmt-member-list">
+              <div className="section-block">
+                <h4 className="section-subtitle">Members</h4>
+                <div className="list-compact">
                   {band.members?.map((member) => (
-                    <div key={member.id} className="mgmt-member">
-                      <div className="mgmt-member-info">
-                        <div className="mgmt-member-avatar">
+                    <div key={member.id} className="member-row card-item">
+                      <div className="member-info">
+                        <div className="member-avatar">
                           {member.image ? (
                             <Image
                               src={member.image}
                               alt={member.name}
                               width={36}
                               height={36}
-                              className="mgmt-avatar-img"
+                              className="avatar-small"
                             />
                           ) : (
-                            <div className="mgmt-avatar-fallback">
+                            <div className="avatar-small-fallback">
                               {member.name.charAt(0).toUpperCase()}
                             </div>
                           )}
                         </div>
                         <div>
-                          <span className="mgmt-member-name">
-                            {member.name}
-                          </span>
-                          <div className="mgmt-member-badges">
+                          <span className="member-name">{member.name}</span>
+                          <div className="badge-row">
                             {member.isCreator && (
                               <span className="badge">Creator</span>
                             )}
@@ -278,7 +276,7 @@ export default function BandManagement({
                   ))}
                 </div>
 
-                <div className="mgmt-danger-zone">
+                <div className="danger-zone">
                   {!showLeaveConfirm ? (
                     <button
                       className="btn btn-danger"
@@ -287,7 +285,7 @@ export default function BandManagement({
                       Leave Band
                     </button>
                   ) : (
-                    <div className="mgmt-confirm">
+                    <div className="confirm-block">
                       <p>Are you sure you want to leave this band?</p>
                       <div className="form-actions">
                         <button
@@ -312,7 +310,7 @@ export default function BandManagement({
             )}
 
             {isAdmin && tab === "details" && (
-              <div className="mgmt-section">
+              <div className="section-block">
                 <div className="form-group">
                   <label className="label" htmlFor="edit-band-name">
                     Band Name
@@ -351,7 +349,7 @@ export default function BandManagement({
                   </button>
                 </div>
 
-                <div className="mgmt-danger-zone">
+                <div className="danger-zone">
                   <h4>Danger Zone</h4>
 
                   {isCreator && (
@@ -364,7 +362,7 @@ export default function BandManagement({
                           Delete Band
                         </button>
                       ) : (
-                        <div className="mgmt-confirm">
+                        <div className="confirm-block">
                           <p>
                             Are you sure? This will permanently delete the band,
                             all setlists, and messages.
@@ -398,7 +396,7 @@ export default function BandManagement({
                       Leave Band
                     </button>
                   ) : (
-                    <div className="mgmt-confirm">
+                    <div className="confirm-block">
                       <p>Are you sure you want to leave this band?</p>
                       <div className="form-actions">
                         <button
@@ -423,32 +421,30 @@ export default function BandManagement({
             )}
 
             {isAdmin && tab === "members" && (
-              <div className="mgmt-section">
-                <h4 className="mgmt-subtitle">Current Members</h4>
-                <div className="mgmt-member-list">
+              <div className="section-block">
+                <h4 className="section-subtitle">Current Members</h4>
+                <div className="list-compact">
                   {band.members?.map((member) => (
-                    <div key={member.id} className="mgmt-member">
-                      <div className="mgmt-member-info">
-                        <div className="mgmt-member-avatar">
+                    <div key={member.id} className="member-row card-item">
+                      <div className="member-info">
+                        <div className="member-avatar">
                           {member.image ? (
                             <Image
                               src={member.image}
                               alt={member.name}
                               width={36}
                               height={36}
-                              className="mgmt-avatar-img"
+                              className="avatar-small"
                             />
                           ) : (
-                            <div className="mgmt-avatar-fallback">
+                            <div className="avatar-small-fallback">
                               {member.name.charAt(0).toUpperCase()}
                             </div>
                           )}
                         </div>
                         <div>
-                          <span className="mgmt-member-name">
-                            {member.name}
-                          </span>
-                          <div className="mgmt-member-badges">
+                          <span className="member-name">{member.name}</span>
+                          <div className="badge-row">
                             {member.isCreator && (
                               <span className="badge">Creator</span>
                             )}
@@ -460,7 +456,7 @@ export default function BandManagement({
                       </div>
 
                       {!member.isCreator && (
-                        <div className="mgmt-member-actions">
+                        <div className="member-actions">
                           {isCreator && (
                             <button
                               className="btn btn--tertiary btn-small"
@@ -494,32 +490,35 @@ export default function BandManagement({
                   ))}
                 </div>
 
-                <h4 className="mgmt-subtitle" style={{ marginTop: "1.5rem" }}>
+                <h4
+                  className="section-subtitle"
+                  style={{ marginTop: "1.5rem" }}
+                >
                   Add Members
                 </h4>
                 {isFetchingUsers ? (
                   <p className="empty-state">Loading users...</p>
                 ) : availableUsers.length > 0 ? (
-                  <div className="mgmt-member-list">
+                  <div className="list-compact">
                     {availableUsers.map((user) => (
-                      <div key={user._id} className="mgmt-member">
-                        <div className="mgmt-member-info">
-                          <div className="mgmt-member-avatar">
+                      <div key={user._id} className="member-row card-item">
+                        <div className="member-info">
+                          <div className="member-avatar">
                             {user.image ? (
                               <Image
                                 src={user.image}
                                 alt={user.name}
                                 width={36}
                                 height={36}
-                                className="mgmt-avatar-img"
+                                className="avatar-small"
                               />
                             ) : (
-                              <div className="mgmt-avatar-fallback">
+                              <div className="avatar-small-fallback">
                                 {user.name.charAt(0).toUpperCase()}
                               </div>
                             )}
                           </div>
-                          <span className="mgmt-member-name">{user.name}</span>
+                          <span className="member-name">{user.name}</span>
                         </div>
                         <button
                           className="btn btn--primary btn-small"

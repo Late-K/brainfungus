@@ -66,12 +66,10 @@ export default function SetlistEditMode({
 }: SetlistEditModeProps) {
   return (
     <>
-      <div className="card setlist-detail-card">
-        <div className="setlist-detail-header">
-          <h2 className="setlist-title" style={{ margin: 0 }}>
-            {title}
-          </h2>
-          <div className="setlist-detail-actions">
+      <div className="card margin-bottom">
+        <div className="stack margin-bottom">
+          <h2 className="heading no-margin">{title}</h2>
+          <div className="inline-actions">
             <button
               onClick={onSave}
               disabled={isSaving || !editName.trim() || !canSave}
@@ -105,12 +103,12 @@ export default function SetlistEditMode({
       </div>
 
       <div className="card">
-        <h2 className="setlist-title">Current Songs ({editSongs.length})</h2>
+        <h2 className="heading">Current Songs ({editSongs.length})</h2>
         {editSongs.length > 0 ? (
-          <div className="setlist-song-list">
+          <div className="list">
             {editSongs.map((song, index) => (
-              <div key={song.id} className="setlist-song-item">
-                <div className="setlist-song-main">
+              <div key={song.id} className="card-item card-item-compact">
+                <div className="song-row">
                   <div className="reorder-buttons">
                     <button
                       onClick={() => onMoveSong(index, "up")}
@@ -129,9 +127,9 @@ export default function SetlistEditMode({
                       ▼
                     </button>
                   </div>
-                  <span className="setlist-song-number">{index + 1}</span>
-                  <div className="setlist-song-info">
-                    <span className="song-title">
+                  <span className="song-index">{index + 1}</span>
+                  <div className="song-body">
+                    <span className="item-title">
                       {song.title}
                       {song.isCustom && (
                         <span
@@ -151,14 +149,14 @@ export default function SetlistEditMode({
                       )}
                     </span>
                     {song.artist && (
-                      <span className="song-artist">
+                      <span className="meta-text meta-text-small block">
                         {song.artist}
                         {song.album ? ` — ${song.album}` : ""}
                       </span>
                     )}
                   </div>
                   {song.duration > 0 && (
-                    <span className="setlist-song-duration">
+                    <span className="song-duration">
                       {formatDuration(song.duration)}
                     </span>
                   )}

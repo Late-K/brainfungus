@@ -55,15 +55,15 @@ export default function BandList({ refresh = 0 }: BandListProps) {
       {bands.map((band) => (
         <div key={band._id} className="card">
           <Link href={`/bands/${band._id}`}>
-            <div className="band-card-content">
-              <div className="band-card-left">
-                <h3 className="band-card-title">{band.name}</h3>
+            <div className="listing-row">
+              <div className="listing-main">
+                <h3 className="listing-title">{band.name}</h3>
                 {band.description && (
-                  <p className="band-card-description">{band.description}</p>
+                  <p className="listing-description">{band.description}</p>
                 )}
               </div>
 
-              <div className="band-card-right">
+              <div className="listing-aside">
                 {band.memberIds.length} member
                 {band.memberIds.length === 1 ? "" : "s"}
               </div>

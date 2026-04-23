@@ -71,9 +71,9 @@ export default function CustomSongRow({
     return (
       <div
         key={song._id}
-        className="custom-song-item custom-song-item--editing"
+        className="card-item card-item-stack card-item-regular song-item-editing"
       >
-        <div className="song-edit-form">
+        <div className="edit-form">
           <div className="form-group">
             <label>Title</label>
             <input
@@ -102,7 +102,7 @@ export default function CustomSongRow({
               onChange={(e) => setEditNotes(e.target.value)}
             />
           </div>
-          <div className="song-edit-actions">
+          <div className="edit-actions">
             <button onClick={onSaveEdit} className="btn btn--primary btn-small">
               Save
             </button>
@@ -120,15 +120,11 @@ export default function CustomSongRow({
             </button>
           </div>
 
-          <div className="song-audio-section">
-            <p className="song-audio-label">Audio</p>
+          <div className="audio-section">
+            <p className="audio-label">Audio</p>
             {song.audioUrl && (
-              <div className="song-audio-current">
-                <audio
-                  src={song.audioUrl}
-                  controls
-                  className="song-audio-player"
-                />
+              <div className="audio-current">
+                <audio src={song.audioUrl} controls className="audio-player" />
                 <button
                   type="button"
                   onClick={() => onDeleteAudio(song._id)}
@@ -140,12 +136,12 @@ export default function CustomSongRow({
               </div>
             )}
             {!song.audioUrl && (
-              <label className="song-audio-upload">
+              <label className="audio-upload">
                 <input
                   type="file"
                   accept="audio/*"
                   disabled={isUploadingAudio}
-                  className="song-audio-file-input"
+                  className="audio-file-input"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) onUploadAudio(song._id, file);
@@ -155,7 +151,7 @@ export default function CustomSongRow({
                 {isUploadingAudio ? "Uploading..." : "Upload audio file"}
               </label>
             )}
-            <p className="song-audio-hint">MP3, WAV, OGG, FLAC — max 8 MB</p>
+            <p className="audio-hint">MP3, WAV, OGG, FLAC — max 8 MB</p>
           </div>
         </div>
       </div>
@@ -163,8 +159,8 @@ export default function CustomSongRow({
   }
 
   return (
-    <div key={song._id} className="custom-song-item">
-      <div className="custom-song-main-row">
+    <div key={song._id} className="card-item card-item-stack card-item-regular">
+      <div className="song-main-row">
         {albumName && albumSongs && indexInAlbum !== undefined && (
           <div className="reorder-buttons">
             <button
@@ -191,11 +187,13 @@ export default function CustomSongRow({
         )}
 
         <div className="song-info">
-          <h3>{song.title}</h3>
-          {song.notes && <p className="song-notes">{song.notes}</p>}
+          <h3 className="item-title">{song.title}</h3>
+          {song.notes && (
+            <p className="meta-text meta-text-small margin-top">{song.notes}</p>
+          )}
         </div>
 
-        <div className="song-actions">
+        <div className="inline-actions-small">
           <button
             onClick={() => onStartEditing(song)}
             className="btn btn-small btn--tertiary"
@@ -206,8 +204,8 @@ export default function CustomSongRow({
       </div>
 
       {song.audioUrl && (
-        <div className="song-audio-view">
-          <audio src={song.audioUrl} controls className="song-audio-player" />
+        <div className="audio-view">
+          <audio src={song.audioUrl} controls className="audio-player" />
         </div>
       )}
 

@@ -49,7 +49,7 @@ export default function BandChatPage({
   }
 
   return (
-    <div className="chat-page">
+    <div className="page-chat">
       <Link href={`/bands/${bandId}`} className="back-link">
         ← Back to {band?.name || "Band"}
       </Link>

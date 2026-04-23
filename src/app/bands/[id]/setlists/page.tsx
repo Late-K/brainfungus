@@ -140,14 +140,14 @@ export default function SetlistsPage({
 
   return (
     <div className="page-container">
-      <div className="setlist-page-header">
+      <div className="list margin-bottom">
         <Link href={`/bands/${bandId}`} className="back-link">
           ← Back to {band?.name || "Band"}
         </Link>
-        <h1>Setlists</h1>
+        <h1 className="text-center">Setlists</h1>
         <Link
           href={`/bands/${bandId}/setlists/create`}
-          className="btn btn--primary"
+          className="btn btn--primary align-self-center"
         >
           + Create Setlist
         </Link>
@@ -156,14 +156,14 @@ export default function SetlistsPage({
       {error && <p className="alert alert--error">{error}</p>}
 
       {sortedSetlists.length === 0 ? (
-        <section className="setlist-section">
+        <section className="margin-bottom">
           <p className="empty-state">
             No setlists yet. Create one to get started!
           </p>
         </section>
       ) : (
-        <section className="setlist-section">
-          <div className="setlist-grid">
+        <section className="margin-bottom">
+          <div className="list margin-horizontal">
             {sortedSetlists.map((setlist) => {
               const progress = getProgress(setlist, learntMap, memberCount);
               const totalDuration = setlist.songs.reduce(
@@ -172,20 +172,23 @@ export default function SetlistsPage({
               );
 
               return (
-                <div key={setlist._id} className="setlist-card">
-                  <div className="setlist-card-header">
+                <div
+                  key={setlist._id}
+                  className="card-item card-panel margin-bottom"
+                >
+                  <div className="section-header">
                     <h4>{setlist.name}</h4>
                     {setlist.isActive && (
                       <span className="badge badge--active">Active</span>
                     )}
                   </div>
 
-                  <p className="setlist-songs-count">
+                  <p className="meta-text meta-text-medium no-margin">
                     {setlist.songs.length} songs •{" "}
                     {formatDuration(totalDuration)}
                   </p>
 
-                  <p className="setlist-date">
+                  <p className="meta-text meta-text-medium no-margin margin-top">
                     {new Date(setlist.createdAt).toLocaleDateString("en-GB", {
                       timeZone: "Europe/London",
                     })}
@@ -201,7 +204,7 @@ export default function SetlistsPage({
                     <span className="progress-label">{progress}% learnt</span>
                   </div>
 
-                  <div className="setlist-actions">
+                  <div className="action-row action-row-fill-tertiary">
                     <Link
                       href={`/bands/${bandId}/setlists/${setlist._id}`}
                       className="btn btn--tertiary"

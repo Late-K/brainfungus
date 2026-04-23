@@ -19,7 +19,7 @@ export default function SongAlbumPicker({
 }: SongAlbumPickerProps) {
   if (isCustom) {
     return (
-      <div className="album-picker">
+      <div className="input-row">
         <input
           type="text"
           className="input"

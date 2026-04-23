@@ -20,7 +20,7 @@ export default function CalendarModalDialog({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-        <div className="mgmt-header">
+        <div className="section-header">
           <h3>{action === "edit" ? "Edit Rehearsal" : "Delete Rehearsal"}</h3>
           <button className="btn btn-small" onClick={onClose}>
             ✕

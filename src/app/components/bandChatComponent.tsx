@@ -113,7 +113,7 @@ export default function BandChatComponent({
   }
 
   return (
-    <section className={`card${fullPage ? " card--fullpage-chat" : ""}`}>
+    <section className={`card${fullPage ? " card-fill-page" : ""}`}>
       <div className="section-header">
         <h2>Band Chat</h2>
         {preview && (
@@ -127,7 +127,7 @@ export default function BandChatComponent({
 
       <div
         ref={containerRef}
-        className={`chat-container${preview ? " chat-container--preview" : ""}${fullPage ? " chat-container--fullpage" : ""}`}
+        className={`chat-container${preview ? " chat-container-preview" : ""}${fullPage ? " chat-container-full-page" : ""}`}
       >
         {messages.length === 0 ? (
           <div className="empty-state">
@@ -139,11 +139,11 @@ export default function BandChatComponent({
             return (
               <div
                 key={msg._id}
-                className={`chat-message${isOwn ? " chat-message--own" : ""}`}
+                className={`chat-message${isOwn ? " chat-message-own" : ""}`}
               >
                 <div className="chat-message-meta">
                   <strong className="chat-message-name">{msg.userName}</strong>
-                  <span className="chat-message-time">
+                  <span className="chat-message-time meta-text">
                     {new Date(msg.createdAt).toLocaleTimeString("en-GB", {
                       timeZone: "Europe/London",
                     })}

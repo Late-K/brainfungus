@@ -26,8 +26,8 @@ export default function DeezerSearch({
 }: DeezerSearchProps) {
   return (
     <div className="card">
-      <h2 className="setlist-title">Search Songs from Deezer</h2>
-      <form onSubmit={onSearch} className="edit-search-form">
+      <h2 className="heading">Search Songs from Deezer</h2>
+      <form onSubmit={onSearch} className="search-row">
         <input
           type="text"
           className="input"
@@ -47,17 +47,17 @@ export default function DeezerSearch({
       {searchError && <p className="alert alert--error">{searchError}</p>}
 
       {searchResults.length > 0 && (
-        <div className="setlist-song-list" style={{ marginTop: "1rem" }}>
+        <div className="list" style={{ marginTop: "1rem" }}>
           {searchResults.map((result) => (
-            <div key={result.id} className="setlist-song-item">
-              <div className="setlist-song-main">
-                <div className="setlist-song-info">
-                  <span className="song-title">{result.title}</span>
-                  <span className="song-artist">
+            <div key={result.id} className="card-item card-item-compact">
+              <div className="song-row">
+                <div className="song-body">
+                  <span className="item-title">{result.title}</span>
+                  <span className="meta-text meta-text-small block">
                     {result.artist} - {result.album}
                   </span>
                 </div>
-                <span className="setlist-song-duration">
+                <span className="song-duration">
                   {formatDuration(result.duration)}
                 </span>
                 <button

@@ -69,8 +69,8 @@ export default function BandCoversList({
                 onChange={() => onToggleCover(cover)}
               />
               <div className="song-details">
-                <span className="song-title">{cover.title}</span>
-                <span className="song-notes">
+                <span className="item-title">{cover.title}</span>
+                <span className="meta-text meta-text-small margin-top">
                   {cover.artist}
                   {cover.album ? ` - ${cover.album}` : ""}
                 </span>

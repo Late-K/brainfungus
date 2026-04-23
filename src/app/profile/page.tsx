@@ -22,7 +22,7 @@ export default async function ProfilePage() {
         <AlwaysAvailableToggle />
       </div>
 
-      <div className="profile-actions">
+      <div className="row-center">
         <SignOutButton />
       </div>
     </>

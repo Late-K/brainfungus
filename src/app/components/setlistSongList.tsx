@@ -24,14 +24,14 @@ export default function SetlistSongList({
   }
 
   return (
-    <div className="setlist-song-list">
+    <div className="list">
       {songs.map((song, index) => {
         return (
-          <div key={song.id} className="setlist-song-item">
-            <div className="setlist-song-main">
-              <span className="setlist-song-number">{index + 1}</span>
-              <div className="setlist-song-info">
-                <span className="song-title">
+          <div key={song.id} className="card-item card-item-compact">
+            <div className="song-row">
+              <span className="song-index">{index + 1}</span>
+              <div className="song-body">
+                <span className="item-title">
                   {song.title}
                   {song.isCustom && (
                     <span className="badge" style={{ marginLeft: "0.5rem" }}>
@@ -44,12 +44,12 @@ export default function SetlistSongList({
                     </span>
                   )}
                 </span>
-                <span className="song-artist">
+                <span className="meta-text meta-text-small block">
                   {song.artist}
                   {song.album ? ` — ${song.album}` : ""}
                 </span>
               </div>
-              <span className="setlist-song-duration">
+              <span className="song-duration">
                 {formatDuration(song.duration)}
               </span>
             </div>
@@ -63,18 +63,10 @@ export default function SetlistSongList({
             />
 
             {song.preview && (
-              <audio
-                controls
-                src={song.preview}
-                className="setlist-song-audio"
-              />
+              <audio controls src={song.preview} className="song-audio" />
             )}
             {song.isCustom && song.audioUrl && (
-              <audio
-                controls
-                src={song.audioUrl}
-                className="setlist-song-audio"
-              />
+              <audio controls src={song.audioUrl} className="song-audio" />
             )}
           </div>
         );

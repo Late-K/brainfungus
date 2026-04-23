@@ -40,15 +40,15 @@ export default function SetlistViewMode({
         ← Back to Setlists
       </Link>
 
-      <div className="card setlist-detail-card">
-        <div className="setlist-detail-header">
-          <div className="setlist-detail-title-row">
+      <div className="card margin-bottom">
+        <div className="stack margin-bottom">
+          <div className="row">
             <h1>{setlist.name}</h1>
             {setlist.isActive && (
               <span className="badge badge--active">Active</span>
             )}
           </div>
-          <div className="setlist-detail-actions">
+          <div className="inline-actions">
             <button onClick={onStartEdit} className="btn btn--tertiary">
               {" "}
               Edit
@@ -68,20 +68,20 @@ export default function SetlistViewMode({
           </div>
         </div>
 
-        <div className="setlist-stats-row">
-          <div className="setlist-stat">
-            <span className="setlist-stat-label">Songs</span>
-            <span className="setlist-stat-value">{setlist.songs.length}</span>
+        <div className="stat-grid">
+          <div className="stat-card">
+            <span className="meta-text text-small">Songs</span>
+            <span className="text-semibold">{setlist.songs.length}</span>
           </div>
-          <div className="setlist-stat">
-            <span className="setlist-stat-label">Duration</span>
-            <span className="setlist-stat-value">
+          <div className="stat-card">
+            <span className="meta-text text-small">Duration</span>
+            <span className="text-semibold">
               {formatDuration(totalDuration)}
             </span>
           </div>
-          <div className="setlist-stat">
-            <span className="setlist-stat-label">Created</span>
-            <span className="setlist-stat-value">
+          <div className="stat-card">
+            <span className="meta-text text-small">Created</span>
+            <span className="text-semibold">
               {new Date(setlist.createdAt).toLocaleDateString("en-GB", {
                 timeZone: "Europe/London",
               })}
@@ -101,7 +101,7 @@ export default function SetlistViewMode({
       </div>
 
       <div className="card">
-        <h2 className="setlist-title">Songs</h2>
+        <h2 className="heading">Songs</h2>
 
         <SetlistSongList
           songs={setlist.songs}

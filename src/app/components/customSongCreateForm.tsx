@@ -82,9 +82,9 @@ export default function CustomSongCreateForm({
           onChange={(e) => setNewAudioFile(e.target.files?.[0] || null)}
         />
         {newAudioFile && (
-          <p className="song-audio-hint">Selected: {newAudioFile.name}</p>
+          <p className="audio-hint">Selected: {newAudioFile.name}</p>
         )}
-        <p className="song-audio-hint">MP3, WAV, OGG, FLAC - max 8 MB</p>
+        <p className="audio-hint">MP3, WAV, OGG, FLAC - max 8 MB</p>
       </div>
       <button type="submit" disabled={isSaving} className="btn btn--primary">
         {isSaving ? "Creating..." : "Create Song"}

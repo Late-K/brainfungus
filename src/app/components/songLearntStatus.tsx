@@ -33,7 +33,7 @@ export default function SongLearntStatus({
 
   return (
     <>
-      <div className="setlist-song-learnt-row">
+      <div className="learnt-row">
         <button
           onClick={() => onToggleLearnt(songId)}
           disabled={isToggling}

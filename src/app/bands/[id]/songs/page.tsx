@@ -65,26 +65,26 @@ export default function SongsPage({
             No custom songs yet. Create one to get started!
           </p>
         ) : (
-          <div className="songs-list">
+          <div className="list">
             {songsPage.albums.map(([albumName, albumSongs]) => (
-              <div key={albumName} className="album-group">
+              <div key={albumName} className="accordion">
                 <button
-                  className="album-header"
+                  className="accordion-trigger"
                   onClick={() => songsPage.toggleAlbum(albumName)}
                 >
                   <span
-                    className={`album-arrow ${songsPage.expandedAlbums.has(albumName) ? "album-arrow--open" : ""}`}
+                    className={`accordion-icon ${songsPage.expandedAlbums.has(albumName) ? "accordion-icon-open" : ""}`}
                   >
                     &#9654;
                   </span>
-                  <span className="album-name">{albumName}</span>
-                  <span className="album-count">
+                  <span className="accordion-title">{albumName}</span>
+                  <span className="accordion-count">
                     {albumSongs.length} song
                     {albumSongs.length !== 1 ? "s" : ""}
                   </span>
                 </button>
                 {songsPage.expandedAlbums.has(albumName) && (
-                  <div className="album-songs">
+                  <div className="accordion-content">
                     {albumSongs.map((song, idx) => (
                       <CustomSongRow
                         key={song._id}

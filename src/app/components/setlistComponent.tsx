@@ -52,8 +52,8 @@ export default function SetlistComponent({ bandId }: { bandId: string }) {
   if (isLoading) {
     return (
       <section className="card">
-        <div className="setlist-header">
-          <h2>Setlists</h2>
+        <div className="section-header">
+          <h2 className="heading-large">Setlists</h2>
         </div>
         <p className="empty-state">Loading setlists...</p>
       </section>
@@ -66,8 +66,8 @@ export default function SetlistComponent({ bandId }: { bandId: string }) {
 
   return (
     <section className="card">
-      <div className="setlist-header">
-        <h2>Setlists</h2>
+      <div className="section-header">
+        <h2 className="heading-large">Setlists</h2>
         {totalCount > 0 && (
           <Link href={`/bands/${bandId}/setlists`} className="btn btn--primary">
             View All
@@ -76,12 +76,12 @@ export default function SetlistComponent({ bandId }: { bandId: string }) {
       </div>
 
       {activeSetlist ? (
-        <div className="setlist-card setlist-card--active">
-          <div className="setlist-card-header">
+        <div className="card-item card-panel">
+          <div className="section-header">
             <h4>{activeSetlist.name}</h4>
             <span className="badge badge--active">Active</span>
           </div>
-          <p className="setlist-songs-count">
+          <p className="meta-text meta-text-medium no-margin">
             {activeSetlist.songs.length} songs
           </p>
           <div className="progress-bar-wrap">
@@ -93,7 +93,7 @@ export default function SetlistComponent({ bandId }: { bandId: string }) {
             </div>
             <span className="progress-label">{progress}% learnt</span>
           </div>
-          <div className="setlist-actions">
+          <div className="action-row action-row-fill-tertiary">
             <Link
               href={`/bands/${bandId}/setlists/${activeSetlist._id}`}
               className="btn btn--tertiary"

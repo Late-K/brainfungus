@@ -64,12 +64,15 @@ export default function BandCoversPreview({ bandId }: { bandId: string }) {
           No covers yet. <Link href={`/bands/${bandId}/covers`}>Add some!</Link>
         </p>
       ) : (
-        <div className="songs-list">
+        <div className="list">
           {preview.map((cover) => (
-            <div key={cover._id} className="custom-song-item">
+            <div
+              key={cover._id}
+              className="card-item card-item-stack card-item-regular"
+            >
               <div className="song-info">
-                <h3>{cover.title}</h3>
-                <p className="song-notes">
+                <h3 className="item-title">{cover.title}</h3>
+                <p className="meta-text meta-text-small margin-top">
                   {cover.artist}
                   {cover.album ? ` - ${cover.album}` : ""}
                 </p>
@@ -78,10 +81,7 @@ export default function BandCoversPreview({ bandId }: { bandId: string }) {
           ))}
 
           {hasMore && (
-            <Link
-              href={`/bands/${bandId}/covers`}
-              className="preview-more-link"
-            >
+            <Link href={`/bands/${bandId}/covers`} className="preview-link">
               + {covers.length - PREVIEW_LIMIT} more...
             </Link>
           )}

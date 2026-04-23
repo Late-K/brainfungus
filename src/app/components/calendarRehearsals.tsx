@@ -64,30 +64,33 @@ export default function CalendarRehearsals({
       {rehearsalsForDate.length === 0 ? (
         <p className="empty-state">No rehearsals on this day</p>
       ) : (
-        <div className="calendar-rehearsal-list">
+        <div className="list-compact">
           {rehearsalsForDate.map((rehearsal) => (
-            <div key={rehearsal._id} className="calendar-rehearsal-item">
-              <div className="calendar-rehearsal-info">
-                <span className="calendar-rehearsal-band">
+            <div
+              key={rehearsal._id}
+              className="rehearsal-card card-item card-item-compact"
+            >
+              <div className="rehearsal-info-row">
+                <span className="rehearsal-band-name">
                   {rehearsal.bandName || "Unknown band"}
                 </span>
               </div>
-              <div className="calendar-rehearsal-info">
-                <span className="calendar-rehearsal-time">
+              <div className="rehearsal-info-row">
+                <span className="rehearsal-time-text">
                   {rehearsal.startTime
                     ? `${rehearsal.startTime}${rehearsal.endTime ? " – " + rehearsal.endTime : ""}`
                     : "No time set"}
                 </span>
               </div>
               {rehearsal.notes && (
-                <p className="calendar-rehearsal-notes">{rehearsal.notes}</p>
+                <p className="rehearsal-notes-text">{rehearsal.notes}</p>
               )}
               <AvailableUsersRow
                 users={getAvailableUsersForDate(rehearsal, selectedDate)}
                 maxVisible={5}
                 onShowAll={onShowAllUsers}
               />
-              <div className="calendar-rehearsal-actions">
+              <div className="rehearsal-action-row">
                 <AvailabilityToggleButton
                   available={getAvailabilityForDate(rehearsal, selectedDate)}
                   onClick={() => onToggleAvailability(rehearsal)}
