@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { sendChatMessageAction } from "@/app/actions/bands";
 import { Message } from "@/app/types";
 import Link from "next/link";
+import Image from "next/image";
 
 const PREVIEW_COUNT = 3;
 
@@ -141,15 +142,39 @@ export default function BandChatComponent({
                 key={msg._id}
                 className={`chat-message${isOwn ? " chat-message-own" : ""}`}
               >
-                <div className="chat-message-meta">
-                  <strong className="chat-message-name">{msg.userName}</strong>
-                  <span className="chat-message-time meta-text">
-                    {new Date(msg.createdAt).toLocaleTimeString("en-GB", {
-                      timeZone: "Europe/London",
-                    })}
-                  </span>
+                <div className="chat-message-body">
+                  {msg.userImage ? (
+                    <Image
+                      src={msg.userImage}
+                      alt={msg.userName}
+                      width={32}
+                      height={32}
+                      className="chat-message-avatar"
+                    />
+                  ) : (
+                    <div className="chat-message-avatar chat-message-avatar-placeholder">
+                      {msg.userName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="chat-message-content">
+                    <div className="chat-message-meta">
+                      <strong className="chat-message-name">
+                        {msg.userName}
+                      </strong>
+                      <span className="chat-message-time meta-text">
+                        {new Date(msg.createdAt).toLocaleString("en-GB", {
+                          timeZone: "Europe/London",
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <p className="chat-message-text">{msg.message}</p>
+                  </div>
                 </div>
-                <p className="chat-message-text">{msg.message}</p>
               </div>
             );
           })

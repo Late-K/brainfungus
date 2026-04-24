@@ -149,6 +149,7 @@ export interface ProfileLearntSong {
   artist?: string;
   album?: string;
   duration?: number;
+  preview?: string;
   image?: string;
   isCustom: boolean;
   bandId?: string;

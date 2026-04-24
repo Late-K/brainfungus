@@ -1,4 +1,5 @@
 import Image from "next/image";
+import AlwaysAvailableToggle from "./alwaysAvailableToggle";
 
 export default function ProfileCard({ session }: { session: any }) {
   return (
@@ -26,6 +27,9 @@ export default function ProfileCard({ session }: { session: any }) {
             {session.user?.email || "No email"}
           </p>
         </div>
+      </div>
+      <div>
+        <AlwaysAvailableToggle />
       </div>
     </div>
   );

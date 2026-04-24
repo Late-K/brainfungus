@@ -47,7 +47,11 @@ export default function BandList({ refresh = 0 }: BandListProps) {
   }
 
   if (bands.length === 0) {
-    return <div>No bands yet. Create one to get started!</div>;
+    return (
+      <p className="empty-state">
+        Welcome to Brain Fungus. Press "Create Band" to get started!
+      </p>
+    );
   }
 
   return (

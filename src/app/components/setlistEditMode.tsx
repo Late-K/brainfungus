@@ -129,25 +129,7 @@ export default function SetlistEditMode({
                   </div>
                   <span className="song-index">{index + 1}</span>
                   <div className="song-body">
-                    <span className="item-title">
-                      {song.title}
-                      {song.isCustom && (
-                        <span
-                          className="badge"
-                          style={{ marginLeft: "0.5rem" }}
-                        >
-                          Custom
-                        </span>
-                      )}
-                      {song.isCover && (
-                        <span
-                          className="badge"
-                          style={{ marginLeft: "0.5rem" }}
-                        >
-                          Cover
-                        </span>
-                      )}
-                    </span>
+                    <span className="item-title">{song.title}</span>
                     {song.artist && (
                       <span className="meta-text meta-text-small block">
                         {song.artist}

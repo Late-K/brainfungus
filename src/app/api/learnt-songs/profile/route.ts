@@ -155,6 +155,10 @@ export async function GET() {
         s.duration ||
         (cover?.duration as number | undefined) ||
         (setlistSong?.duration as number | undefined);
+      const preview =
+        s.preview ||
+        (cover?.preview as string | undefined) ||
+        (setlistSong?.preview as string | undefined);
       const image =
         s.image ||
         (cover?.image as string | undefined) ||
@@ -167,6 +171,7 @@ export async function GET() {
         artist,
         album,
         duration,
+        preview,
         image,
         isCustom: false,
         source: "personal",
@@ -183,6 +188,7 @@ export async function GET() {
         let artist: string | undefined;
         let album: string | undefined;
         let duration: number | undefined;
+        let preview: string | undefined;
         let image: string | undefined;
         let isCustom = false;
         let bandId: string | undefined;
@@ -196,6 +202,7 @@ export async function GET() {
           artist = cover.artist;
           album = cover.album;
           duration = cover.duration;
+          preview = cover.preview;
           image = cover.image;
           isCustom = false;
         } else if (setlistSong) {
@@ -203,6 +210,7 @@ export async function GET() {
           artist = setlistSong.artist as string | undefined;
           album = setlistSong.album as string | undefined;
           duration = setlistSong.duration as number | undefined;
+          preview = setlistSong.preview as string | undefined;
           image = setlistSong.image as string | undefined;
           isCustom = Boolean(setlistSong.isCustom);
         } else if (ObjectId.isValid(songId)) {
@@ -228,6 +236,7 @@ export async function GET() {
             artist,
             album,
             duration,
+            preview,
             image,
             isCustom,
             bandId,
@@ -249,6 +258,7 @@ export async function GET() {
             artist: existing.artist || artist,
             album: existing.album || album,
             duration: existing.duration || duration,
+            preview: existing.preview || preview,
             image: existing.image || image,
             isCustom: existing.isCustom || isCustom,
             bandId: existing.bandId || bandId,

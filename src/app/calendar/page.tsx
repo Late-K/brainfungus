@@ -1,6 +1,7 @@
 // calendar page
 "use client";
 
+import Image from "next/image";
 import CalendarView from "@/app/components/calendarView";
 import RehearsalForm from "@/app/components/rehearsalForm";
 import ExpandedUserList from "@/app/components/expandedUserList";
@@ -37,6 +38,16 @@ export default function CalendarPage() {
 
   return (
     <div>
+      <div className="brand-spanned-wrap">
+        <Image
+          src="/brain-fungus-spanned.png"
+          alt="Brain Fungus"
+          width={420}
+          height={84}
+          priority
+          className="brand-spanned-image"
+        />
+      </div>
       <h2>Calendar</h2>
 
       <div className="calendar-container">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BandCover } from "@/app/types";
+import SongInfo from "@/app/components/songInfo";
 
 const PREVIEW_LIMIT = 3;
 
@@ -70,12 +71,17 @@ export default function BandCoversPreview({ bandId }: { bandId: string }) {
               key={cover._id}
               className="card-item card-item-stack card-item-regular"
             >
-              <div className="song-info">
-                <h3 className="item-title">{cover.title}</h3>
-                <p className="meta-text meta-text-small margin-top">
-                  {cover.artist}
-                  {cover.album ? ` - ${cover.album}` : ""}
-                </p>
+              <div className="song-row">
+                <SongInfo
+                  image={cover.image}
+                  imageAlt={cover.title}
+                  title={cover.title}
+                  meta={`${cover.artist}${cover.album ? ` - ${cover.album}` : ""}`}
+                  containerClassName="song-info"
+                  titleAs="h3"
+                  metaAs="p"
+                  metaClassName="meta-text meta-text-small margin-top"
+                />
               </div>
             </div>
           ))}

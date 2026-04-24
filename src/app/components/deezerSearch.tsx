@@ -2,6 +2,8 @@
 
 import { DeezerResult } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
+import SongInfo from "@/app/components/songInfo";
+import SongAudioPlayer from "@/app/components/songAudioPlayer";
 
 interface DeezerSearchProps {
   searchQuery: string;
@@ -51,12 +53,12 @@ export default function DeezerSearch({
           {searchResults.map((result) => (
             <div key={result.id} className="card-item card-item-compact">
               <div className="song-row">
-                <div className="song-body">
-                  <span className="item-title">{result.title}</span>
-                  <span className="meta-text meta-text-small block">
-                    {result.artist} - {result.album}
-                  </span>
-                </div>
+                <SongInfo
+                  image={result.image}
+                  imageAlt={result.title}
+                  title={result.title}
+                  meta={`${result.artist} - ${result.album}`}
+                />
                 <span className="song-duration">
                   {formatDuration(result.duration)}
                 </span>
@@ -69,6 +71,11 @@ export default function DeezerSearch({
                   {isSongSelected(result.id) ? "✓ Added" : "Add"}
                 </button>
               </div>
+              <SongAudioPlayer
+                src={result.preview}
+                deezerTrackId={result.id}
+                unavailableLabel="Preview unavailable"
+              />
             </div>
           ))}
         </div>

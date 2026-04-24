@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ProfileLearntSong } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
+import SongInfo from "@/app/components/songInfo";
 
 const PREVIEW_LIMIT = 3;
 
@@ -74,17 +75,26 @@ export default function ProfileLearntSongsPreview() {
               key={song.id}
               className="card-item card-item-stack card-item-regular"
             >
-              <div className="song-info">
-                <h3 className="item-title">{song.title}</h3>
-                <p className="meta-text meta-text-small margin-top">
-                  {[song.artist, song.album].filter(Boolean).join(" — ")}
-                  {song.duration ? ` · ${formatDuration(song.duration)}` : ""}
-                </p>
-                {song.isCustom && song.bandName && (
-                  <p className="meta-text meta-text-small margin-top">
-                    Custom song from <strong>{song.bandName}</strong>
-                  </p>
-                )}
+              <div className="song-row">
+                <SongInfo
+                  image={song.image}
+                  imageAlt={song.title}
+                  title={song.title}
+                  meta={`${[song.artist, song.album].filter(Boolean).join(" — ")}${song.duration ? ` · ${formatDuration(song.duration)}` : ""}`}
+                  extra={
+                    song.isCustom && song.bandName ? (
+                      <>
+                        Custom song from <strong>{song.bandName}</strong>
+                      </>
+                    ) : undefined
+                  }
+                  containerClassName="song-info"
+                  titleAs="h3"
+                  metaAs="p"
+                  extraAs="p"
+                  metaClassName="meta-text meta-text-small margin-top"
+                  extraClassName="meta-text meta-text-small margin-top"
+                />
               </div>
             </div>
           ))}

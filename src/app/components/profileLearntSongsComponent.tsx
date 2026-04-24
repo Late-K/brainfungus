@@ -8,6 +8,8 @@ import {
 import { ProfileLearntSong } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import DeezerSearch from "@/app/components/deezerSearch";
+import SongInfo from "@/app/components/songInfo";
+import SongAudioPlayer from "@/app/components/songAudioPlayer";
 import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 
 export default function ProfileLearntSongsComponent() {
@@ -148,21 +150,22 @@ export default function ProfileLearntSongsComponent() {
           </p>
         ) : (
           <div className="list" style={{ marginTop: "1rem" }}>
-            {dedupedSongs.map((song, index) => (
+            {dedupedSongs.map((song) => (
               <div key={song.id} className="card-item card-item-compact">
                 <div className="song-row">
-                  <span className="song-index">{index + 1}</span>
-                  <div className="song-body">
-                    <span className="item-title">{song.title}</span>
-                    <span className="meta-text meta-text-small block">
-                      {[song.artist, song.album].filter(Boolean).join(" — ")}
-                    </span>
-                    {song.isCustom && song.bandName && (
-                      <span className="meta-text meta-text-small block">
-                        Custom song from <strong>{song.bandName}</strong>
-                      </span>
-                    )}
-                  </div>
+                  <SongInfo
+                    image={song.image}
+                    imageAlt={song.title}
+                    title={song.title}
+                    meta={[song.artist, song.album].filter(Boolean).join(" — ")}
+                    extra={
+                      song.isCustom && song.bandName ? (
+                        <>
+                          Custom song from <strong>{song.bandName}</strong>
+                        </>
+                      ) : undefined
+                    }
+                  />
                   {song.duration ? (
                     <span className="song-duration">
                       {formatDuration(song.duration)}
@@ -176,6 +179,12 @@ export default function ProfileLearntSongsComponent() {
                     Remove
                   </button>
                 </div>
+
+                <SongAudioPlayer
+                  src={song.preview}
+                  deezerTrackId={!song.isCustom ? song.songId : undefined}
+                  unavailableLabel="Audio unavailable"
+                />
               </div>
             ))}
           </div>

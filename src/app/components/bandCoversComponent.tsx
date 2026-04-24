@@ -8,8 +8,10 @@ import {
 import { toggleLearntSongAction } from "@/app/actions/learntSongs";
 import { BandCover, LearntMap } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
+import SongAudioPlayer from "@/app/components/songAudioPlayer";
 import SongLearntStatus from "@/app/components/songLearntStatus";
 import DeezerSearch from "@/app/components/deezerSearch";
+import SongInfo from "@/app/components/songInfo";
 import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 
 interface BandCoversComponentProps {
@@ -172,17 +174,20 @@ export default function BandCoversComponent({
           </p>
         ) : (
           <div className="list" style={{ marginTop: "1rem" }}>
-            {covers.map((cover, index) => (
+            {covers.map((cover) => (
               <div key={cover._id} className="card-item card-item-compact">
                 <div className="song-row">
-                  <span className="song-index">{index + 1}</span>
-                  <div className="song-body">
-                    <span className="item-title">{cover.title}</span>
-                    <span className="meta-text meta-text-small block">
-                      {cover.artist}
-                      {cover.album ? ` — ${cover.album}` : ""}
-                    </span>
-                  </div>
+                  <SongInfo
+                    image={cover.image}
+                    imageAlt={cover.title}
+                    title={cover.title}
+                    meta={
+                      <>
+                        {cover.artist}
+                        {cover.album ? ` — ${cover.album}` : ""}
+                      </>
+                    }
+                  />
                   <span className="song-duration">
                     {formatDuration(cover.duration)}
                   </span>
@@ -195,6 +200,11 @@ export default function BandCoversComponent({
                   </button>
                 </div>
 
+                <SongAudioPlayer
+                  src={cover.preview}
+                  deezerTrackId={cover.songId}
+                />
+
                 <SongLearntStatus
                   songId={cover.songId}
                   learntMap={learntMap}
@@ -202,10 +212,6 @@ export default function BandCoversComponent({
                   togglingIds={togglingLearntIds}
                   onToggleLearnt={handleToggleLearnt}
                 />
-
-                {cover.preview && (
-                  <audio controls src={cover.preview} className="song-audio" />
-                )}
               </div>
             ))}
           </div>

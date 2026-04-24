@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BandCover } from "@/app/types";
+import SongInfo from "@/app/components/songInfo";
 
 interface BandCoversListProps {
   bandId: string;
@@ -68,13 +69,14 @@ export default function BandCoversList({
                 checked={selectedSongIds.includes(cover.songId)}
                 onChange={() => onToggleCover(cover)}
               />
-              <div className="song-details">
-                <span className="item-title">{cover.title}</span>
-                <span className="meta-text meta-text-small margin-top">
-                  {cover.artist}
-                  {cover.album ? ` - ${cover.album}` : ""}
-                </span>
-              </div>
+              <SongInfo
+                image={cover.image}
+                imageAlt={cover.title}
+                title={cover.title}
+                meta={`${cover.artist}${cover.album ? ` - ${cover.album}` : ""}`}
+                containerClassName="song-details"
+                metaClassName="meta-text meta-text-small margin-top"
+              />
             </label>
           </div>
         ))}

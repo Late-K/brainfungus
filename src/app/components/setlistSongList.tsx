@@ -3,6 +3,8 @@
 import { Song, LearntMap } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import SongLearntStatus from "@/app/components/songLearntStatus";
+import SongAudioPlayer from "@/app/components/songAudioPlayer";
+import SongInfo from "@/app/components/songInfo";
 
 interface SetlistSongListProps {
   songs: Song[];
@@ -26,33 +28,32 @@ export default function SetlistSongList({
   return (
     <div className="list">
       {songs.map((song, index) => {
+        const audioSrc = song.isCustom ? song.audioUrl : song.preview;
+
         return (
           <div key={song.id} className="card-item card-item-compact">
             <div className="song-row">
               <span className="song-index">{index + 1}</span>
-              <div className="song-body">
-                <span className="item-title">
-                  {song.title}
-                  {song.isCustom && (
-                    <span className="badge" style={{ marginLeft: "0.5rem" }}>
-                      Custom
-                    </span>
-                  )}
-                  {song.isCover && (
-                    <span className="badge" style={{ marginLeft: "0.5rem" }}>
-                      Cover
-                    </span>
-                  )}
-                </span>
-                <span className="meta-text meta-text-small block">
-                  {song.artist}
-                  {song.album ? ` — ${song.album}` : ""}
-                </span>
-              </div>
+              <SongInfo
+                image={song.image}
+                imageAlt={song.title}
+                title={song.title}
+                meta={
+                  <>
+                    {song.artist}
+                    {song.album ? ` — ${song.album}` : ""}
+                  </>
+                }
+              />
               <span className="song-duration">
                 {formatDuration(song.duration)}
               </span>
             </div>
+
+            <SongAudioPlayer
+              src={audioSrc}
+              deezerTrackId={!song.isCustom ? song.id : undefined}
+            />
 
             <SongLearntStatus
               songId={song.id}
@@ -61,13 +62,6 @@ export default function SetlistSongList({
               togglingIds={togglingIds}
               onToggleLearnt={onToggleLearnt}
             />
-
-            {song.preview && (
-              <audio controls src={song.preview} className="song-audio" />
-            )}
-            {song.isCustom && song.audioUrl && (
-              <audio controls src={song.audioUrl} className="song-audio" />
-            )}
           </div>
         );
       })}
