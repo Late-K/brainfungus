@@ -1,16 +1,12 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/lib/auth";
-import { getDb } from "@/app/lib/mongodb";
+import {
+  COLLECTIONS,
+  getServerErrorStatus,
+  requireBandMemberContext,
+} from "@/app/lib/serverData";
 import { NextRequest, NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const bandId = request.nextUrl.searchParams.get("bandId");
     if (!bandId) {
       return NextResponse.json(
@@ -19,32 +15,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const db = await getDb();
-
-    const currentUser = await db
-      .collection("users")
-      .findOne({ email: session.user.email });
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const band = await db
-      .collection("bands")
-      .findOne({ _id: new ObjectId(bandId) });
-    if (!band) {
-      return NextResponse.json({ error: "Band not found" }, { status: 404 });
-    }
-
-    if (!band.memberIds.includes(currentUser._id.toString())) {
-      return NextResponse.json(
-        { error: "Not a member of this band" },
-        { status: 403 },
-      );
-    }
+    const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
     const covers = await db
-      .collection("covers")
-      .find({ bandId: new ObjectId(bandId) })
+      .collection(COLLECTIONS.covers)
+      .find({ bandId: bandObjectId })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -70,9 +45,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ covers: formatted }, { status: 200 });
   } catch (error) {
     console.error("Error fetching covers:", error);
+    const status = getServerErrorStatus(error);
     return NextResponse.json(
-      { error: "Failed to fetch covers" },
-      { status: 500 },
+      {
+        error:
+          status === 500 ? "Failed to fetch covers" : (error as Error).message,
+      },
+      { status },
     );
   }
 }

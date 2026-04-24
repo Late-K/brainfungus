@@ -27,15 +27,16 @@ export default function SongLearntStatus({
     null,
   );
 
-  const learners = learntMap[songId] || [];
-  const isLearnt = currentUserLearnt(songId, learntMap, userName);
-  const isToggling = togglingIds.has(songId);
+  const normalisedSongId = String(songId);
+  const learners = learntMap[normalisedSongId] || [];
+  const isLearnt = currentUserLearnt(normalisedSongId, learntMap, userName);
+  const isToggling = togglingIds.has(normalisedSongId);
 
   return (
     <>
       <div className="learnt-row">
         <button
-          onClick={() => onToggleLearnt(songId)}
+          onClick={() => onToggleLearnt(normalisedSongId)}
           disabled={isToggling}
           className={`btn btn-small ${isLearnt ? "btn--learnt" : "btn--tertiary"}`}
         >

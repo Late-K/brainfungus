@@ -1,35 +1,24 @@
 "use server";
 
-import { getAuthUser } from "@/app/lib/auth";
-import { ObjectId } from "mongodb";
+import {
+  COLLECTIONS,
+  getSongIdFilter,
+  normaliseSongId,
+  requireBandMemberContext,
+} from "@/app/lib/serverData";
 import { DeezerResult } from "@/app/types";
-
-async function assertBandMember(bandId: string) {
-  const { db, user } = await getAuthUser();
-  const bandObjectId = new ObjectId(bandId);
-  const band = await db.collection("bands").findOne({ _id: bandObjectId });
-
-  if (!band) {
-    throw new Error("Band not found");
-  }
-
-  if (!band.memberIds.includes(user._id.toString())) {
-    throw new Error("Not a member of this band");
-  }
-
-  return { db, user, bandObjectId };
-}
 
 export async function addBandCoverAction(bandId: string, song: DeezerResult) {
   if (!bandId || !song?.id || !song?.title) {
     throw new Error("Band ID and song are required");
   }
 
-  const { db, user, bandObjectId } = await assertBandMember(bandId);
+  const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
+  const songId = normaliseSongId(song.id);
 
-  const existing = await db.collection("covers").findOne({
+  const existing = await db.collection(COLLECTIONS.covers).findOne({
     bandId: bandObjectId,
-    songId: song.id.toString(),
+    songId: getSongIdFilter(songId),
   });
 
   if (existing) {
@@ -44,10 +33,10 @@ export async function addBandCoverAction(bandId: string, song: DeezerResult) {
   }
 
   const now = new Date();
-  const result = await db.collection("covers").insertOne({
+  const result = await db.collection(COLLECTIONS.covers).insertOne({
     bandId: bandObjectId,
     creatorId: user._id,
-    songId: song.id.toString(),
+    songId,
     title: song.title,
     artist: song.artist || "",
     album: song.album || "",
@@ -63,7 +52,7 @@ export async function addBandCoverAction(bandId: string, song: DeezerResult) {
     alreadyExists: false,
     cover: {
       _id: result.insertedId.toString(),
-      songId: song.id.toString(),
+      songId,
     },
   };
 }
@@ -73,11 +62,12 @@ export async function removeBandCoverAction(bandId: string, songId: string) {
     throw new Error("Band ID and song ID are required");
   }
 
-  const { db, bandObjectId } = await assertBandMember(bandId);
+  const { db, bandObjectId } = await requireBandMemberContext(bandId);
+  const normalisedSongId = normaliseSongId(songId);
 
-  await db.collection("covers").deleteOne({
+  await db.collection(COLLECTIONS.covers).deleteOne({
     bandId: bandObjectId,
-    songId,
+    songId: getSongIdFilter(normalisedSongId),
   });
 
   return { success: true };

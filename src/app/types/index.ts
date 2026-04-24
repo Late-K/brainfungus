@@ -141,3 +141,18 @@ export interface CalendarRehearsal extends Rehearsal {
 
 export type CalendarChoiceAction = "edit" | "delete";
 export type CalendarEditMode = "all" | "this";
+
+export interface ProfileLearntSong {
+  id: string;
+  songId: string;
+  title: string;
+  artist?: string;
+  album?: string;
+  duration?: number;
+  image?: string;
+  isCustom: boolean;
+  bandId?: string;
+  bandName?: string;
+  source: "personal" | "band";
+  createdAt: string;
+}

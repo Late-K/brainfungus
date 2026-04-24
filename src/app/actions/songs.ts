@@ -1,6 +1,11 @@
 "use server";
 
 import { getAuthUser } from "@/app/lib/auth";
+import {
+  COLLECTIONS,
+  requireBandMember,
+  requireBandMemberContext,
+} from "@/app/lib/serverData";
 import { ObjectId } from "mongodb";
 
 export async function createSongAction(
@@ -10,26 +15,14 @@ export async function createSongAction(
   album: string = "",
 ) {
   try {
-    const { db, user } = await getAuthUser();
-
     if (!bandId || !title) {
       throw new Error("Band ID and title are required");
     }
 
-    // verify user is part of the band
-    const band = await db
-      .collection("bands")
-      .findOne({ _id: new ObjectId(bandId) });
-    if (!band) {
-      throw new Error("Band not found");
-    }
-
-    if (!band.memberIds.includes(user._id.toString())) {
-      throw new Error("Not a member of this band");
-    }
+    const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
 
     const newSong = {
-      bandId: new ObjectId(bandId),
+      bandId: bandObjectId,
       creatorId: user._id,
       title,
       notes: notes || "",
@@ -38,7 +31,9 @@ export async function createSongAction(
       updatedAt: new Date(),
     };
 
-    const result = await db.collection("customSongs").insertOne(newSong);
+    const result = await db
+      .collection(COLLECTIONS.customSongs)
+      .insertOne(newSong);
 
     return {
       success: true,
@@ -65,20 +60,19 @@ export async function deleteSongAction(songId: string) {
 
     // Get the song
     const song = await db
-      .collection("customSongs")
+      .collection(COLLECTIONS.customSongs)
       .findOne({ _id: new ObjectId(songId) });
     if (!song) {
       throw new Error("Song not found");
     }
 
     // verify user is a member of the band
-    const band = await db.collection("bands").findOne({ _id: song.bandId });
-    if (!band || !band.memberIds.includes(user._id.toString())) {
-      throw new Error("Not authorized to delete this song");
-    }
+    await requireBandMember(db, user._id.toString(), song.bandId);
 
     // felete the song
-    await db.collection("customSongs").deleteOne({ _id: new ObjectId(songId) });
+    await db
+      .collection(COLLECTIONS.customSongs)
+      .deleteOne({ _id: new ObjectId(songId) });
 
     return {
       success: true,
@@ -98,17 +92,14 @@ export async function updateSongAction(
     const { db, user } = await getAuthUser();
 
     const song = await db
-      .collection("customSongs")
+      .collection(COLLECTIONS.customSongs)
       .findOne({ _id: new ObjectId(songId) });
     if (!song) {
       throw new Error("Song not found");
     }
 
     // verify user is a member of the band
-    const band = await db.collection("bands").findOne({ _id: song.bandId });
-    if (!band || !band.memberIds.includes(user._id.toString())) {
-      throw new Error("Not authorized to update this song");
-    }
+    await requireBandMember(db, user._id.toString(), song.bandId);
 
     const setFields: Record<string, unknown> = { updatedAt: new Date() };
     if (updates.title !== undefined) setFields.title = updates.title;
@@ -116,7 +107,7 @@ export async function updateSongAction(
     if (updates.album !== undefined) setFields.album = updates.album;
 
     await db
-      .collection("customSongs")
+      .collection(COLLECTIONS.customSongs)
       .updateOne({ _id: new ObjectId(songId) }, { $set: setFields });
 
     return { success: true };
@@ -132,24 +123,17 @@ export async function reorderAlbumSongsAction(
   songIds: string[],
 ) {
   try {
-    const { db, user } = await getAuthUser();
-
-    const band = await db
-      .collection("bands")
-      .findOne({ _id: new ObjectId(bandId) });
-    if (!band || !band.memberIds.includes(user._id.toString())) {
-      throw new Error("Not authorized");
-    }
+    const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
     const bulkOps = songIds.map((id, index) => ({
       updateOne: {
-        filter: { _id: new ObjectId(id), bandId: new ObjectId(bandId) },
+        filter: { _id: new ObjectId(id), bandId: bandObjectId },
         update: { $set: { order: index } },
       },
     }));
 
     if (bulkOps.length > 0) {
-      await db.collection("customSongs").bulkWrite(bulkOps);
+      await db.collection(COLLECTIONS.customSongs).bulkWrite(bulkOps);
     }
 
     return { success: true };

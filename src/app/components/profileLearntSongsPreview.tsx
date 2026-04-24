@@ -1,0 +1,101 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ProfileLearntSong } from "@/app/types";
+import { formatDuration } from "@/app/lib/setlistUtils";
+
+const PREVIEW_LIMIT = 3;
+
+export default function ProfileLearntSongsPreview() {
+  const [songs, setSongs] = useState<ProfileLearntSong[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchSongs = async () => {
+      try {
+        setIsLoading(true);
+        setError("");
+        const res = await fetch("/api/learnt-songs/profile");
+        if (!res.ok) throw new Error("Failed to fetch learnt songs");
+        const data = await res.json();
+        setSongs(data.songs || []);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to load learnt songs",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSongs();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <section className="card">
+        <div className="section-header">
+          <h2>My Learnt Songs</h2>
+        </div>
+        <p className="empty-state">Loading learnt songs...</p>
+      </section>
+    );
+  }
+
+  // Deduplicate by songId before preview
+  const dedupedSongs = songs.filter(
+    (s, i, arr) => arr.findIndex((x) => x.songId === s.songId) === i,
+  );
+  const preview = dedupedSongs.slice(0, PREVIEW_LIMIT);
+  const hasMore = dedupedSongs.length > PREVIEW_LIMIT;
+
+  return (
+    <section className="card">
+      <div className="section-header">
+        <h2>My Learnt Songs</h2>
+        <Link href="/profile/learnt-songs" className="btn btn--primary">
+          View All
+        </Link>
+      </div>
+
+      {error && <p className="alert alert--error">{error}</p>}
+
+      {songs.length === 0 ? (
+        <p className="empty-state">
+          No learnt songs yet.{" "}
+          <Link href="/profile/learnt-songs">Add some!</Link>
+        </p>
+      ) : (
+        <div className="list">
+          {preview.map((song) => (
+            <div
+              key={song.id}
+              className="card-item card-item-stack card-item-regular"
+            >
+              <div className="song-info">
+                <h3 className="item-title">{song.title}</h3>
+                <p className="meta-text meta-text-small margin-top">
+                  {[song.artist, song.album].filter(Boolean).join(" — ")}
+                  {song.duration ? ` · ${formatDuration(song.duration)}` : ""}
+                </p>
+                {song.isCustom && song.bandName && (
+                  <p className="meta-text meta-text-small margin-top">
+                    Custom song from <strong>{song.bandName}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {hasMore && (
+            <Link href="/profile/learnt-songs" className="preview-link">
+              + {dedupedSongs.length - PREVIEW_LIMIT} more...
+            </Link>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}

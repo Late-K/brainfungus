@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/lib/auth";
 import { getDb } from "@/app/lib/mongodb";
+import { COLLECTIONS } from "@/app/lib/serverData";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
@@ -19,16 +20,18 @@ const ALLOWED_TYPES = [
 async function getAuthorisedSong(songId: string, userEmail: string) {
   const db = await getDb();
   const currentUser = await db
-    .collection("users")
+    .collection(COLLECTIONS.users)
     .findOne({ email: userEmail });
   if (!currentUser) return null;
 
   const song = await db
-    .collection("customSongs")
+    .collection(COLLECTIONS.customSongs)
     .findOne({ _id: new ObjectId(songId) });
   if (!song) return null;
 
-  const band = await db.collection("bands").findOne({ _id: song.bandId });
+  const band = await db
+    .collection(COLLECTIONS.bands)
+    .findOne({ _id: song.bandId });
   if (!band || !band.memberIds.includes(currentUser._id.toString()))
     return null;
 
@@ -99,7 +102,7 @@ export async function POST(
     }
 
     await authorised.db
-      .collection("customSongs")
+      .collection(COLLECTIONS.customSongs)
       .updateOne({ _id: new ObjectId(id) }, { $set: setFields });
 
     return NextResponse.json({ audioUrl, duration }, { status: 200 });
@@ -133,7 +136,7 @@ export async function DELETE(
     }
 
     await authorised.db
-      .collection("customSongs")
+      .collection(COLLECTIONS.customSongs)
       .updateOne(
         { _id: new ObjectId(id) },
         { $unset: { audioUrl: "" }, $set: { updatedAt: new Date() } },

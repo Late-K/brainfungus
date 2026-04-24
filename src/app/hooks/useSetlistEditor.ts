@@ -11,6 +11,20 @@ interface UseSetlistEditorOptions {
   onSaveSuccess?: (name: string, songs: Song[]) => void;
 }
 
+function toPersistedSong(song: Song): Song {
+  return {
+    id: song.id,
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    duration: song.duration,
+    preview: song.preview,
+    image: song.image,
+    isCustom: song.isCustom,
+    isCover: song.isCover,
+  };
+}
+
 export function useSetlistEditor(options?: UseSetlistEditorOptions) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -28,7 +42,7 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
 
   const startEditing = (name: string, songs: Song[]) => {
     setEditName(name);
-    setEditSongs([...songs]);
+    setEditSongs(songs.map(toPersistedSong));
     resetSearch();
     setIsEditing(true);
   };
@@ -42,8 +56,9 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     if (!editName.trim()) return;
     try {
       setIsSaving(true);
-      await updateSetlistAction(setlistId, editName, editSongs);
-      options?.onSaveSuccess?.(editName.trim(), editSongs);
+      const songsToSave = editSongs.map(toPersistedSong);
+      await updateSetlistAction(setlistId, editName, songsToSave);
+      options?.onSaveSuccess?.(editName.trim(), songsToSave);
       setIsEditing(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to save setlist");

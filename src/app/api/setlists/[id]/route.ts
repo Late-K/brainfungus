@@ -1,6 +1,10 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/lib/auth";
-import { getDb } from "@/app/lib/mongodb";
+import { getAuthUser } from "@/app/lib/auth";
+import {
+  COLLECTIONS,
+  getServerErrorStatus,
+  normaliseSongId,
+  requireBandMember,
+} from "@/app/lib/serverData";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
@@ -10,36 +14,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
-
-    const db = await getDb();
+    const { db, user } = await getAuthUser();
 
     const setlist = await db
-      .collection("setlists")
+      .collection(COLLECTIONS.setlists)
       .findOne({ _id: new ObjectId(id) });
     if (!setlist) {
       return NextResponse.json({ error: "Setlist not found" }, { status: 404 });
     }
 
-    const currentUser = await db
-      .collection("users")
-      .findOne({ email: session.user.email });
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const band = await db.collection("bands").findOne({ _id: setlist.bandId });
-    if (!band || !band.memberIds.includes(currentUser._id.toString())) {
-      return NextResponse.json(
-        { error: "Not a member of this band" },
-        { status: 403 },
-      );
-    }
+    await requireBandMember(db, user._id.toString(), setlist.bandId);
 
     // Enrich custom songs with their current audio metadata from customSongs collection
     const songs: Array<{
@@ -62,7 +47,7 @@ export async function GET(
       {};
     if (customIds.length > 0) {
       const customDocs = await db
-        .collection("customSongs")
+        .collection(COLLECTIONS.customSongs)
         .find(
           { _id: { $in: customIds } },
           { projection: { _id: 1, audioUrl: 1, duration: 1 } },
@@ -80,11 +65,13 @@ export async function GET(
     }
 
     const enrichedSongs = songs.map((song) => {
-      if (!song.isCustom) return song;
-      const meta = customMeta[song.id];
-      if (!meta) return song;
+      const songId = normaliseSongId(song.id);
+      if (!song.isCustom) return { ...song, id: songId };
+      const meta = customMeta[songId];
+      if (!meta) return { ...song, id: songId };
       return {
         ...song,
+        id: songId,
         audioUrl: meta.audioUrl,
         duration:
           typeof meta.duration === "number" ? meta.duration : song.duration,
@@ -97,9 +84,13 @@ export async function GET(
     );
   } catch (error) {
     console.error("Error fetching setlist:", error);
+    const status = getServerErrorStatus(error);
     return NextResponse.json(
-      { error: "Failed to fetch setlist" },
-      { status: 500 },
+      {
+        error:
+          status === 500 ? "Failed to fetch setlist" : (error as Error).message,
+      },
+      { status },
     );
   }
 }

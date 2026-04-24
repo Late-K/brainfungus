@@ -1,6 +1,8 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/lib/auth";
-import { getDb } from "@/app/lib/mongodb";
+import {
+  COLLECTIONS,
+  getServerErrorStatus,
+  requireBandMemberContext,
+} from "@/app/lib/serverData";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
@@ -10,43 +12,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
-
-    const db = await getDb();
-
-    const band = await db
-      .collection("bands")
-      .findOne({ _id: new ObjectId(id) });
-
-    if (!band) {
-      return NextResponse.json({ error: "Band not found" }, { status: 404 });
-    }
-
-    // get current users ID
-    const currentUser = await db
-      .collection("users")
-      .findOne({ email: session.user.email });
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // check if user is a member of this band
-    if (!band.memberIds.includes(currentUser._id.toString())) {
-      return NextResponse.json(
-        { error: "Not a member of this band" },
-        { status: 403 },
-      );
-    }
+    const { db, band } = await requireBandMemberContext(id);
 
     // fetch member details
-    const memberIds = band.memberIds.map((id: string) => new ObjectId(id));
+    const memberIds = band.memberIds
+      .filter((memberId: string) => ObjectId.isValid(memberId))
+      .map((memberId: string) => new ObjectId(memberId));
     const members = await db
-      .collection("users")
+      .collection(COLLECTIONS.users)
       .find({ _id: { $in: memberIds } })
       .toArray();
 
@@ -73,9 +47,13 @@ export async function GET(
     );
   } catch (error) {
     console.error("Error fetching band:", error);
+    const status = getServerErrorStatus(error);
     return NextResponse.json(
-      { error: "Failed to fetch band" },
-      { status: 500 },
+      {
+        error:
+          status === 500 ? "Failed to fetch band" : (error as Error).message,
+      },
+      { status },
     );
   }
 }

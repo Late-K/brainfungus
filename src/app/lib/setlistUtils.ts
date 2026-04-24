@@ -19,7 +19,7 @@ export function getProgress(
   const totalNeeded = setlist.songs.length * memberCount;
   let totalLearnt = 0;
   for (const song of setlist.songs) {
-    totalLearnt += (learntMap[song.id] || []).length;
+    totalLearnt += (learntMap[String(song.id)] || []).length;
   }
   return Math.round((totalLearnt / totalNeeded) * 100);
 }
@@ -31,6 +31,6 @@ export function currentUserLearnt(
   userName: string | null | undefined,
 ): boolean {
   if (!userName) return false;
-  const learners = learntMap[songId] || [];
+  const learners = learntMap[String(songId)] || [];
   return learners.some((l) => l.userName === userName);
 }

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     // transform deezer response to include relevant fields
     const results = data.data
       ? data.data.map((item: any) => ({
-          id: item.id,
+          id: item.id.toString(),
           title: item.title || item.name,
           artist: item.artist ? item.artist.name : "Unknown",
           album: item.album ? item.album.title : "Unknown",

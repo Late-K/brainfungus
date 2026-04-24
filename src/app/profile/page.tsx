@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import SignOutButton from "@/app/components/signOutButton";
 import AlwaysAvailableToggle from "@/app/components/alwaysAvailableToggle";
 import ProfileCard from "@/app/components/profileCard";
+import ProfileLearntSongsPreview from "@/app/components/profileLearntSongsPreview";
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions);
@@ -21,6 +22,8 @@ export default async function ProfilePage() {
       <div className="card">
         <AlwaysAvailableToggle />
       </div>
+
+      <ProfileLearntSongsPreview />
 
       <div className="row-center">
         <SignOutButton />

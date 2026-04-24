@@ -1,8 +1,28 @@
 "use server";
 
 import { getAuthUser } from "@/app/lib/auth";
+import {
+  COLLECTIONS,
+  normaliseSongId,
+  requireBandMember,
+  requireBandMemberContext,
+} from "@/app/lib/serverData";
 import { ObjectId } from "mongodb";
 import { Song } from "@/app/types";
+
+function sanitizeSetlistSongs(songs: Song[]) {
+  return (songs || []).map((song) => ({
+    id: normaliseSongId(song.id),
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    duration: song.duration,
+    preview: song.preview,
+    image: song.image,
+    isCustom: song.isCustom,
+    isCover: song.isCover,
+  }));
+}
 
 export async function createSetlistAction(
   bandId: string,
@@ -10,43 +30,33 @@ export async function createSetlistAction(
   songs: Song[],
 ) {
   try {
-    const { db, user } = await getAuthUser();
-
     if (!bandId || !name) {
       throw new Error("Band ID and name are required");
     }
 
-    // verify user is part of the band
-    const band = await db
-      .collection("bands")
-      .findOne({ _id: new ObjectId(bandId) });
-    if (!band) {
-      throw new Error("Band not found");
-    }
-
-    if (!band.memberIds.includes(user._id.toString())) {
-      throw new Error("Not a member of this band");
-    }
+    const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
 
     // deactivate any currently active setlist for this band
     await db
-      .collection("setlists")
+      .collection(COLLECTIONS.setlists)
       .updateMany(
-        { bandId: new ObjectId(bandId), isActive: true },
+        { bandId: bandObjectId, isActive: true },
         { $set: { isActive: false, updatedAt: new Date() } },
       );
 
     const newSetlist = {
-      bandId: new ObjectId(bandId),
+      bandId: bandObjectId,
       creatorId: user._id,
       name,
-      songs: songs || [],
+      songs: sanitizeSetlistSongs(songs),
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    const result = await db.collection("setlists").insertOne(newSetlist);
+    const result = await db
+      .collection(COLLECTIONS.setlists)
+      .insertOne(newSetlist);
 
     return {
       success: true,
@@ -66,7 +76,7 @@ export async function deleteSetlistAction(setlistId: string) {
     const { db, user } = await getAuthUser();
 
     const setlist = await db
-      .collection("setlists")
+      .collection(COLLECTIONS.setlists)
       .findOne({ _id: new ObjectId(setlistId) });
     if (!setlist) {
       throw new Error("Setlist not found");
@@ -76,7 +86,9 @@ export async function deleteSetlistAction(setlistId: string) {
       throw new Error("Not authorized to delete this setlist");
     }
 
-    await db.collection("setlists").deleteOne({ _id: new ObjectId(setlistId) });
+    await db
+      .collection(COLLECTIONS.setlists)
+      .deleteOne({ _id: new ObjectId(setlistId) });
 
     return {
       success: true,
@@ -95,21 +107,18 @@ export async function setActiveSetlistAction(
   setlistId: string,
 ) {
   try {
-    const { db } = await getAuthUser();
+    const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
     // deactivate all other setlists in this band
     await db
-      .collection("setlists")
-      .updateMany(
-        { bandId: new ObjectId(bandId) },
-        { $set: { isActive: false } },
-      );
+      .collection(COLLECTIONS.setlists)
+      .updateMany({ bandId: bandObjectId }, { $set: { isActive: false } });
 
     // activate the selected setlist
     const result = await db
-      .collection("setlists")
+      .collection(COLLECTIONS.setlists)
       .updateOne(
-        { _id: new ObjectId(setlistId) },
+        { _id: new ObjectId(setlistId), bandId: bandObjectId },
         { $set: { isActive: true, updatedAt: new Date() } },
       );
 
@@ -142,21 +151,22 @@ export async function updateSetlistAction(
     }
 
     const setlist = await db
-      .collection("setlists")
+      .collection(COLLECTIONS.setlists)
       .findOne({ _id: new ObjectId(setlistId) });
     if (!setlist) throw new Error("Setlist not found");
 
-    const band = await db.collection("bands").findOne({ _id: setlist.bandId });
-    if (!band || !band.memberIds.includes(user._id.toString())) {
-      throw new Error("Not a member of this band");
-    }
+    await requireBandMember(db, user._id.toString(), setlist.bandId);
 
-    await db
-      .collection("setlists")
-      .updateOne(
-        { _id: new ObjectId(setlistId) },
-        { $set: { name: name.trim(), songs, updatedAt: new Date() } },
-      );
+    await db.collection(COLLECTIONS.setlists).updateOne(
+      { _id: new ObjectId(setlistId) },
+      {
+        $set: {
+          name: name.trim(),
+          songs: sanitizeSetlistSongs(songs),
+          updatedAt: new Date(),
+        },
+      },
+    );
 
     return { success: true, message: "Setlist updated" };
   } catch (error) {
@@ -172,12 +182,12 @@ export async function deactivateSetlistAction(
   setlistId: string,
 ) {
   try {
-    const { db } = await getAuthUser();
+    const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
     const result = await db
-      .collection("setlists")
+      .collection(COLLECTIONS.setlists)
       .updateOne(
-        { _id: new ObjectId(setlistId), bandId: new ObjectId(bandId) },
+        { _id: new ObjectId(setlistId), bandId: bandObjectId },
         { $set: { isActive: false, updatedAt: new Date() } },
       );
 
