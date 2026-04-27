@@ -3,11 +3,13 @@ import { getToken } from "next-auth/jwt";
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
+  const isPublicLogo = pathname === "/brainfungus.png";
 
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
     pathname === "/login" ||
+    isPublicLogo ||
     pathname.startsWith("/static") ||
     pathname === "/favicon.ico"
   ) {
