@@ -1,4 +1,4 @@
-// calendar view, renders a calendar with month navigation, showing markers for days with rehearsals
+﻿// calendar view, renders a calendar with month navigation, showing markers for days with rehearsals
 "use client";
 
 import { useState } from "react";
@@ -11,7 +11,7 @@ interface CalendarViewProps {
   onSelectDate: (date: string) => void;
 }
 
-const DAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const day_headers = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function CalendarView({
   rehearsals,
@@ -91,24 +91,27 @@ export default function CalendarView({
     <div className="calendar">
       <div className="calendar-nav">
         <button
-          className="btn btn-small btn--tertiary"
+          className="button button-small button-tertiary"
           onClick={goToPreviousMonth}
         >
           ‹
         </button>
         <button
-          className="calendar-month-label btn btn-small btn--tertiary"
+          className="calendar-month-label button button-small button-tertiary"
           onClick={goToToday}
         >
           {monthLabel}
         </button>
-        <button className="btn btn-small btn--tertiary" onClick={goToNextMonth}>
+        <button
+          className="button button-small button-tertiary"
+          onClick={goToNextMonth}
+        >
           ›
         </button>
       </div>
 
       <div className="calendar-day-headers">
-        {DAY_HEADERS.map((d) => (
+        {day_headers.map((d) => (
           <div key={d} className="calendar-day-header">
             {d}
           </div>

@@ -1,12 +1,11 @@
 // index file for all types used in the app
 
+export type BandRole = "creator" | "admin" | "member";
+
 export interface Band {
   _id: string;
   name: string;
   description: string;
-  creatorId: string;
-  adminIds: string[];
-  memberIds: string[];
   createdAt: string;
   members?: BandMember[];
 }
@@ -16,6 +15,7 @@ export interface BandMember {
   email: string;
   name: string;
   image?: string;
+  role: BandRole;
   isAdmin?: boolean;
   isCreator?: boolean;
 }
@@ -59,18 +59,27 @@ export interface DeezerResult {
 
 export interface Setlist {
   _id: string;
-  bandId?: string;
+  bandId: string;
   name: string;
   songs: Song[];
   isActive: boolean;
+  creatorId?: string;
   createdAt: string;
   updatedAt?: string;
 }
+
+export type AvailUser = {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userImage?: string;
+};
 
 export type LearntMap = Record<string, AvailUser[]>;
 
 export interface CustomSong {
   _id: string;
+  bandId: string;
   title: string;
   notes: string;
   album?: string;
@@ -98,12 +107,6 @@ export interface User {
   image?: string;
   alwaysAvailable?: boolean;
 }
-
-export type AvailUser = {
-  userId: string;
-  userName: string;
-  userImage?: string;
-};
 
 export type RehearsalRepeatType = "once" | "weekly" | "biweekly";
 
@@ -148,6 +151,7 @@ export interface ProfileLearntSong {
   title: string;
   artist?: string;
   album?: string;
+  notes?: string;
   duration?: number;
   preview?: string;
   image?: string;

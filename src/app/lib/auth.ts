@@ -1,4 +1,4 @@
-// auth setup with next-auth and google
+﻿// auth setup with next-auth and google
 
 import { NextAuthOptions } from "next-auth";
 import Google from "next-auth/providers/google";

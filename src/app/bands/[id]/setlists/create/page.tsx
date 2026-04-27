@@ -1,14 +1,12 @@
-// setlist creation page
+﻿// setlist creation page
 
 "use client";
 
-import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import SetlistEditMode from "@/app/components/setlistEditMode";
 import { useCreateSetlistPage } from "@/app/hooks/useCreateSetlistPage";
-import { Band } from "@/app/types";
+import BandSubpageHeader from "@/app/components/bandSubpageHeader";
 
 export default function CreateSetlistPage({
   params,
@@ -17,29 +15,21 @@ export default function CreateSetlistPage({
 }) {
   const { data: session, status } = useSession();
   const createSetlistPage = useCreateSetlistPage(params);
-  const [band, setBand] = useState<Band | null>(null);
-
-  useEffect(() => {
-    if (createSetlistPage.bandId) {
-      fetch(`/api/bands/${createSetlistPage.bandId}`)
-        .then((res) => res.json())
-        .then((data) => setBand(data.band))
-        .catch(() => setBand(null));
-    }
-  }, [createSetlistPage.bandId]);
 
   if (status === "loading") return null;
   if (!session) redirect("/login");
 
   return (
     <div className="page-container">
-      <Link href={`/bands/${createSetlistPage.bandId}`} className="back-link">
-        ← Back to {band?.name || "Band"}
-      </Link>
+      <BandSubpageHeader
+        title="Create Setlist"
+        description="Build a new setlist by searching for songs and arranging your lineup."
+        bandId={createSetlistPage.bandId}
+      />
 
       {createSetlistPage.error && (
         <div className="card">
-          <p className="alert alert--error">{createSetlistPage.error}</p>
+          <p className="alert alert-error">{createSetlistPage.error}</p>
         </div>
       )}
 

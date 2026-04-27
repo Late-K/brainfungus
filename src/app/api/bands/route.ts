@@ -1,16 +1,24 @@
-import { getAuthUser } from "@/app/lib/auth";
-import { COLLECTIONS, getServerErrorStatus } from "@/app/lib/serverData";
+﻿import { getAuthUser } from "@/app/lib/auth";
+import { getServerErrorStatus } from "@/app/lib/serverUtils";
 import { NextResponse } from "next/server";
 
-// GET - fetch bands for the current user
+// fetch bands for the current user
 export async function GET() {
   try {
     const { db, user } = await getAuthUser();
 
-    // fetch all bands where the user is a member
+    const userId = user._id.toString();
+
+    // fetch all bands where the user is a member (supports both old and new schema)
     const userBands = await db
-      .collection(COLLECTIONS.bands)
-      .find({ memberIds: user._id.toString() })
+      .collection("bands")
+      .find({
+        $or: [
+          { "members.userId": userId },
+          { memberIds: userId },
+          { creatorId: user._id },
+        ],
+      })
       .toArray();
 
     return NextResponse.json({ bands: userBands }, { status: 200 });

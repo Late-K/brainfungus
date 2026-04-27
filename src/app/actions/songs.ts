@@ -1,11 +1,10 @@
-"use server";
+﻿"use server";
 
 import { getAuthUser } from "@/app/lib/auth";
 import {
-  COLLECTIONS,
   requireBandMember,
   requireBandMemberContext,
-} from "@/app/lib/serverData";
+} from "@/app/lib/serverUtils";
 import { ObjectId } from "mongodb";
 
 export async function createSongAction(
@@ -31,9 +30,7 @@ export async function createSongAction(
       updatedAt: new Date(),
     };
 
-    const result = await db
-      .collection(COLLECTIONS.customSongs)
-      .insertOne(newSong);
+    const result = await db.collection("custom_songs").insertOne(newSong);
 
     return {
       success: true,
@@ -56,11 +53,12 @@ export async function createSongAction(
 
 export async function deleteSongAction(songId: string) {
   try {
+    if (!ObjectId.isValid(songId)) throw new Error("Song not found");
     const { db, user } = await getAuthUser();
 
     // Get the song
     const song = await db
-      .collection(COLLECTIONS.customSongs)
+      .collection("custom_songs")
       .findOne({ _id: new ObjectId(songId) });
     if (!song) {
       throw new Error("Song not found");
@@ -69,9 +67,9 @@ export async function deleteSongAction(songId: string) {
     // verify user is a member of the band
     await requireBandMember(db, user._id.toString(), song.bandId);
 
-    // felete the song
+    // delete the song
     await db
-      .collection(COLLECTIONS.customSongs)
+      .collection("custom_songs")
       .deleteOne({ _id: new ObjectId(songId) });
 
     return {
@@ -89,10 +87,11 @@ export async function updateSongAction(
   updates: { title?: string; notes?: string; album?: string },
 ) {
   try {
+    if (!ObjectId.isValid(songId)) throw new Error("Song not found");
     const { db, user } = await getAuthUser();
 
     const song = await db
-      .collection(COLLECTIONS.customSongs)
+      .collection("custom_songs")
       .findOne({ _id: new ObjectId(songId) });
     if (!song) {
       throw new Error("Song not found");
@@ -107,7 +106,7 @@ export async function updateSongAction(
     if (updates.album !== undefined) setFields.album = updates.album;
 
     await db
-      .collection(COLLECTIONS.customSongs)
+      .collection("custom_songs")
       .updateOne({ _id: new ObjectId(songId) }, { $set: setFields });
 
     return { success: true };
@@ -125,15 +124,17 @@ export async function reorderAlbumSongsAction(
   try {
     const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
-    const bulkOps = songIds.map((id, index) => ({
-      updateOne: {
-        filter: { _id: new ObjectId(id), bandId: bandObjectId },
-        update: { $set: { order: index } },
-      },
-    }));
+    const bulkOps = songIds
+      .filter((id) => ObjectId.isValid(id))
+      .map((id, index) => ({
+        updateOne: {
+          filter: { _id: new ObjectId(id), bandId: bandObjectId },
+          update: { $set: { order: index } },
+        },
+      }));
 
     if (bulkOps.length > 0) {
-      await db.collection(COLLECTIONS.customSongs).bulkWrite(bulkOps);
+      await db.collection("custom_songs").bulkWrite(bulkOps);
     }
 
     return { success: true };

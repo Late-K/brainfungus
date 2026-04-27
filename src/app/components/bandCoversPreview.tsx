@@ -1,39 +1,17 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BandCover } from "@/app/types";
 import SongInfo from "@/app/components/songInfo";
+import { useFetchData } from "@/app/hooks/useFetchData";
 
-const PREVIEW_LIMIT = 3;
+const preview_limit = 3;
 
 export default function BandCoversPreview({ bandId }: { bandId: string }) {
-  const [covers, setCovers] = useState<BandCover[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const fetchCovers = async () => {
-      try {
-        setIsLoading(true);
-        setError("");
-        const res = await fetch(`/api/covers?bandId=${bandId}`);
-        if (!res.ok) {
-          throw new Error("Failed to fetch covers");
-        }
-        const data = await res.json();
-        setCovers(data.covers || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load covers");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (bandId) {
-      fetchCovers();
-    }
-  }, [bandId]);
+  const { data, isLoading, error } = useFetchData<{ covers: BandCover[] }>(
+    bandId ? `/api/covers?bandId=${bandId}` : null,
+  );
+  const covers = data?.covers ?? [];
 
   if (isLoading) {
     return (
@@ -46,21 +24,28 @@ export default function BandCoversPreview({ bandId }: { bandId: string }) {
     );
   }
 
-  const preview = covers.slice(0, PREVIEW_LIMIT);
-  const hasMore = covers.length > PREVIEW_LIMIT;
+  const dedupedCovers = covers.filter(
+    (cover, index, arr) =>
+      arr.findIndex((other) => other.songId === cover.songId) === index,
+  );
+  const preview = dedupedCovers.slice(-preview_limit).reverse();
+  const hasMore = dedupedCovers.length > preview_limit;
 
   return (
     <section className="card">
       <div className="section-header">
         <h2>Band Covers</h2>
-        <Link href={`/bands/${bandId}/covers`} className="btn btn--primary">
+        <Link
+          href={`/bands/${bandId}/covers`}
+          className="button button-primary"
+        >
           View All
         </Link>
       </div>
 
-      {error && <p className="alert alert--error">{error}</p>}
+      {error && <p className="alert alert-error">{error}</p>}
 
-      {covers.length === 0 ? (
+      {dedupedCovers.length === 0 ? (
         <p className="empty-state">
           No covers yet. <Link href={`/bands/${bandId}/covers`}>Add some!</Link>
         </p>
@@ -88,7 +73,7 @@ export default function BandCoversPreview({ bandId }: { bandId: string }) {
 
           {hasMore && (
             <Link href={`/bands/${bandId}/covers`} className="preview-link">
-              + {covers.length - PREVIEW_LIMIT} more...
+              + {dedupedCovers.length - preview_limit} more...
             </Link>
           )}
         </div>

@@ -9,7 +9,7 @@ import SongInfo from "@/app/components/songInfo";
 interface SetlistSongListProps {
   songs: Song[];
   learntMap: LearntMap;
-  userName: string | null | undefined;
+  userEmail: string | null | undefined;
   togglingIds: Set<string>;
   onToggleLearnt: (songId: string) => void;
 }
@@ -17,7 +17,7 @@ interface SetlistSongListProps {
 export default function SetlistSongList({
   songs,
   learntMap,
-  userName,
+  userEmail,
   togglingIds,
   onToggleLearnt,
 }: SetlistSongListProps) {
@@ -58,7 +58,7 @@ export default function SetlistSongList({
             <SongLearntStatus
               songId={song.id}
               learntMap={learntMap}
-              userName={userName}
+              userEmail={userEmail}
               togglingIds={togglingIds}
               onToggleLearnt={onToggleLearnt}
             />

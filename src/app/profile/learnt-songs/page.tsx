@@ -1,4 +1,4 @@
-// profile/learnt-songs page
+﻿// profile/learnt-songs page
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/lib/auth";
@@ -18,7 +18,7 @@ export default async function ProfileLearntSongsPage() {
       <div className="card">
         <div className="section-header">
           <h1 className="heading-small">My Learnt Songs</h1>
-          <Link href="/profile" className="btn btn--tertiary">
+          <Link href="/profile" className="button button-tertiary">
             Back to Profile
           </Link>
         </div>

@@ -1,4 +1,4 @@
-// selected setlist page
+﻿// selected setlist page
 
 "use client";
 
@@ -32,14 +32,14 @@ export default function SetlistDetailPage({
     return (
       <div className="page-container">
         <div className="card">
-          <p className="alert alert--error">
+          <p className="alert alert-error">
             {setlistDetailPage.error || "Setlist not found"}
           </p>
           <Link
             href={`/bands/${setlistDetailPage.bandId}`}
-            className="back-link"
+            className="button button-tertiary"
           >
-            ← Back to {setlistDetailPage.band?.name || "Band"}
+            Back to {setlistDetailPage.band?.name || "Band"}
           </Link>
         </div>
       </div>
@@ -48,7 +48,6 @@ export default function SetlistDetailPage({
 
   const setlist = setlistDetailPage.setlist;
 
-  // ===================== EDIT MODE =====================
   if (setlistDetailPage.editor.isEditing) {
     return (
       <div className="page-container">
@@ -81,7 +80,6 @@ export default function SetlistDetailPage({
     );
   }
 
-  // ===================== VIEW MODE =====================
   return (
     <div className="page-container">
       <SetlistViewMode
@@ -90,7 +88,7 @@ export default function SetlistDetailPage({
         isDeleting={setlistDetailPage.isDeleting}
         learntMap={setlistDetailPage.learntMap}
         togglingIds={setlistDetailPage.togglingIds}
-        userName={session.user?.name}
+        userEmail={session.user?.email}
         totalDuration={setlistDetailPage.totalDuration}
         progress={setlistDetailPage.progress}
         onStartEdit={() =>

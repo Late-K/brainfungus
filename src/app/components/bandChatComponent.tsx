@@ -1,22 +1,25 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { sendChatMessageAction } from "@/app/actions/bands";
 import { Message } from "@/app/types";
 import Link from "next/link";
 import Image from "next/image";
 
-const PREVIEW_COUNT = 3;
+const preview_count = 3;
+const poll_ms = 3000;
 
 export default function BandChatComponent({
   bandId,
   preview = false,
   fullPage = false,
+  backHref,
 }: {
   bandId: string;
   preview?: boolean;
   fullPage?: boolean;
+  backHref?: string;
 }) {
   const { data: session } = useSession();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -26,52 +29,66 @@ export default function BandChatComponent({
   const [error, setError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // fetch initial messages
-  useEffect(() => {
-    async function fetchMessages() {
+  const fetchMessages = useCallback(
+    async (options?: { showLoading?: boolean; signal?: AbortSignal }) => {
+      if (!bandId) return;
+
+      const { showLoading = false, signal } = options ?? {};
+
       try {
-        setIsLoading(true);
+        if (showLoading) setIsLoading(true);
         setError("");
 
-        const res = await fetch(`/api/bands/${bandId}/chat`);
+        const res = await fetch(`/api/bands/${bandId}/chat`, { signal });
 
         if (!res.ok) {
           throw new Error("Failed to fetch messages");
         }
 
         const data = await res.json();
-        setMessages(data.messages || []);
+        if (signal?.aborted) return;
+
+        const nextMessages: Message[] = data.messages || [];
+        setMessages((prev) => {
+          if (
+            prev.length === nextMessages.length &&
+            prev.at(-1)?._id === nextMessages.at(-1)?._id
+          ) {
+            return prev;
+          }
+          return nextMessages;
+        });
       } catch (err) {
+        if (signal?.aborted) return;
         setError(
           err instanceof Error ? err.message : "Failed to load messages",
         );
       } finally {
-        setIsLoading(false);
+        if (showLoading && !signal?.aborted) setIsLoading(false);
       }
-    }
+    },
+    [bandId],
+  );
 
-    if (bandId) {
-      fetchMessages();
-    }
-  }, [bandId]);
-
-  // poll for new messages every 3 seconds
+  // fetch initial messages
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/bands/${bandId}/chat`);
+    if (!bandId) return;
+    const controller = new AbortController();
+    fetchMessages({ showLoading: true, signal: controller.signal });
+    return () => controller.abort();
+  }, [bandId, fetchMessages]);
 
-        if (res.ok) {
-          const data = await res.json();
-          setMessages(data.messages || []);
-        }
-      } catch (err) {
-        console.error("Failed to refresh messages:", err);
-      }
-    }, 3000);
+  // poll for new messages (skip in preview and when tab is hidden)
+  useEffect(() => {
+    if (!bandId || preview) return;
+
+    const interval = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      fetchMessages();
+    }, poll_ms);
 
     return () => clearInterval(interval);
-  }, [bandId]);
+  }, [bandId, preview, fetchMessages]);
 
   // auto-scroll to bottom when not in preview mode
   useEffect(() => {
@@ -91,7 +108,7 @@ export default function BandChatComponent({
 
       const result = await sendChatMessageAction(bandId, newMessage);
 
-      setMessages([...messages, result.message]);
+      setMessages((prev) => [...prev, result.message]);
       setNewMessage("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
@@ -100,7 +117,7 @@ export default function BandChatComponent({
     }
   };
 
-  const displayMessages = preview ? messages.slice(-PREVIEW_COUNT) : messages;
+  const displayMessages = preview ? messages.slice(-preview_count) : messages;
 
   if (isLoading) {
     return (
@@ -118,13 +135,21 @@ export default function BandChatComponent({
       <div className="section-header">
         <h2>Band Chat</h2>
         {preview && (
-          <Link href={`/bands/${bandId}/chat`} className="btn btn--primary">
+          <Link
+            href={`/bands/${bandId}/chat`}
+            className="button button-primary"
+          >
             View All
+          </Link>
+        )}
+        {backHref && (
+          <Link href={backHref} className="button button-tertiary">
+            Back to Band
           </Link>
         )}
       </div>
 
-      {error && <p className="alert alert--error">{error}</p>}
+      {error && <p className="alert alert-error">{error}</p>}
 
       <div
         ref={containerRef}
@@ -192,7 +217,7 @@ export default function BandChatComponent({
         />
         <button
           type="submit"
-          className="btn btn--primary"
+          className="button button-primary"
           disabled={isSending || !newMessage.trim()}
         >
           {isSending ? "Sending..." : "Send"}

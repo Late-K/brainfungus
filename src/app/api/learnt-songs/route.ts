@@ -1,13 +1,12 @@
-import {
-  COLLECTIONS,
+﻿import {
   getServerErrorStatus,
   normaliseSongId,
   requireBandMemberContext,
-} from "@/app/lib/serverData";
+} from "@/app/lib/serverUtils";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
-// GET - fetch learnt songs for a band
+// fetch learnt songs for a band
 export async function GET(request: NextRequest) {
   try {
     const bandId = request.nextUrl.searchParams.get("bandId");
@@ -20,12 +19,13 @@ export async function GET(request: NextRequest) {
 
     const { db, band } = await requireBandMemberContext(bandId);
 
-    const memberObjectIds = band.memberIds
-      .filter((id: string) => ObjectId.isValid(id))
-      .map((id: string) => new ObjectId(id));
+    const memberObjectIds = (band.members as Array<{ userId: string }>)
+      .map((m) => m.userId)
+      .filter((uid) => ObjectId.isValid(uid))
+      .map((uid) => new ObjectId(uid));
 
     const learnt = await db
-      .collection(COLLECTIONS.learntSongs)
+      .collection("learnt_songs")
       .find({
         userId: { $in: memberObjectIds },
         active: { $ne: false },
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       ...new Set(learnt.map((entry) => entry.userId.toString())),
     ];
     const userDocs = await db
-      .collection(COLLECTIONS.users)
+      .collection("users")
       .find({
         _id: { $in: userIds.map((id) => new ObjectId(id)) },
       })
@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
         {
           userId: userDoc._id.toString(),
           userName: userDoc.name,
+          userEmail: userDoc.email,
           userImage: userDoc.image,
         },
       ]),
@@ -55,7 +56,12 @@ export async function GET(request: NextRequest) {
 
     const songLearntMap: Record<
       string,
-      { userId: string; userName: string; userImage?: string }[]
+      {
+        userId: string;
+        userName: string;
+        userEmail: string;
+        userImage?: string;
+      }[]
     > = {};
     const seen = new Set<string>();
 

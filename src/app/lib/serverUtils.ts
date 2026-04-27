@@ -1,36 +1,8 @@
-import { getAuthUser } from "@/app/lib/auth";
+﻿import { getAuthUser } from "@/app/lib/auth";
 import { Db, ObjectId } from "mongodb";
-
-export const COLLECTIONS = {
-  bands: "bands",
-  bandMessages: "band_messages",
-  covers: "covers",
-  customSongs: "customSongs",
-  learntSongs: "learnt_songs",
-  personalLearntSongs: "personal_learnt_songs",
-  rehearsalAvailability: "rehearsal_availability",
-  rehearsals: "rehearsals",
-  setlists: "setlists",
-  users: "users",
-} as const;
 
 export function normaliseSongId(value: unknown) {
   return String(value ?? "");
-}
-
-export function getSongIdCandidates(value: unknown) {
-  const songId = normaliseSongId(value);
-  const candidates: Array<string | number> = [songId];
-
-  if (/^\d+$/.test(songId)) {
-    candidates.push(Number(songId));
-  }
-
-  return candidates;
-}
-
-export function getSongIdFilter(value: unknown) {
-  return { $in: getSongIdCandidates(value) };
 }
 
 function toObjectId(value: string | ObjectId, label: string) {
@@ -51,15 +23,14 @@ export async function requireBandMember(
   bandId: string | ObjectId,
 ) {
   const bandObjectId = toObjectId(bandId, "band ID");
-  const band = await db
-    .collection(COLLECTIONS.bands)
-    .findOne({ _id: bandObjectId });
+  const band = await db.collection("bands").findOne({ _id: bandObjectId });
 
   if (!band) {
     throw new Error("Band not found");
   }
 
-  if (!band.memberIds.includes(userId)) {
+  const members = (band.members as Array<{ userId: string }>) ?? [];
+  if (!members.some((m) => m.userId === userId)) {
     throw new Error("Not a member of this band");
   }
 
@@ -97,6 +68,8 @@ export function getServerErrorStatus(error: unknown) {
     case "Setlist not found":
       return 404;
     case "Not a member of this band":
+    case "Not authorized":
+    case "Not authorized to delete this setlist":
       return 403;
     default:
       return 500;

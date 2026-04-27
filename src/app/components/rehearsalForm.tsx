@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -127,7 +127,7 @@ export default function RehearsalForm({
         <div className="section-header">
           <h3>{title}</h3>
           {onCancel && (
-            <button className="btn btn-small" onClick={onCancel}>
+            <button className="button button-small" onClick={onCancel}>
               ✕
             </button>
           )}
@@ -149,13 +149,13 @@ export default function RehearsalForm({
         </p>
 
         {isEditThis && (
-          <div className="alert alert--success" style={{ fontSize: "0.85rem" }}>
+          <div className="alert alert-success alert-sm">
             This will create a separate one-off rehearsal for this date and
             remove it from the recurring series.
           </div>
         )}
 
-        {error && <div className="alert alert--error">{error}</div>}
+        {error && <div className="alert alert-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           {!isEditing && (
@@ -190,7 +190,7 @@ export default function RehearsalForm({
                   <button
                     key={option.value}
                     type="button"
-                    className={`btn btn-small ${repeatType === option.value ? "btn--primary" : "btn--tertiary"}`}
+                    className={`button button-small ${repeatType === option.value ? "button-primary" : "button-tertiary"}`}
                     onClick={() => setRepeatType(option.value)}
                   >
                     {option.label}
@@ -214,7 +214,7 @@ export default function RehearsalForm({
                   <button
                     key={option.value}
                     type="button"
-                    className={`btn btn-small ${repeatType === option.value ? "btn--primary" : "btn--tertiary"}`}
+                    className={`button button-small ${repeatType === option.value ? "button-primary" : "button-tertiary"}`}
                     onClick={() => setRepeatType(option.value)}
                   >
                     {option.label}
@@ -260,7 +260,7 @@ export default function RehearsalForm({
             {onCancel && (
               <button
                 type="button"
-                className="btn btn--tertiary"
+                className="button button-tertiary"
                 onClick={onCancel}
               >
                 Cancel
@@ -268,7 +268,7 @@ export default function RehearsalForm({
             )}
             <button
               type="submit"
-              className="btn btn--primary"
+              className="button button-primary"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Saving..." : submitLabel}

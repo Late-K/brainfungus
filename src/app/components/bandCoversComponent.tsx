@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -16,12 +16,12 @@ import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 
 interface BandCoversComponentProps {
   bandId: string;
-  userName: string | null | undefined;
+  userEmail: string | null | undefined;
 }
 
 export default function BandCoversComponent({
   bandId,
-  userName,
+  userEmail,
 }: BandCoversComponentProps) {
   const [covers, setCovers] = useState<BandCover[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,42 +46,56 @@ export default function BandCoversComponent({
     [covers],
   );
 
-  const fetchLearntMap = useCallback(async () => {
-    if (!bandId) return;
+  const fetchLearntMap = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!bandId) return;
 
-    try {
-      const res = await fetch(`/api/learnt-songs?bandId=${bandId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setLearntMap(data.learntMap || {});
-    } catch {
-      // keep covers visible even if learnt stats fail
-    }
-  }, [bandId]);
-
-  const fetchCovers = useCallback(async () => {
-    if (!bandId) return;
-
-    try {
-      setIsLoading(true);
-      setError("");
-      const res = await fetch(`/api/covers?bandId=${bandId}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch covers");
+      try {
+        const res = await fetch(`/api/learnt-songs?bandId=${bandId}`, {
+          signal,
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (signal?.aborted) return;
+        setLearntMap(data.learntMap || {});
+      } catch {
+        // keep covers visible even if learnt stats fail
       }
-      const data = await res.json();
-      setCovers(data.covers || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load covers");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [bandId]);
+    },
+    [bandId],
+  );
+
+  const fetchCovers = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!bandId) return;
+
+      try {
+        setIsLoading(true);
+        setError("");
+        const res = await fetch(`/api/covers?bandId=${bandId}`, { signal });
+        if (!res.ok) {
+          throw new Error("Failed to fetch covers");
+        }
+        const data = await res.json();
+        if (signal?.aborted) return;
+        setCovers(data.covers || []);
+      } catch (err) {
+        if (signal?.aborted) return;
+        setError(err instanceof Error ? err.message : "Failed to load covers");
+      } finally {
+        if (signal?.aborted) return;
+        setIsLoading(false);
+      }
+    },
+    [bandId],
+  );
 
   useEffect(() => {
     if (!bandId) return;
-    fetchCovers();
-    fetchLearntMap();
+    const controller = new AbortController();
+    fetchCovers(controller.signal);
+    fetchLearntMap(controller.signal);
+    return () => controller.abort();
   }, [bandId, fetchCovers, fetchLearntMap]);
 
   const handleAddCover = async (song: {
@@ -164,7 +178,7 @@ export default function BandCoversComponent({
       <div className="card">
         <h2>Band Covers</h2>
 
-        {error && <p className="alert alert--error">{error}</p>}
+        {error && <p className="alert alert-error">{error}</p>}
 
         {isLoading ? (
           <p className="empty-state">Loading covers...</p>
@@ -173,7 +187,7 @@ export default function BandCoversComponent({
             No covers yet. Search and add one above.
           </p>
         ) : (
-          <div className="list" style={{ marginTop: "1rem" }}>
+          <div className="list list-top">
             {covers.map((cover) => (
               <div key={cover._id} className="card-item card-item-compact">
                 <div className="song-row">
@@ -194,7 +208,7 @@ export default function BandCoversComponent({
                   <button
                     onClick={() => handleRemoveCover(cover.songId)}
                     disabled={savingCoverIds.has(cover.songId)}
-                    className="btn btn-small btn--tertiary btn--tertiary-danger"
+                    className="button button-small button-tertiary button-tertiary-danger"
                   >
                     Remove
                   </button>
@@ -208,7 +222,7 @@ export default function BandCoversComponent({
                 <SongLearntStatus
                   songId={cover.songId}
                   learntMap={learntMap}
-                  userName={userName}
+                  userEmail={userEmail}
                   togglingIds={togglingLearntIds}
                   onToggleLearnt={handleToggleLearnt}
                 />

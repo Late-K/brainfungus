@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ChangeEvent } from "react";
 import Image from "next/image";
@@ -27,35 +27,35 @@ export default function UserCard({
   };
 
   const content = (
-    <div className="user-card__inner">
-      <div className="user-card__avatar-wrap">
+    <div className="user-card-inner">
+      <div className="user-card-avatar-wrap">
         {user.avatar ? (
           <Image
             src={user.avatar}
             alt={user.name}
             width={48}
             height={48}
-            className="user-card__avatar"
+            className="user-card-avatar"
           />
         ) : (
-          <div className="user-card__avatar-fallback">
+          <div className="user-card-avatar-fallback">
             {user.name.charAt(0).toUpperCase()}
           </div>
         )}
       </div>
 
-      <div className="user-card__content">
-        <p className="user-card__name">{user.name}</p>
+      <div className="user-card-content">
+        <p className="user-card-name">{user.name}</p>
       </div>
 
       {selectable && (
-        <div className="user-card__checkbox-wrap">
+        <div className="user-card-checkbox-wrap">
           <input
             id={checkboxId}
             type="checkbox"
             checked={isSelected}
             onChange={handleCheckboxChange}
-            className="user-card__checkbox"
+            className="user-card-checkbox"
           />
         </div>
       )}

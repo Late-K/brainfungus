@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   deactivateSetlistAction,
@@ -17,9 +17,8 @@ export function useSetlistDetailPage(
 ) {
   const router = useRouter();
 
-  const [bandId, setBandId] = useState<string | null>(null);
+  const { id: bandId, setlistId } = use(params);
   const [band, setBand] = useState<Band | null>(null);
-  const [setlistId, setSetlistId] = useState<string | null>(null);
   const [setlist, setSetlist] = useState<Setlist | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -35,16 +34,6 @@ export function useSetlistDetailPage(
   });
 
   useEffect(() => {
-    const unwrapParams = async () => {
-      const { id, setlistId } = await params;
-      setBandId(id);
-      setSetlistId(setlistId);
-    };
-    unwrapParams();
-  }, [params]);
-
-  useEffect(() => {
-    if (!bandId) return;
     async function fetchBand() {
       try {
         const res = await fetch(`/api/bands/${bandId}`);
@@ -89,7 +78,7 @@ export function useSetlistDetailPage(
 
       if (bandRes.ok) {
         const bandData = await bandRes.json();
-        setMemberCount(bandData.band?.memberIds?.length || 0);
+        setMemberCount(bandData.band?.members?.length || 0);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load setlist");

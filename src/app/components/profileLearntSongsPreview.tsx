@@ -1,38 +1,18 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ProfileLearntSong } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import SongInfo from "@/app/components/songInfo";
+import { useFetchData } from "@/app/hooks/useFetchData";
 
-const PREVIEW_LIMIT = 3;
+const preview_limit = 3;
 
 export default function ProfileLearntSongsPreview() {
-  const [songs, setSongs] = useState<ProfileLearntSong[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const fetchSongs = async () => {
-      try {
-        setIsLoading(true);
-        setError("");
-        const res = await fetch("/api/learnt-songs/profile");
-        if (!res.ok) throw new Error("Failed to fetch learnt songs");
-        const data = await res.json();
-        setSongs(data.songs || []);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load learnt songs",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSongs();
-  }, []);
+  const { data, isLoading, error } = useFetchData<{
+    songs: ProfileLearntSong[];
+  }>("/api/learnt-songs/profile");
+  const songs = data?.songs ?? [];
 
   if (isLoading) {
     return (
@@ -49,19 +29,19 @@ export default function ProfileLearntSongsPreview() {
   const dedupedSongs = songs.filter(
     (s, i, arr) => arr.findIndex((x) => x.songId === s.songId) === i,
   );
-  const preview = dedupedSongs.slice(0, PREVIEW_LIMIT);
-  const hasMore = dedupedSongs.length > PREVIEW_LIMIT;
+  const preview = dedupedSongs.slice(-preview_limit).reverse();
+  const hasMore = dedupedSongs.length > preview_limit;
 
   return (
     <section className="card">
       <div className="section-header">
         <h2>My Learnt Songs</h2>
-        <Link href="/profile/learnt-songs" className="btn btn--primary">
+        <Link href="/profile/learnt-songs" className="button button-primary">
           View All
         </Link>
       </div>
 
-      {error && <p className="alert alert--error">{error}</p>}
+      {error && <p className="alert alert-error">{error}</p>}
 
       {songs.length === 0 ? (
         <p className="empty-state">
@@ -82,9 +62,16 @@ export default function ProfileLearntSongsPreview() {
                   title={song.title}
                   meta={`${[song.artist, song.album].filter(Boolean).join(" — ")}${song.duration ? ` · ${formatDuration(song.duration)}` : ""}`}
                   extra={
-                    song.isCustom && song.bandName ? (
+                    song.isCustom ? (
                       <>
-                        Custom song from <strong>{song.bandName}</strong>
+                        {song.bandName ? (
+                          <>
+                            Custom song from <strong>{song.bandName}</strong>
+                          </>
+                        ) : (
+                          "Custom song"
+                        )}
+                        {song.notes ? ` - Note: ${song.notes}` : ""}
                       </>
                     ) : undefined
                   }
@@ -101,7 +88,7 @@ export default function ProfileLearntSongsPreview() {
 
           {hasMore && (
             <Link href="/profile/learnt-songs" className="preview-link">
-              + {dedupedSongs.length - PREVIEW_LIMIT} more...
+              + {dedupedSongs.length - preview_limit} more...
             </Link>
           )}
         </div>

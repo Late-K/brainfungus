@@ -11,20 +11,6 @@ interface UseSetlistEditorOptions {
   onSaveSuccess?: (name: string, songs: Song[]) => void;
 }
 
-function toPersistedSong(song: Song): Song {
-  return {
-    id: song.id,
-    title: song.title,
-    artist: song.artist,
-    album: song.album,
-    duration: song.duration,
-    preview: song.preview,
-    image: song.image,
-    isCustom: song.isCustom,
-    isCover: song.isCover,
-  };
-}
-
 export function useSetlistEditor(options?: UseSetlistEditorOptions) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -42,7 +28,7 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
 
   const startEditing = (name: string, songs: Song[]) => {
     setEditName(name);
-    setEditSongs(songs.map(toPersistedSong));
+    setEditSongs(songs);
     resetSearch();
     setIsEditing(true);
   };
@@ -56,7 +42,9 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     if (!editName.trim()) return;
     try {
       setIsSaving(true);
-      const songsToSave = editSongs.map(toPersistedSong);
+      const songsToSave = editSongs.map(
+        ({ audioUrl: _audioUrl, ...song }) => song,
+      );
       await updateSetlistAction(setlistId, editName, songsToSave);
       options?.onSaveSuccess?.(editName.trim(), songsToSave);
       setIsEditing(false);
@@ -84,22 +72,25 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     });
   };
 
-  const handleAddFromSearch = (result: DeezerResult) => {
+  const toggleSong = (song: Song) => {
     setEditSongs((prev) => {
-      if (prev.some((s) => s.id === result.id)) {
-        return prev.filter((s) => s.id !== result.id);
+      if (prev.some((s) => s.id === song.id)) {
+        return prev.filter((s) => s.id !== song.id);
       }
-      const song: Song = {
-        id: result.id,
-        title: result.title,
-        artist: result.artist,
-        album: result.album,
-        duration: result.duration,
-        preview: result.preview,
-        image: result.image,
-        isCustom: false,
-      };
       return [...prev, song];
+    });
+  };
+
+  const handleAddFromSearch = (result: DeezerResult) => {
+    toggleSong({
+      id: result.id,
+      title: result.title,
+      artist: result.artist,
+      album: result.album,
+      duration: result.duration,
+      preview: result.preview,
+      image: result.image,
+      isCustom: false,
     });
   };
 
@@ -108,17 +99,11 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     title: string,
     duration?: number,
   ) => {
-    setEditSongs((prev) => {
-      if (prev.some((s) => s.id === songId)) {
-        return prev.filter((s) => s.id !== songId);
-      }
-      const song: Song = {
-        id: songId,
-        title,
-        duration: duration ?? 0,
-        isCustom: true,
-      };
-      return [...prev, song];
+    toggleSong({
+      id: songId,
+      title,
+      duration: duration ?? 0,
+      isCustom: true,
     });
   };
 
@@ -153,23 +138,15 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
   };
 
   const handleToggleCoverSong = (cover: BandCover) => {
-    setEditSongs((prev) => {
-      if (prev.some((song) => song.id === cover.songId)) {
-        return prev.filter((song) => song.id !== cover.songId);
-      }
-
-      const song: Song = {
-        id: cover.songId,
-        title: cover.title,
-        artist: cover.artist,
-        album: cover.album,
-        duration: cover.duration ?? 0,
-        preview: cover.preview,
-        image: cover.image,
-        isCover: true,
-      };
-
-      return [...prev, song];
+    toggleSong({
+      id: cover.songId,
+      title: cover.title,
+      artist: cover.artist,
+      album: cover.album,
+      duration: cover.duration ?? 0,
+      preview: cover.preview,
+      image: cover.image,
+      isCover: true,
     });
   };
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 
@@ -31,7 +31,7 @@ export default function ExpandedUserList({
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="section-header">
           <h3>{title}</h3>
-          <button className="btn btn-small" onClick={onClose}>
+          <button className="button button-small" onClick={onClose}>
             ✕
           </button>
         </div>

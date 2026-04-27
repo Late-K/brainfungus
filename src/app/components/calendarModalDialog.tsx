@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { CalendarChoiceAction, CalendarRehearsal } from "@/app/types";
 
@@ -22,17 +22,11 @@ export default function CalendarModalDialog({
       <div className="modal-card" onClick={(event) => event.stopPropagation()}>
         <div className="section-header">
           <h3>{action === "edit" ? "Edit Rehearsal" : "Delete Rehearsal"}</h3>
-          <button className="btn btn-small" onClick={onClose}>
+          <button className="button button-small" onClick={onClose}>
             ✕
           </button>
         </div>
-        <p
-          style={{
-            margin: "0.5rem 0 1rem",
-            fontSize: "0.9rem",
-            color: "var(--muted)",
-          }}
-        >
+        <p className="dialog-description">
           This is a {target.repeatType} rehearsal for{" "}
           <strong>{target.bandName}</strong>.{" "}
           {action === "edit"
@@ -41,13 +35,13 @@ export default function CalendarModalDialog({
         </p>
         <div className="choice-dialog-actions">
           <button
-            className={`btn ${action === "delete" ? "btn--tertiary-danger" : "btn--tertiary"}`}
+            className={`button ${action === "delete" ? "button-tertiary-danger" : "button-tertiary"}`}
             onClick={onChooseThis}
           >
             Just this date
           </button>
           <button
-            className={`btn ${action === "delete" ? "btn-danger" : "btn--primary"}`}
+            className={`button ${action === "delete" ? "button-danger" : "button-primary"}`}
             onClick={onChooseAll}
           >
             {action === "edit" ? "All occurrences" : "Entire series"}

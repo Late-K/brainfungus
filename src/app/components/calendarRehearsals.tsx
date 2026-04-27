@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import AvailableUsersRow from "@/app/components/availableUsersRow";
 import AvailabilityToggleButton from "@/app/components/availabilityToggleButton";
@@ -54,7 +54,7 @@ export default function CalendarRehearsals({
       <div className="calendar-detail-header">
         <h3>{heading}</h3>
         <button
-          className="btn btn-small btn--primary"
+          className="button button-small button-primary"
           onClick={onCreateRehearsal}
         >
           + Rehearsal
@@ -96,13 +96,13 @@ export default function CalendarRehearsals({
                   onClick={() => onToggleAvailability(rehearsal)}
                 />
                 <button
-                  className="btn btn-small btn--tertiary"
+                  className="button button-small button-tertiary"
                   onClick={() => onEditRehearsal(rehearsal)}
                 >
                   Edit
                 </button>
                 <button
-                  className="btn btn-small btn--tertiary-danger"
+                  className="button button-small button-tertiary-danger"
                   onClick={() => onDeleteRehearsal(rehearsal)}
                 >
                   Delete

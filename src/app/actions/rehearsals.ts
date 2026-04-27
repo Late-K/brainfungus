@@ -1,8 +1,9 @@
-"use server";
+﻿"use server";
 
 import { getAuthUser } from "@/app/lib/auth";
 import { AnyBulkWriteOperation, Db, Document, ObjectId } from "mongodb";
 import { doesRehearsalOccurOnDate, toDateStr } from "@/app/lib/rehearsalUtils";
+import { AvailUser } from "@/app/types";
 
 // verify rehearsal exists and user is a band member
 async function getAuthorizedRehearsal(
@@ -23,13 +24,65 @@ async function getAuthorizedRehearsal(
   if (!band) {
     throw new Error("Band not found");
   }
-  if (!band.memberIds.includes(userId)) {
+  if (
+    !(band.members as Array<{ userId: string }>)?.some(
+      (m) => m.userId === userId,
+    )
+  ) {
     throw new Error("Not a band member");
   }
   return rehearsal;
 }
 
-//create rehearsal
+type AvailabilityRecord = {
+  rehearsalId: { toString(): string };
+  userId: { toString(): string };
+  occurrenceDate?: string;
+};
+
+function buildAvailableUsersMaps(
+  allAvailabilities: Document[],
+  userMap: Record<
+    string,
+    { userName: string; userEmail: string; userImage?: string }
+  >,
+): {
+  availableUsersBase: Record<string, AvailUser[]>;
+  availableUsersOcc: Record<string, Record<string, AvailUser[]>>;
+} {
+  const availableUsersBase: Record<string, AvailUser[]> = {};
+  const availableUsersOcc: Record<string, Record<string, AvailUser[]>> = {};
+
+  for (const a of allAvailabilities) {
+    const record = a as Document & AvailabilityRecord;
+    const rid = record.rehearsalId.toString();
+    const uid = record.userId.toString();
+    if (!userMap[uid]) continue;
+    const info = { userId: uid, ...userMap[uid] };
+    if (!record.occurrenceDate) {
+      if (!availableUsersBase[rid]) availableUsersBase[rid] = [];
+      if (!availableUsersBase[rid].some((u) => u.userId === uid)) {
+        availableUsersBase[rid].push(info);
+      }
+    } else {
+      if (!availableUsersOcc[rid]) availableUsersOcc[rid] = {};
+      if (!availableUsersOcc[rid][record.occurrenceDate]) {
+        availableUsersOcc[rid][record.occurrenceDate] = [];
+      }
+      if (
+        !availableUsersOcc[rid][record.occurrenceDate].some(
+          (u) => u.userId === uid,
+        )
+      ) {
+        availableUsersOcc[rid][record.occurrenceDate].push(info);
+      }
+    }
+  }
+
+  return { availableUsersBase, availableUsersOcc };
+}
+
+// create rehearsal
 export async function createRehearsalAction(
   bandId: string,
   date: string,
@@ -51,7 +104,11 @@ export async function createRehearsalAction(
     if (!band) {
       throw new Error("Band not found");
     }
-    if (!band.memberIds.includes(user._id.toString())) {
+    if (
+      !(band.members as Array<{ userId: string }>)?.some(
+        (m) => m.userId === user._id.toString(),
+      )
+    ) {
       throw new Error("Not a member of this band");
     }
 
@@ -118,7 +175,7 @@ export async function getUserRehearsalsAction() {
     // find all bands the user belongs to
     const bands = await db
       .collection("bands")
-      .find({ memberIds: userId })
+      .find({ "members.userId": userId })
       .project({ name: 1 })
       .toArray();
 
@@ -129,6 +186,7 @@ export async function getUserRehearsalsAction() {
         currentUser: {
           userId: userId,
           userName: user.name || "Unknown",
+          userEmail: user.email || "",
           userImage: user.image,
         },
       };
@@ -153,6 +211,7 @@ export async function getUserRehearsalsAction() {
         currentUser: {
           userId: userId,
           userName: user.name || "Unknown",
+          userEmail: user.email || "",
           userImage: user.image,
         },
       };
@@ -181,47 +240,26 @@ export async function getUserRehearsalsAction() {
     const users = await db
       .collection("users")
       .find({ _id: { $in: allUserIds.map((id) => new ObjectId(id)) } })
-      .project({ name: 1, image: 1 })
+      .project({ name: 1, email: 1, image: 1 })
       .toArray();
-    const userMap: Record<string, { userName: string; userImage?: string }> =
-      {};
+    const userMap: Record<
+      string,
+      { userName: string; userEmail: string; userImage?: string }
+    > = {};
     for (const u of users) {
       userMap[u._id.toString()] = {
         userName: u.name || "Unknown",
+        userEmail: u.email || "",
         userImage: u.image,
       };
     }
 
     // build per-rehearsal available users maps
     // for one-time/base availability vs occurrence-specific availability
-    const availableUsersBase: Record<
-      string,
-      { userId: string; userName: string; userImage?: string }[]
-    > = {};
-    const availableUsersOcc: Record<
-      string,
-      Record<string, { userId: string; userName: string; userImage?: string }[]>
-    > = {};
-    for (const a of allAvailabilities) {
-      const rid = a.rehearsalId.toString();
-      const uid = a.userId.toString();
-      const info = { userId: uid, ...userMap[uid] };
-      if (!a.occurrenceDate) {
-        if (!availableUsersBase[rid]) availableUsersBase[rid] = [];
-        if (!availableUsersBase[rid].some((u) => u.userId === uid))
-          availableUsersBase[rid].push(info);
-      } else {
-        if (!availableUsersOcc[rid]) availableUsersOcc[rid] = {};
-        if (!availableUsersOcc[rid][a.occurrenceDate])
-          availableUsersOcc[rid][a.occurrenceDate] = [];
-        if (
-          !availableUsersOcc[rid][a.occurrenceDate].some(
-            (u) => u.userId === uid,
-          )
-        )
-          availableUsersOcc[rid][a.occurrenceDate].push(info);
-      }
-    }
+    const { availableUsersBase, availableUsersOcc } = buildAvailableUsersMaps(
+      allAvailabilities,
+      userMap,
+    );
 
     const availMap: Record<string, boolean> = {};
     const occurrenceAvailMap: Record<string, Record<string, boolean>> = {};
@@ -251,6 +289,7 @@ export async function getUserRehearsalsAction() {
       currentUser: {
         userId: userId,
         userName: user.name || "Unknown",
+        userEmail: user.email || "",
         userImage: user.image,
       },
     };
@@ -289,7 +328,7 @@ export async function setRehearsalAvailabilityAction(
           },
         },
         { $unwind: "$band" },
-        { $match: { "band.memberIds": user._id.toString() } },
+        { $match: { "band.members.userId": user._id.toString() } },
         { $project: { _id: 1 } },
       ])
       .toArray();
@@ -500,7 +539,11 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
     if (!band) {
       throw new Error("Band not found");
     }
-    if (!band.memberIds.includes(user._id.toString())) {
+    if (
+      !(band.members as Array<{ userId: string }>)?.some(
+        (m) => m.userId === user._id.toString(),
+      )
+    ) {
       throw new Error("Not a band member");
     }
 
@@ -534,49 +577,26 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
         ? await db
             .collection("users")
             .find({ _id: { $in: allUserIds.map((id) => new ObjectId(id)) } })
-            .project({ name: 1, image: 1 })
+            .project({ name: 1, email: 1, image: 1 })
             .toArray()
         : [];
     const userInfoMap: Record<
       string,
-      { userName: string; userImage?: string }
+      { userName: string; userEmail: string; userImage?: string }
     > = {};
     for (const u of usersArr) {
       userInfoMap[u._id.toString()] = {
         userName: u.name || "Unknown",
+        userEmail: u.email || "",
         userImage: u.image,
       };
     }
 
     // build per-rehearsal available users
-    const availableUsersBase: Record<
-      string,
-      { userId: string; userName: string; userImage?: string }[]
-    > = {};
-    const availableUsersOcc: Record<
-      string,
-      Record<string, { userId: string; userName: string; userImage?: string }[]>
-    > = {};
-    for (const a of allAvailabilities) {
-      const rid = a.rehearsalId.toString();
-      const uid = a.userId.toString();
-      const info = { userId: uid, ...userInfoMap[uid] };
-      if (!a.occurrenceDate) {
-        if (!availableUsersBase[rid]) availableUsersBase[rid] = [];
-        if (!availableUsersBase[rid].some((u) => u.userId === uid))
-          availableUsersBase[rid].push(info);
-      } else {
-        if (!availableUsersOcc[rid]) availableUsersOcc[rid] = {};
-        if (!availableUsersOcc[rid][a.occurrenceDate])
-          availableUsersOcc[rid][a.occurrenceDate] = [];
-        if (
-          !availableUsersOcc[rid][a.occurrenceDate].some(
-            (u) => u.userId === uid,
-          )
-        )
-          availableUsersOcc[rid][a.occurrenceDate].push(info);
-      }
-    }
+    const { availableUsersBase, availableUsersOcc } = buildAvailableUsersMaps(
+      allAvailabilities,
+      userInfoMap,
+    );
 
     const availMap: Record<
       string,
@@ -706,6 +726,7 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
       currentUser: {
         userId: user._id.toString(),
         userName: user.name || "Unknown",
+        userEmail: user.email || "",
         userImage: user.image,
       },
     };

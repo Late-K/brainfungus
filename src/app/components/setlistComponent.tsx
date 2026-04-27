@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -13,15 +13,23 @@ export default function SetlistComponent({ bandId }: { bandId: string }) {
   const [memberCount, setMemberCount] = useState(0);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchData() {
       try {
         setIsLoading(true);
 
         const [setlistRes, learntRes, bandRes] = await Promise.all([
-          fetch(`/api/setlists?bandId=${bandId}`),
-          fetch(`/api/learnt-songs?bandId=${bandId}`),
-          fetch(`/api/bands/${bandId}`),
+          fetch(`/api/setlists?bandId=${bandId}`, {
+            signal: controller.signal,
+          }),
+          fetch(`/api/learnt-songs?bandId=${bandId}`, {
+            signal: controller.signal,
+          }),
+          fetch(`/api/bands/${bandId}`, { signal: controller.signal }),
         ]);
+
+        if (controller.signal.aborted) return;
 
         if (setlistRes.ok) {
           const data = await setlistRes.json();
@@ -37,16 +45,18 @@ export default function SetlistComponent({ bandId }: { bandId: string }) {
 
         if (bandRes.ok) {
           const bandData = await bandRes.json();
-          setMemberCount(bandData.band?.memberIds?.length || 0);
+          setMemberCount(bandData.band?.members?.length || 0);
         }
       } catch {
-        // silently fail — the dedicated page handles errors
+        if (controller.signal.aborted) return;
       } finally {
+        if (controller.signal.aborted) return;
         setIsLoading(false);
       }
     }
 
     if (bandId) fetchData();
+    return () => controller.abort();
   }, [bandId]);
 
   if (isLoading) {
@@ -69,17 +79,19 @@ export default function SetlistComponent({ bandId }: { bandId: string }) {
       <div className="section-header">
         <h2 className="heading-large">Setlists</h2>
         {totalCount > 0 && (
-          <Link href={`/bands/${bandId}/setlists`} className="btn btn--primary">
+          <Link
+            href={`/bands/${bandId}/setlists`}
+            className="button button-primary"
+          >
             View All
           </Link>
         )}
       </div>
 
       {activeSetlist ? (
-        <div className="card-item card-panel">
+        <div className="card-item card-panel card-panel-active">
           <div className="section-header">
             <h4>{activeSetlist.name}</h4>
-            <span className="badge badge--active">Active</span>
           </div>
           <p className="meta-text meta-text-medium no-margin">
             {activeSetlist.songs.length} songs
@@ -96,7 +108,7 @@ export default function SetlistComponent({ bandId }: { bandId: string }) {
           <div className="action-row action-row-fill-tertiary">
             <Link
               href={`/bands/${bandId}/setlists/${activeSetlist._id}`}
-              className="btn btn--tertiary"
+              className="button button-tertiary"
             >
               View Details
             </Link>

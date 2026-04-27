@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CustomSong } from "@/app/types";
+import { useFetchData } from "@/app/hooks/useFetchData";
 
 interface CustomSongsListProps {
   bandId: string;
@@ -23,38 +24,11 @@ export default function CustomSongsList({
   onToggleSong,
   onToggleAlbum,
 }: CustomSongsListProps) {
-  const [customSongs, setCustomSongs] = useState<CustomSong[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data, isLoading, error } = useFetchData<{ songs: CustomSong[] }>(
+    bandId ? `/api/songs?bandId=${bandId}` : null,
+  );
+  const customSongs = data?.songs ?? [];
   const [expandedAlbums, setExpandedAlbums] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const fetchCustomSongs = async () => {
-      try {
-        setIsLoading(true);
-        setError("");
-
-        const res = await fetch(`/api/songs?bandId=${bandId}`);
-
-        if (!res.ok) {
-          throw new Error("Failed to fetch custom songs");
-        }
-
-        const data = await res.json();
-        setCustomSongs(data.songs || []);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load custom songs",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (bandId) {
-      fetchCustomSongs();
-    }
-  }, [bandId]);
 
   if (isLoading) {
     return <p>Loading custom songs...</p>;
@@ -120,7 +94,7 @@ export default function CustomSongsList({
     <section className="card">
       <h3>Your Custom Songs</h3>
 
-      {error && <p className="alert alert--error">{error}</p>}
+      {error && <p className="alert alert-error">{error}</p>}
 
       <div className="songs-grid">
         {albums.map(([albumName, albumSongs]) => {
@@ -128,14 +102,7 @@ export default function CustomSongsList({
 
           return (
             <div key={albumName} className="accordion">
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "0.75rem",
-                }}
-              >
+              <div className="accordion-header">
                 <button
                   type="button"
                   className="accordion-trigger"
@@ -164,7 +131,7 @@ export default function CustomSongsList({
                         })),
                       )
                     }
-                    className="btn btn--tertiary btn-small"
+                    className="button button-tertiary button-small"
                   >
                     {allSelected ? "Remove Album" : "Add Album"}
                   </button>

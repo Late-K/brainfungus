@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
+interface DeezerTrackResponse {
+  id: number;
+  title?: string;
+  name?: string;
+  duration?: number;
+  preview?: string | null;
+  link?: string | null;
+  artist?: {
+    name?: string;
+  };
+  album?: {
+    title?: string;
+    cover_medium?: string | null;
+  };
+  picture_medium?: string | null;
+}
+
+interface DeezerSearchResponse {
+  data?: DeezerTrackResponse[];
+  total?: number;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const query = request.nextUrl.searchParams.get("q");
@@ -21,15 +43,15 @@ export async function GET(request: NextRequest) {
       throw new Error("Deezer API request failed");
     }
 
-    const data = await response.json();
+    const data: DeezerSearchResponse = await response.json();
 
     // transform deezer response to include relevant fields
     const results = data.data
-      ? data.data.map((item: any) => ({
+      ? data.data.map((item: DeezerTrackResponse) => ({
           id: item.id.toString(),
           title: item.title || item.name,
-          artist: item.artist ? item.artist.name : "Unknown",
-          album: item.album ? item.album.title : "Unknown",
+          artist: item.artist?.name || "Unknown",
+          album: item.album?.title || "Unknown",
           duration: item.duration || 0,
           preview: item.preview || null,
           image: item.album?.cover_medium || item.picture_medium || null,

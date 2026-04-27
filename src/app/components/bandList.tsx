@@ -55,7 +55,7 @@ export default function BandList({ refresh = 0 }: BandListProps) {
   }
 
   return (
-    <div style={{ width: "100%" }}>
+    <div className="full-width">
       {bands.map((band) => (
         <div key={band._id} className="card">
           <Link href={`/bands/${band._id}`}>
@@ -68,8 +68,8 @@ export default function BandList({ refresh = 0 }: BandListProps) {
               </div>
 
               <div className="listing-aside">
-                {band.memberIds.length} member
-                {band.memberIds.length === 1 ? "" : "s"}
+                {band.members?.length ?? 0} member
+                {(band.members?.length ?? 0) === 1 ? "" : "s"}
               </div>
             </div>
           </Link>

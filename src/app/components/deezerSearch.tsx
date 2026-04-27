@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { DeezerResult } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
@@ -40,16 +40,16 @@ export default function DeezerSearch({
         <button
           type="submit"
           disabled={isSearching}
-          className="btn btn--primary btn-small"
+          className="button button-primary button-small"
         >
           {isSearching ? "..." : "Search"}
         </button>
       </form>
 
-      {searchError && <p className="alert alert--error">{searchError}</p>}
+      {searchError && <p className="alert alert-error">{searchError}</p>}
 
       {searchResults.length > 0 && (
-        <div className="list" style={{ marginTop: "1rem" }}>
+        <div className="list list-top">
           {searchResults.map((result) => (
             <div key={result.id} className="card-item card-item-compact">
               <div className="song-row">
@@ -64,8 +64,10 @@ export default function DeezerSearch({
                 </span>
                 <button
                   onClick={() => onAddFromSearch(result)}
-                  className={`btn btn-small ${
-                    isSongSelected(result.id) ? "btn--learnt" : "btn--primary"
+                  className={`button button-small ${
+                    isSongSelected(result.id)
+                      ? "button-learnt"
+                      : "button-primary"
                   }`}
                 >
                   {isSongSelected(result.id) ? "✓ Added" : "Add"}

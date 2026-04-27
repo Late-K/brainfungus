@@ -1,11 +1,10 @@
-import {
-  COLLECTIONS,
+﻿import {
   getServerErrorStatus,
   requireBandMemberContext,
-} from "@/app/lib/serverData";
+} from "@/app/lib/serverUtils";
 import { NextRequest, NextResponse } from "next/server";
 
-// GET - fetch all custom songs for a band
+// fetch all custom songs for a band
 export async function GET(request: NextRequest) {
   try {
     const bandId = request.nextUrl.searchParams.get("bandId");
@@ -19,9 +18,9 @@ export async function GET(request: NextRequest) {
     const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
     const bandSongs = await db
-      .collection(COLLECTIONS.customSongs)
+      .collection("custom_songs")
       .find({ bandId: bandObjectId })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 })
       .toArray();
 
     return NextResponse.json({ songs: bandSongs }, { status: 200 });

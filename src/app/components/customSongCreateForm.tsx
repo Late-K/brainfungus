@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Dispatch, FormEvent, SetStateAction } from "react";
 import SongAlbumPicker from "@/app/components/songAlbumPicker";
@@ -86,7 +86,7 @@ export default function CustomSongCreateForm({
         )}
         <p className="audio-hint">MP3, WAV, OGG, FLAC - max 8 MB</p>
       </div>
-      <button type="submit" disabled={isSaving} className="btn btn--primary">
+      <button type="submit" disabled={isSaving} className="button button-primary">
         {isSaving ? "Creating..." : "Create Song"}
       </button>
     </form>

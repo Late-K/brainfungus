@@ -1,6 +1,23 @@
 // utility functions for setlist
 
-import { Setlist, LearntMap } from "@/app/types";
+import { Setlist, LearntMap, Song } from "@/app/types";
+
+// convert a Song to the minimal format needed for storing in setlist
+export function toSetlistSong(song: Song): Partial<Song> {
+  if (song.isCustom) {
+    return { id: String(song.id ?? ""), isCustom: true };
+  }
+  return {
+    id: String(song.id ?? ""),
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    duration: song.duration,
+    preview: song.preview,
+    image: song.image,
+    isCover: song.isCover,
+  };
+}
 
 // format seconds into mm:ss
 export function formatDuration(seconds: number): string {
@@ -24,13 +41,13 @@ export function getProgress(
   return Math.round((totalLearnt / totalNeeded) * 100);
 }
 
-// check if current user has learnt a song
+// check if current user has learnt a song — matched by email (unique) not display name
 export function currentUserLearnt(
   songId: string,
   learntMap: LearntMap,
-  userName: string | null | undefined,
+  userEmail: string | null | undefined,
 ): boolean {
-  if (!userName) return false;
+  if (!userEmail) return false;
   const learners = learntMap[String(songId)] || [];
-  return learners.some((l) => l.userName === userName);
+  return learners.some((l) => l.userEmail === userEmail);
 }

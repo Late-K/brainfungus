@@ -1,13 +1,13 @@
-// custom songs page
+﻿// custom songs page
 
 "use client";
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { useBandSongsPage } from "@/app/hooks/useBandSongsPage";
 import CustomSongCreateForm from "@/app/components/customSongCreateForm";
 import CustomSongRow from "@/app/components/customSongRow";
+import BandSubpageHeader from "@/app/components/bandSubpageHeader";
 
 export default function SongsPage({
   params,
@@ -17,27 +17,30 @@ export default function SongsPage({
   const { data: session, status } = useSession();
   const songsPage = useBandSongsPage(params);
 
+  if (status === "loading") return null;
   if (!session) redirect("/login");
 
   return (
-    <div>
-      <Link href={`/bands/${songsPage.bandId}`} className="back-link">
-        ← Back to {songsPage.band?.name || "Band"}
-      </Link>
+    <div className="page-container">
+      <BandSubpageHeader
+        title="Songs"
+        description="Add and manage custom songs for your band that aren't available on Deezer."
+        bandId={songsPage.bandId}
+      />
 
       <section className="card">
         <div className="section-header">
           <h2>Custom Songs</h2>
           <button
             onClick={() => songsPage.setShowForm(!songsPage.showForm)}
-            className="btn btn--primary"
+            className="button button-primary"
           >
             {songsPage.showForm ? "Cancel" : "+ Add Song"}
           </button>
         </div>
 
         {songsPage.error && (
-          <p className="alert alert--error">{songsPage.error}</p>
+          <p className="alert alert-error">{songsPage.error}</p>
         )}
 
         {songsPage.showForm && (
@@ -103,7 +106,7 @@ export default function SongsPage({
                         editAlbumIsCustom={songsPage.editAlbumIsCustom}
                         setEditAlbumIsCustom={songsPage.setEditAlbumIsCustom}
                         learntMap={songsPage.learntMap}
-                        userName={session.user?.name}
+                        userEmail={session.user?.email}
                         togglingIds={songsPage.togglingIds}
                         isUploadingAudio={songsPage.uploadingAudioIds.has(
                           song._id,
@@ -138,7 +141,7 @@ export default function SongsPage({
                 editAlbumIsCustom={songsPage.editAlbumIsCustom}
                 setEditAlbumIsCustom={songsPage.setEditAlbumIsCustom}
                 learntMap={songsPage.learntMap}
-                userName={session.user?.name}
+                userEmail={session.user?.email}
                 togglingIds={songsPage.togglingIds}
                 isUploadingAudio={songsPage.uploadingAudioIds.has(song._id)}
                 onToggleLearnt={songsPage.handleToggleLearnt}

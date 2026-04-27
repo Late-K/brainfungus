@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -140,7 +140,7 @@ export default function ProfileLearntSongsComponent() {
       <div className="card">
         <h2>All Learnt Songs</h2>
 
-        {error && <p className="alert alert--error">{error}</p>}
+        {error && <p className="alert alert-error">{error}</p>}
 
         {isLoading ? (
           <p className="empty-state">Loading learnt songs...</p>
@@ -149,7 +149,7 @@ export default function ProfileLearntSongsComponent() {
             No learnt songs yet. Search for one above to get started.
           </p>
         ) : (
-          <div className="list" style={{ marginTop: "1rem" }}>
+          <div className="list list-top">
             {dedupedSongs.map((song) => (
               <div key={song.id} className="card-item card-item-compact">
                 <div className="song-row">
@@ -159,9 +159,16 @@ export default function ProfileLearntSongsComponent() {
                     title={song.title}
                     meta={[song.artist, song.album].filter(Boolean).join(" — ")}
                     extra={
-                      song.isCustom && song.bandName ? (
+                      song.isCustom ? (
                         <>
-                          Custom song from <strong>{song.bandName}</strong>
+                          {song.bandName ? (
+                            <>
+                              Custom song from <strong>{song.bandName}</strong>
+                            </>
+                          ) : (
+                            "Custom song"
+                          )}
+                          {song.notes ? ` - Note: ${song.notes}` : ""}
                         </>
                       ) : undefined
                     }
@@ -174,7 +181,7 @@ export default function ProfileLearntSongsComponent() {
                   <button
                     onClick={() => handleRemoveSong(song)}
                     disabled={savingIds.has(song.songId)}
-                    className="btn btn-small btn--tertiary btn--tertiary-danger"
+                    className="button button-small button-tertiary button-tertiary-danger"
                   >
                     Remove
                   </button>

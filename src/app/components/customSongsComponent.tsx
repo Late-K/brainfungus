@@ -1,34 +1,16 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CustomSong } from "@/app/types";
+import { useFetchData } from "@/app/hooks/useFetchData";
 
-const PREVIEW_LIMIT = 3;
+const preview_limit = 3;
 
 export default function CustomSongsComponent({ bandId }: { bandId: string }) {
-  const [songs, setSongs] = useState<CustomSong[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetchSongs();
-  }, [bandId]);
-
-  const fetchSongs = async () => {
-    try {
-      setIsLoading(true);
-      setError("");
-      const res = await fetch(`/api/songs?bandId=${bandId}`);
-      if (!res.ok) throw new Error("Failed to fetch songs");
-      const data = await res.json();
-      setSongs(data.songs || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load songs");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data, isLoading, error } = useFetchData<{ songs: CustomSong[] }>(
+    bandId ? `/api/songs?bandId=${bandId}` : null,
+  );
+  const songs = data?.songs ?? [];
 
   // group by album
   const groupedSongs = songs.reduce<Record<string, CustomSong[]>>(
@@ -45,9 +27,6 @@ export default function CustomSongsComponent({ bandId }: { bandId: string }) {
   const albums = Object.entries(groupedSongs).filter(([key]) => key !== "");
 
   // build a flat preview list - albums first (shown as one row each), then loose songs
-  const previewItems:
-    | { type: "album"; name: string; count: number }[]
-    | { type: "song"; song: CustomSong }[] = [];
   const allItems: Array<
     | { type: "album"; name: string; count: number }
     | { type: "song"; song: CustomSong }
@@ -60,8 +39,8 @@ export default function CustomSongsComponent({ bandId }: { bandId: string }) {
     allItems.push({ type: "song", song });
   }
 
-  const previewSlice = allItems.slice(0, PREVIEW_LIMIT);
-  const hasMore = allItems.length > PREVIEW_LIMIT;
+  const previewSlice = allItems.slice(-preview_limit).reverse();
+  const hasMore = allItems.length > preview_limit;
 
   if (isLoading) {
     return (
@@ -75,12 +54,12 @@ export default function CustomSongsComponent({ bandId }: { bandId: string }) {
     <section className="card">
       <div className="section-header">
         <h2>Custom Songs</h2>
-        <Link href={`/bands/${bandId}/songs`} className="btn btn--primary">
+        <Link href={`/bands/${bandId}/songs`} className="button button-primary">
           View All
         </Link>
       </div>
 
-      {error && <p className="alert alert--error">{error}</p>}
+      {error && <p className="alert alert-error">{error}</p>}
 
       {songs.length === 0 ? (
         <p className="empty-state">
@@ -119,7 +98,7 @@ export default function CustomSongsComponent({ bandId }: { bandId: string }) {
 
           {hasMore && (
             <Link href={`/bands/${bandId}/songs`} className="preview-link">
-              + {allItems.length - PREVIEW_LIMIT} more...
+              + {allItems.length - preview_limit} more...
             </Link>
           )}
         </div>

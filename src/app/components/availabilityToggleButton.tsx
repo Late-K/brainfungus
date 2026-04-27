@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 interface AvailabilityToggleButtonProps {
   available: boolean;
@@ -13,8 +13,8 @@ export default function AvailabilityToggleButton({
     <button
       className={`availability-toggle ${
         available
-          ? "availability-toggle--available"
-          : "availability-toggle--unavailable"
+          ? "availability-toggle-available"
+          : "availability-toggle-unavailable"
       }`}
       onClick={onClick}
     >

@@ -1,21 +1,40 @@
-"use server";
+﻿"use server";
 
 import { getAuthUser } from "@/app/lib/auth";
-import { COLLECTIONS, requireBandMemberContext } from "@/app/lib/serverData";
+import { requireBandMemberContext } from "@/app/lib/serverUtils";
 import { ObjectId, Db } from "mongodb";
+
+type BandRole = "creator" | "admin" | "member";
+type BandMemberEntry = { userId: string; role: BandRole };
 
 type BandDocument = {
   _id?: ObjectId;
   name: string;
   description: string;
-  creatorId: ObjectId;
-  adminIds: string[];
-  memberIds: string[];
+  members: BandMemberEntry[];
   createdAt: Date;
 };
 
 function getBandsCollection(db: Db) {
-  return db.collection<BandDocument>(COLLECTIONS.bands);
+  return db.collection<BandDocument>("bands");
+}
+
+function isMember(band: BandDocument, userId: string) {
+  return band.members.some((m) => m.userId === userId);
+}
+
+function isAdminOrCreator(band: BandDocument, userId: string) {
+  return band.members.some(
+    (m) => m.userId === userId && (m.role === "admin" || m.role === "creator"),
+  );
+}
+
+function isBandCreator(band: BandDocument, userId: string) {
+  return band.members.some((m) => m.userId === userId && m.role === "creator");
+}
+
+function getMemberEntry(band: BandDocument, userId: string) {
+  return band.members.find((m) => m.userId === userId);
 }
 
 async function setMemberBandDataActiveState(
@@ -29,16 +48,9 @@ async function setMemberBandDataActiveState(
   const bandObjectId = new ObjectId(bandId);
   const memberObjectId = new ObjectId(memberId);
 
-  await db
-    .collection(COLLECTIONS.learntSongs)
-    .updateMany(
-      { bandId: bandObjectId, userId: memberObjectId },
-      { $set: { active, updatedAt: new Date() } },
-    );
-
   const rehearsalIds = (
     await db
-      .collection(COLLECTIONS.rehearsals)
+      .collection("rehearsals")
       .find({ bandId: bandObjectId })
       .project({ _id: 1 })
       .toArray()
@@ -47,7 +59,7 @@ async function setMemberBandDataActiveState(
   if (rehearsalIds.length === 0) return;
 
   await db
-    .collection(COLLECTIONS.rehearsalAvailability)
+    .collection("rehearsal_availability")
     .updateMany(
       { rehearsalId: { $in: rehearsalIds }, userId: memberObjectId },
       { $set: { active, updatedAt: new Date() } },
@@ -59,22 +71,22 @@ async function deleteBandCascade(db: Db, bandId: string) {
   const oid = new ObjectId(bandId);
   const rehearsalIds = (
     await db
-      .collection(COLLECTIONS.rehearsals)
+      .collection("rehearsals")
       .find({ bandId: oid })
       .project({ _id: 1 })
       .toArray()
   ).map((rehearsal) => rehearsal._id);
 
   await getBandsCollection(db).deleteOne({ _id: oid });
-  await db.collection(COLLECTIONS.bandMessages).deleteMany({ bandId: oid });
-  await db.collection(COLLECTIONS.setlists).deleteMany({ bandId: oid });
-  await db.collection(COLLECTIONS.customSongs).deleteMany({ bandId: oid });
-  await db.collection(COLLECTIONS.covers).deleteMany({ bandId: oid });
-  await db.collection(COLLECTIONS.learntSongs).deleteMany({ bandId: oid });
-  await db.collection(COLLECTIONS.rehearsals).deleteMany({ bandId: oid });
+  await db.collection("band_messages").deleteMany({ bandId: oid });
+  await db.collection("setlists").deleteMany({ bandId: oid });
+  await db.collection("custom_songs").deleteMany({ bandId: oid });
+  await db.collection("covers").deleteMany({ bandId: oid });
+  await db.collection("learnt_songs").deleteMany({ bandId: oid });
+  await db.collection("rehearsals").deleteMany({ bandId: oid });
 
   if (rehearsalIds.length > 0) {
-    await db.collection(COLLECTIONS.rehearsalAvailability).deleteMany({
+    await db.collection("rehearsal_availability").deleteMany({
       rehearsalId: { $in: rehearsalIds },
     });
   }
@@ -92,17 +104,23 @@ export async function createBandAction(
       throw new Error("Band name is required");
     }
 
-    // ensure the creator is included in the members list
-    const allMemberIds = Array.from(
-      new Set([user._id.toString(), ...memberIds]),
+    const creatorId = user._id.toString();
+    const validatedMemberIds = memberIds.filter(
+      (id) => typeof id === "string" && ObjectId.isValid(id),
     );
+    const allMemberIds = Array.from(
+      new Set([creatorId, ...validatedMemberIds]),
+    );
+
+    const members: BandMemberEntry[] = allMemberIds.map((id) => ({
+      userId: id,
+      role: id === creatorId ? "creator" : "member",
+    }));
 
     const newBand = {
       name,
       description: description || "",
-      creatorId: user._id,
-      adminIds: [user._id.toString()],
-      memberIds: allMemberIds,
+      members,
       createdAt: new Date(),
     };
 
@@ -124,24 +142,21 @@ export async function sendChatMessageAction(bandId: string, message: string) {
     if (!message || typeof message !== "string" || !message.trim()) {
       throw new Error("Message is required");
     }
+    if (message.trim().length > 2000) {
+      throw new Error("Message is too long (max 2000 characters)");
+    }
 
-    const { db, user, session, bandObjectId } =
-      await requireBandMemberContext(bandId);
+    const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
 
-    // insert message
+    // insert message — store only userId, resolve user details at read time
     const newMessage = {
       bandId: bandObjectId,
       userId: user._id,
-      userEmail: session.user!.email!,
-      userName: session.user!.name || "Anonymous",
-      userImage: session.user!.image,
       message: message.trim(),
       createdAt: new Date(),
     };
 
-    const result = await db
-      .collection(COLLECTIONS.bandMessages)
-      .insertOne(newMessage);
+    const result = await db.collection("band_messages").insertOne(newMessage);
 
     return {
       success: true,
@@ -149,9 +164,9 @@ export async function sendChatMessageAction(bandId: string, message: string) {
         _id: result.insertedId.toString(),
         bandId: bandId,
         userId: user._id.toString(),
-        userEmail: session.user!.email!,
-        userName: session.user!.name || "Anonymous",
-        userImage: session.user!.image,
+        userEmail: user.email as string,
+        userName: (user.name as string) || "Anonymous",
+        userImage: user.image as string | null | undefined,
         message: message.trim(),
         createdAt: new Date().toISOString(),
       },
@@ -168,19 +183,16 @@ async function verifyAdmin(bandId: string) {
 
   const { db, user } = await getAuthUser();
 
-  const band = await db
-    .collection<BandDocument>(COLLECTIONS.bands)
-    .findOne({ _id: new ObjectId(bandId) });
+  const band = await getBandsCollection(db).findOne({
+    _id: new ObjectId(bandId),
+  });
   if (!band) throw new Error("Band not found");
 
   const userId = user._id.toString();
-  const isCreator = band.creatorId?.toString() === userId;
-  const adminIds: string[] = band.adminIds ?? [];
-  const isAdmin = isCreator || adminIds.includes(userId);
+  if (!isAdminOrCreator(band, userId))
+    throw new Error("Only admins can perform this action");
 
-  if (!isAdmin) throw new Error("Only admins can perform this action");
-
-  return { db, band, user, userId, isCreator };
+  return { db, band, user, userId, isCreator: isBandCreator(band, userId) };
 }
 
 export async function deleteBandAction(bandId: string) {
@@ -210,12 +222,10 @@ export async function updateBandAction(
 
     if (!name?.trim()) throw new Error("Band name is required");
 
-    await db
-      .collection<BandDocument>(COLLECTIONS.bands)
-      .updateOne(
-        { _id: new ObjectId(bandId) },
-        { $set: { name: name.trim(), description: description?.trim() || "" } },
-      );
+    await getBandsCollection(db).updateOne(
+      { _id: new ObjectId(bandId) },
+      { $set: { name: name.trim(), description: description?.trim() || "" } },
+    );
 
     return { success: true, message: "Band updated" };
   } catch (error) {
@@ -226,22 +236,24 @@ export async function updateBandAction(
 
 export async function addMemberAction(bandId: string, userId: string) {
   try {
-    const { db } = await verifyAdmin(bandId);
+    const { db, band } = await verifyAdmin(bandId);
 
     if (!ObjectId.isValid(userId)) throw new Error("Invalid user ID");
 
+    if (isMember(band, userId)) {
+      return { success: true, message: "Already a member" };
+    }
+
     // verify user exists
     const targetUser = await db
-      .collection(COLLECTIONS.users)
+      .collection("users")
       .findOne({ _id: new ObjectId(userId) });
     if (!targetUser) throw new Error("User not found");
 
-    await db
-      .collection<BandDocument>(COLLECTIONS.bands)
-      .updateOne(
-        { _id: new ObjectId(bandId) },
-        { $addToSet: { memberIds: userId } },
-      );
+    await getBandsCollection(db).updateOne(
+      { _id: new ObjectId(bandId) },
+      { $push: { members: { userId, role: "member" } } },
+    );
 
     await setMemberBandDataActiveState(db, bandId, userId, true);
 
@@ -256,19 +268,13 @@ export async function removeMemberAction(bandId: string, memberId: string) {
   try {
     const { db, band } = await verifyAdmin(bandId);
 
-    // cannot remove the creator
-    if (band.creatorId?.toString() === memberId) {
+    if (isBandCreator(band, memberId)) {
       throw new Error("Cannot remove the band creator");
     }
 
     await getBandsCollection(db).updateOne(
       { _id: new ObjectId(bandId) },
-      {
-        $pull: {
-          memberIds: { $in: [memberId] },
-          adminIds: { $in: [memberId] },
-        },
-      },
+      { $pull: { members: { userId: memberId } } },
     );
 
     await setMemberBandDataActiveState(db, bandId, memberId, false);
@@ -284,34 +290,22 @@ export async function toggleAdminAction(bandId: string, memberId: string) {
   try {
     const { db, band } = await verifyAdmin(bandId);
 
-    // cannot change creator's admin status
-    if (band.creatorId?.toString() === memberId) {
+    if (isBandCreator(band, memberId)) {
       throw new Error("Cannot change the creator's admin role");
     }
 
-    // check if member is in the band
-    if (!band.memberIds.includes(memberId)) {
+    if (!isMember(band, memberId)) {
       throw new Error("User is not a band member");
     }
 
-    const adminIds: string[] = band.adminIds ?? [];
-    const isCurrentlyAdmin = adminIds.includes(memberId);
+    const entry = getMemberEntry(band, memberId);
+    const isCurrentlyAdmin = entry?.role === "admin";
+    const newRole: BandRole = isCurrentlyAdmin ? "member" : "admin";
 
-    if (isCurrentlyAdmin) {
-      await db
-        .collection<BandDocument>(COLLECTIONS.bands)
-        .updateOne(
-          { _id: new ObjectId(bandId) },
-          { $pull: { adminIds: { $in: [memberId] } } },
-        );
-    } else {
-      await db
-        .collection<BandDocument>(COLLECTIONS.bands)
-        .updateOne(
-          { _id: new ObjectId(bandId) },
-          { $addToSet: { adminIds: memberId } },
-        );
-    }
+    await getBandsCollection(db).updateOne(
+      { _id: new ObjectId(bandId), "members.userId": memberId },
+      { $set: { "members.$.role": newRole } },
+    );
 
     return {
       success: true,
@@ -330,18 +324,18 @@ export async function leaveBandAction(bandId: string) {
 
     const { db, user } = await getAuthUser();
 
-    const band = await db
-      .collection<BandDocument>(COLLECTIONS.bands)
-      .findOne({ _id: new ObjectId(bandId) });
+    const band = await getBandsCollection(db).findOne({
+      _id: new ObjectId(bandId),
+    });
     if (!band) throw new Error("Band not found");
 
     const userId = user._id.toString();
-    if (!band.memberIds.includes(userId)) {
+    if (!isMember(band, userId)) {
       throw new Error("You are not a member of this band");
     }
 
     // if only one member left, delete the band entirely
-    if (band.memberIds.length <= 1) {
+    if (band.members.length <= 1) {
       await deleteBandCascade(db, bandId);
       return {
         success: true,
@@ -350,34 +344,23 @@ export async function leaveBandAction(bandId: string) {
       };
     }
 
-    const isCreator = band.creatorId?.toString() === userId;
+    const wasCreator = isBandCreator(band, userId);
 
-    // remove from members and admins
     await getBandsCollection(db).updateOne(
       { _id: new ObjectId(bandId) },
-      {
-        $pull: {
-          memberIds: { $in: [userId] },
-          adminIds: { $in: [userId] },
-        },
-      },
+      { $pull: { members: { userId } } },
     );
 
     await setMemberBandDataActiveState(db, bandId, userId, false);
 
-    // if the leaving user is the creator, transfer to the last member in memberIds
-    if (isCreator) {
-      const remainingMembers = band.memberIds.filter(
-        (id: string) => id !== userId,
-      );
-      const newCreatorId = remainingMembers[remainingMembers.length - 1];
+    // if the leaving user was creator, promote the last remaining member
+    if (wasCreator) {
+      const remainingMembers = band.members.filter((m) => m.userId !== userId);
+      const newCreatorId = remainingMembers[remainingMembers.length - 1].userId;
 
       await getBandsCollection(db).updateOne(
-        { _id: new ObjectId(bandId) },
-        {
-          $set: { creatorId: new ObjectId(newCreatorId) },
-          $addToSet: { adminIds: newCreatorId },
-        },
+        { _id: new ObjectId(bandId), "members.userId": newCreatorId },
+        { $set: { "members.$.role": "creator" } },
       );
     }
 
@@ -393,7 +376,7 @@ export async function transferCreatorAction(
   newCreatorId: string,
 ) {
   try {
-    const { db, band, isCreator } = await verifyAdmin(bandId);
+    const { db, band, userId, isCreator } = await verifyAdmin(bandId);
 
     if (!isCreator) {
       throw new Error("Only the creator can transfer the creator role");
@@ -401,20 +384,22 @@ export async function transferCreatorAction(
 
     if (!ObjectId.isValid(newCreatorId)) throw new Error("Invalid user ID");
 
-    if (!band.memberIds.includes(newCreatorId)) {
+    if (!isMember(band, newCreatorId)) {
       throw new Error("Target user is not a band member");
     }
 
-    if (band.creatorId?.toString() === newCreatorId) {
+    if (isBandCreator(band, newCreatorId)) {
       throw new Error("User is already the creator");
     }
 
+    // demote current creator to admin, promote new creator
     await getBandsCollection(db).updateOne(
-      { _id: new ObjectId(bandId) },
-      {
-        $set: { creatorId: new ObjectId(newCreatorId) },
-        $addToSet: { adminIds: newCreatorId },
-      },
+      { _id: new ObjectId(bandId), "members.userId": userId },
+      { $set: { "members.$.role": "admin" } },
+    );
+    await getBandsCollection(db).updateOne(
+      { _id: new ObjectId(bandId), "members.userId": newCreatorId },
+      { $set: { "members.$.role": "creator" } },
     );
 
     return { success: true, message: "Creator role transferred" };

@@ -1,11 +1,12 @@
 import Image from "next/image";
-import AlwaysAvailableToggle from "./alwaysAvailableToggle";
+import type { Session } from "next-auth";
+import AlwaysAvailableToggle from "@/app/components/alwaysAvailableToggle";
 
-export default function ProfileCard({ session }: { session: any }) {
+export default function ProfileCard({ session }: { session: Session | null }) {
   return (
     <div className="card">
       <div className="media-row">
-        {session.user?.image ? (
+        {session?.user?.image ? (
           <Image
             src={session.user.image}
             alt="avatar"
@@ -15,16 +16,16 @@ export default function ProfileCard({ session }: { session: any }) {
           />
         ) : (
           <div className="avatar-large placeholder">
-            {session.user?.name?.charAt(0)?.toUpperCase() || "U"}
+            {session?.user?.name?.charAt(0)?.toUpperCase() || "U"}
           </div>
         )}
 
         <div>
           <h1 className="heading-small">
-            {session.user?.name || "Unknown user"}
+            {session?.user?.name || "Unknown user"}
           </h1>
           <p className="meta-text meta-text-medium margin-top">
-            {session.user?.email || "No email"}
+            {session?.user?.email || "No email"}
           </p>
         </div>
       </div>

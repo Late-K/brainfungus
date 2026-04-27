@@ -1,12 +1,10 @@
-"use server";
+﻿"use server";
 
 import { getAuthUser } from "@/app/lib/auth";
 import {
-  COLLECTIONS,
-  getSongIdFilter,
   normaliseSongId,
   requireBandMemberContext,
-} from "@/app/lib/serverData";
+} from "@/app/lib/serverUtils";
 import { ObjectId } from "mongodb";
 
 async function getSongMetadataForBand(
@@ -14,9 +12,9 @@ async function getSongMetadataForBand(
   bandObjectId: ObjectId,
   songId: string,
 ) {
-  const cover = await db.collection(COLLECTIONS.covers).findOne({
+  const cover = await db.collection("covers").findOne({
     bandId: bandObjectId,
-    songId: getSongIdFilter(songId),
+    songId: songId,
   });
 
   if (cover) {
@@ -32,24 +30,33 @@ async function getSongMetadataForBand(
 
   if (ObjectId.isValid(songId)) {
     const customSong = await db
-      .collection(COLLECTIONS.customSongs)
+      .collection("custom_songs")
       .findOne({ _id: new ObjectId(songId), bandId: bandObjectId });
 
     if (customSong) {
+      const band = await db
+        .collection("bands")
+        .findOne({ _id: bandObjectId }, { projection: { name: 1 } });
       return {
         title: customSong.title,
         album: customSong.album,
         duration: customSong.duration,
-        preview: customSong.preview,
+        preview:
+          (customSong.audioUrl as string | undefined) ??
+          (customSong.preview as string | undefined),
         image: customSong.image,
+        notes: customSong.notes as string | undefined,
+        isCustom: true,
+        bandId: bandObjectId,
+        bandName: band?.name as string | undefined,
       };
     }
   }
 
-  const setlistWithSong = await db.collection(COLLECTIONS.setlists).findOne(
+  const setlistWithSong = await db.collection("setlists").findOne(
     {
       bandId: bandObjectId,
-      "songs.id": getSongIdFilter(songId),
+      "songs.id": songId,
     },
     { projection: { songs: 1 } },
   );
@@ -80,65 +87,46 @@ export async function toggleLearntSongAction(bandId: string, songId: string) {
   const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
   const normalisedSongId = normaliseSongId(songId);
 
-  const existingActive = await db.collection(COLLECTIONS.learntSongs).findOne({
+  const existingActive = await db.collection("learnt_songs").findOne({
     userId: user._id,
-    songId: getSongIdFilter(normalisedSongId),
+    songId: normalisedSongId,
     active: { $ne: false },
   });
 
   if (existingActive) {
-    await db.collection(COLLECTIONS.learntSongs).deleteMany({
+    await db.collection("learnt_songs").deleteMany({
       userId: user._id,
-      songId: getSongIdFilter(normalisedSongId),
-    });
-
-    await db.collection(COLLECTIONS.personalLearntSongs).deleteOne({
-      userId: user._id,
-      songId: getSongIdFilter(normalisedSongId),
+      songId: normalisedSongId,
     });
 
     return { learnt: false };
   } else {
-    const existingInactive = await db
-      .collection(COLLECTIONS.learntSongs)
-      .findOne({
-        userId: user._id,
-        songId: getSongIdFilter(normalisedSongId),
-        active: false,
-      });
+    const metadata = await getSongMetadataForBand(
+      db,
+      bandObjectId,
+      normalisedSongId,
+    );
+
+    const existingInactive = await db.collection("learnt_songs").findOne({
+      userId: user._id,
+      songId: normalisedSongId,
+      active: false,
+    });
 
     if (existingInactive) {
-      await db.collection(COLLECTIONS.learntSongs).updateMany(
+      await db.collection("learnt_songs").updateMany(
         {
           userId: user._id,
-          songId: getSongIdFilter(normalisedSongId),
+          songId: normalisedSongId,
           active: false,
         },
-        { $set: { active: true, updatedAt: new Date() } },
+        { $set: { active: true, ...metadata, updatedAt: new Date() } },
       );
     } else {
-      await db.collection(COLLECTIONS.learntSongs).insertOne({
+      await db.collection("learnt_songs").insertOne({
         userId: user._id,
         songId: normalisedSongId,
         active: true,
-        createdAt: new Date(),
-      });
-    }
-
-    const personalEntry = await db
-      .collection(COLLECTIONS.personalLearntSongs)
-      .findOne({ userId: user._id, songId: getSongIdFilter(normalisedSongId) });
-
-    if (!personalEntry) {
-      const metadata = await getSongMetadataForBand(
-        db,
-        bandObjectId,
-        normalisedSongId,
-      );
-
-      await db.collection(COLLECTIONS.personalLearntSongs).insertOne({
-        userId: user._id,
-        songId: normalisedSongId,
         ...metadata,
         createdAt: new Date(),
       });
@@ -160,57 +148,54 @@ export async function addPersonalLearntSongAction(song: {
   const { db, user } = await getAuthUser();
   const songId = normaliseSongId(song.id);
 
-  const existing = await db
-    .collection(COLLECTIONS.personalLearntSongs)
-    .findOne({
-      userId: user._id,
-      songId: getSongIdFilter(songId),
-    });
+  const metadata = {
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    duration: song.duration,
+    preview: song.preview,
+    image: song.image,
+  };
 
-  if (!existing) {
-    await db.collection(COLLECTIONS.personalLearntSongs).insertOne({
-      userId: user._id,
-      songId,
-      title: song.title,
-      artist: song.artist,
-      album: song.album,
-      duration: song.duration,
-      preview: song.preview,
-      image: song.image,
-      createdAt: new Date(),
-    });
-  }
-
-  const activeLearnt = await db.collection(COLLECTIONS.learntSongs).findOne({
+  const activeLearnt = await db.collection("learnt_songs").findOne({
     userId: user._id,
-    songId: getSongIdFilter(songId),
+    songId: songId,
     active: { $ne: false },
   });
 
   if (!activeLearnt) {
-    const inactive = await db.collection(COLLECTIONS.learntSongs).findOne({
+    const inactive = await db.collection("learnt_songs").findOne({
       userId: user._id,
-      songId: getSongIdFilter(songId),
+      songId: songId,
       active: false,
     });
 
     if (inactive) {
-      await db.collection(COLLECTIONS.learntSongs).updateMany(
+      await db.collection("learnt_songs").updateMany(
         {
           userId: user._id,
-          songId: getSongIdFilter(songId),
+          songId: songId,
           active: false,
         },
-        { $set: { active: true, updatedAt: new Date() } },
+        { $set: { active: true, ...metadata, updatedAt: new Date() } },
       );
     } else {
-      await db.collection(COLLECTIONS.learntSongs).insertOne({
+      await db.collection("learnt_songs").insertOne({
         userId: user._id,
         songId,
         active: true,
+        ...metadata,
         createdAt: new Date(),
       });
     }
+  } else {
+    // Update metadata on existing active entry in case it was previously missing
+    await db
+      .collection("learnt_songs")
+      .updateOne(
+        { userId: user._id, songId: songId, active: { $ne: false } },
+        { $set: { ...metadata, updatedAt: new Date() } },
+      );
   }
 
   return { added: true };
@@ -221,16 +206,9 @@ export async function removePersonalLearntSongAction(songId: string) {
 
   const songIdStr = normaliseSongId(songId);
 
-  // Remove from personal list
-  await db.collection(COLLECTIONS.personalLearntSongs).deleteOne({
+  await db.collection("learnt_songs").deleteMany({
     userId: user._id,
-    songId: getSongIdFilter(songIdStr),
-  });
-
-  // Remove from all bands
-  await db.collection(COLLECTIONS.learntSongs).deleteMany({
-    userId: user._id,
-    songId: getSongIdFilter(songIdStr),
+    songId: songIdStr,
   });
 
   return { removed: true };

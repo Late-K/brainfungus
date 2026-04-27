@@ -1,22 +1,20 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { createBandAction } from "@/app/actions/bands";
-import UserCard from "./usercard";
+import UserCard from "@/app/components/usercard";
 import { User } from "@/app/types";
 
 interface BandFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   submitLabel?: string;
-  successMessage?: string;
 }
 
 export default function BandForm({
   onSuccess,
   onCancel,
   submitLabel = "Create Band",
-  successMessage = "Band created successfully!",
 }: BandFormProps) {
   const [bandName, setBandName] = useState("");
   const [description, setDescription] = useState("");
@@ -25,7 +23,6 @@ export default function BandForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingUsers, setIsFetchingUsers] = useState(true);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     async function fetchUsers() {
@@ -67,7 +64,6 @@ export default function BandForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
     setIsSubmitting(true);
 
     if (!bandName.trim()) {
@@ -83,7 +79,6 @@ export default function BandForm({
         selectedUsers,
       );
 
-      setSuccess(successMessage);
       resetForm();
       onSuccess?.();
     } catch (err) {
@@ -95,9 +90,7 @@ export default function BandForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      {error && <div className="alert alert--error">{error}</div>}
-
-      {success && <div className="alert alert--success">{success}</div>}
+      {error && <div className="alert alert-error">{error}</div>}
 
       <div className="form-group">
         <label className="label" htmlFor="band-name">
@@ -168,7 +161,7 @@ export default function BandForm({
           <button
             type="button"
             onClick={onCancel}
-            className="btn btn--secondary"
+            className="button button-secondary"
             disabled={isSubmitting}
           >
             Cancel
@@ -177,7 +170,7 @@ export default function BandForm({
 
         <button
           type="submit"
-          className="btn btn--primary"
+          className="button button-primary"
           disabled={isSubmitting}
         >
           {isSubmitting ? "Creating..." : submitLabel}

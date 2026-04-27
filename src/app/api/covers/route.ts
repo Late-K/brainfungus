@@ -1,8 +1,7 @@
-import {
-  COLLECTIONS,
+﻿import {
   getServerErrorStatus,
   requireBandMemberContext,
-} from "@/app/lib/serverData";
+} from "@/app/lib/serverUtils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -18,9 +17,9 @@ export async function GET(request: NextRequest) {
     const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
     const covers = await db
-      .collection(COLLECTIONS.covers)
+      .collection("covers")
       .find({ bandId: bandObjectId })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 })
       .toArray();
 
     const formatted = covers.map((cover) => ({

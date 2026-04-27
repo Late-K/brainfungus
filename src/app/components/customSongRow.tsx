@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Dispatch, SetStateAction } from "react";
 import { CustomSong, LearntMap } from "@/app/types";
@@ -21,7 +21,7 @@ interface CustomSongRowProps {
   editAlbumIsCustom: boolean;
   setEditAlbumIsCustom: Dispatch<SetStateAction<boolean>>;
   learntMap: LearntMap;
-  userName: string | null | undefined;
+  userEmail: string | null | undefined;
   togglingIds: Set<string>;
   isUploadingAudio: boolean;
   onToggleLearnt: (songId: string) => void;
@@ -55,7 +55,7 @@ export default function CustomSongRow({
   editAlbumIsCustom,
   setEditAlbumIsCustom,
   learntMap,
-  userName,
+  userEmail,
   togglingIds,
   isUploadingAudio,
   onToggleLearnt,
@@ -102,24 +102,6 @@ export default function CustomSongRow({
               onChange={(e) => setEditNotes(e.target.value)}
             />
           </div>
-          <div className="edit-actions">
-            <button onClick={onSaveEdit} className="btn btn--primary btn-small">
-              Save
-            </button>
-            <button
-              onClick={() => onDelete(song._id)}
-              className="btn btn-small btn-danger"
-            >
-              Delete
-            </button>
-            <button
-              onClick={onCancelEditing}
-              className="btn btn--tertiary btn-small"
-            >
-              Cancel
-            </button>
-          </div>
-
           <div className="audio-section">
             <p className="audio-label">Audio</p>
             {song.audioUrl && (
@@ -129,7 +111,7 @@ export default function CustomSongRow({
                   type="button"
                   onClick={() => onDeleteAudio(song._id)}
                   disabled={isUploadingAudio}
-                  className="btn btn-small btn--tertiary btn--tertiary-danger"
+                  className="button button-small button-tertiary button-tertiary-danger"
                 >
                   {isUploadingAudio ? "Removing..." : "Remove audio"}
                 </button>
@@ -153,6 +135,27 @@ export default function CustomSongRow({
             )}
             <p className="audio-hint">MP3, WAV, OGG, FLAC — max 8 MB</p>
           </div>
+
+          <div className="edit-actions">
+            <button
+              onClick={onSaveEdit}
+              className="button button-primary button-small"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => onDelete(song._id)}
+              className="button button-small button-danger"
+            >
+              Delete
+            </button>
+            <button
+              onClick={onCancelEditing}
+              className="button button-tertiary button-small"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -168,7 +171,7 @@ export default function CustomSongRow({
                 onMoveSong(albumName, albumSongs, indexInAlbum, "up")
               }
               disabled={indexInAlbum === 0}
-              className="btn-reorder"
+              className="button-reorder"
               title="Move up"
             >
               ▲
@@ -178,7 +181,7 @@ export default function CustomSongRow({
                 onMoveSong(albumName, albumSongs, indexInAlbum, "down")
               }
               disabled={indexInAlbum === albumSongs.length - 1}
-              className="btn-reorder"
+              className="button-reorder"
               title="Move down"
             >
               ▼
@@ -196,7 +199,7 @@ export default function CustomSongRow({
         <div className="inline-actions-small">
           <button
             onClick={() => onStartEditing(song)}
-            className="btn btn-small btn--tertiary"
+            className="button button-small button-tertiary"
           >
             Edit
           </button>
@@ -212,7 +215,7 @@ export default function CustomSongRow({
       <SongLearntStatus
         songId={song._id}
         learntMap={learntMap}
-        userName={userName}
+        userEmail={userEmail}
         togglingIds={togglingIds}
         onToggleLearnt={onToggleLearnt}
       />

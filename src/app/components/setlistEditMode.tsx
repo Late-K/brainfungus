@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Song, DeezerResult, BandCover } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
@@ -73,14 +73,14 @@ export default function SetlistEditMode({
             <button
               onClick={onSave}
               disabled={isSaving || !editName.trim() || !canSave}
-              className="btn btn--primary btn-small"
+              className="button button-primary button-small"
             >
               {isSaving ? "Saving..." : saveLabel}
             </button>
             <button
               onClick={onCancel}
               disabled={isSaving}
-              className="btn btn--tertiary btn-small"
+              className="button button-tertiary button-small"
             >
               Cancel
             </button>
@@ -113,7 +113,7 @@ export default function SetlistEditMode({
                     <button
                       onClick={() => onMoveSong(index, "up")}
                       disabled={index === 0}
-                      className="btn-reorder"
+                      className="button-reorder"
                       title="Move up"
                     >
                       ▲
@@ -121,7 +121,7 @@ export default function SetlistEditMode({
                     <button
                       onClick={() => onMoveSong(index, "down")}
                       disabled={index === editSongs.length - 1}
-                      className="btn-reorder"
+                      className="button-reorder"
                       title="Move down"
                     >
                       ▼
@@ -144,7 +144,7 @@ export default function SetlistEditMode({
                   )}
                   <button
                     onClick={() => onRemoveSong(song.id)}
-                    className="btn btn-small btn--tertiary btn--tertiary-danger"
+                    className="button button-small button-tertiary button-tertiary-danger"
                   >
                     Remove
                   </button>

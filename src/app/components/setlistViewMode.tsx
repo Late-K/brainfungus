@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Setlist, LearntMap } from "@/app/types";
@@ -11,7 +11,7 @@ interface SetlistViewModeProps {
   isDeleting: boolean;
   learntMap: LearntMap;
   togglingIds: Set<string>;
-  userName: string | null | undefined;
+  userEmail: string | null | undefined;
   totalDuration: number;
   progress: number;
   onStartEdit: () => void;
@@ -26,7 +26,7 @@ export default function SetlistViewMode({
   isDeleting,
   learntMap,
   togglingIds,
-  userName,
+  userEmail,
   totalDuration,
   progress,
   onStartEdit,
@@ -36,31 +36,32 @@ export default function SetlistViewMode({
 }: SetlistViewModeProps) {
   return (
     <>
-      <Link href={`/bands/${bandId}/setlists`} className="back-link">
-        ← Back to Setlists
-      </Link>
-
-      <div className="card margin-bottom">
+      <div
+        className={`card margin-bottom${setlist.isActive ? " card-panel-active" : ""}`}
+      >
         <div className="stack margin-bottom">
           <div className="row">
             <h1>{setlist.name}</h1>
-            {setlist.isActive && (
-              <span className="badge badge--active">Active</span>
-            )}
+            <Link
+              href={`/bands/${bandId}/setlists`}
+              className="button button-tertiary ml-auto"
+            >
+              Back to Setlists
+            </Link>
           </div>
           <div className="inline-actions">
-            <button onClick={onStartEdit} className="btn btn--tertiary">
+            <button onClick={onStartEdit} className="button button-tertiary">
               {" "}
               Edit
             </button>
-            <button onClick={onToggleActive} className="btn btn--tertiary">
+            <button onClick={onToggleActive} className="button button-tertiary">
               {setlist.isActive ? "Deactivate" : "Set Active"}
             </button>
             {!setlist.isActive && (
               <button
                 onClick={onDelete}
                 disabled={isDeleting}
-                className="btn btn--tertiary btn--tertiary-danger"
+                className="button button-tertiary button-tertiary-danger"
               >
                 {isDeleting ? "Deleting..." : "Delete"}
               </button>
@@ -106,7 +107,7 @@ export default function SetlistViewMode({
         <SetlistSongList
           songs={setlist.songs}
           learntMap={learntMap}
-          userName={userName}
+          userEmail={userEmail}
           togglingIds={togglingIds}
           onToggleLearnt={onToggleLearnt}
         />

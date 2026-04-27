@@ -1,24 +1,26 @@
-import { getAuthUser } from "@/app/lib/auth";
+﻿import { getAuthUser } from "@/app/lib/auth";
 import {
-  COLLECTIONS,
   getServerErrorStatus,
   normaliseSongId,
   requireBandMember,
-} from "@/app/lib/serverData";
+} from "@/app/lib/serverUtils";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
-// GET - fetch a single setlist
+// fetch a single setlist
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Setlist not found" }, { status: 404 });
+    }
     const { db, user } = await getAuthUser();
 
     const setlist = await db
-      .collection(COLLECTIONS.setlists)
+      .collection("setlists")
       .findOne({ _id: new ObjectId(id) });
     if (!setlist) {
       return NextResponse.json({ error: "Setlist not found" }, { status: 404 });
@@ -43,18 +45,30 @@ export async function GET(
       })
       .filter((id): id is ObjectId => id !== null);
 
-    const customMeta: Record<string, { audioUrl?: string; duration?: number }> =
-      {};
+    const customMeta: Record<
+      string,
+      { title?: string; album?: string; audioUrl?: string; duration?: number }
+    > = {};
     if (customIds.length > 0) {
       const customDocs = await db
-        .collection(COLLECTIONS.customSongs)
+        .collection("custom_songs")
         .find(
           { _id: { $in: customIds } },
-          { projection: { _id: 1, audioUrl: 1, duration: 1 } },
+          {
+            projection: {
+              _id: 1,
+              title: 1,
+              album: 1,
+              audioUrl: 1,
+              duration: 1,
+            },
+          },
         )
         .toArray();
       for (const doc of customDocs) {
         customMeta[doc._id.toString()] = {
+          title: doc.title,
+          album: doc.album,
           audioUrl: doc.audioUrl,
           duration:
             typeof doc.duration === "number" && Number.isFinite(doc.duration)
@@ -72,6 +86,8 @@ export async function GET(
       return {
         ...song,
         id: songId,
+        title: meta.title ?? song.title,
+        album: meta.album ?? song.album,
         audioUrl: meta.audioUrl,
         duration:
           typeof meta.duration === "number" ? meta.duration : song.duration,

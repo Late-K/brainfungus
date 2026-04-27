@@ -1,12 +1,11 @@
-import { getServerSession } from "next-auth/next";
+﻿import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/lib/auth";
 import { getDb } from "@/app/lib/mongodb";
-import { COLLECTIONS } from "@/app/lib/serverData";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
-const MAX_AUDIO_BYTES = 8 * 1024 * 1024; // 8 MB
-const ALLOWED_TYPES = [
+const max_audio_bytes = 8 * 1024 * 1024; // 8 MB
+const allowed_types = [
   "audio/mpeg",
   "audio/mp3",
   "audio/wav",
@@ -20,19 +19,22 @@ const ALLOWED_TYPES = [
 async function getAuthorisedSong(songId: string, userEmail: string) {
   const db = await getDb();
   const currentUser = await db
-    .collection(COLLECTIONS.users)
+    .collection("users")
     .findOne({ email: userEmail });
   if (!currentUser) return null;
 
   const song = await db
-    .collection(COLLECTIONS.customSongs)
+    .collection("custom_songs")
     .findOne({ _id: new ObjectId(songId) });
   if (!song) return null;
 
-  const band = await db
-    .collection(COLLECTIONS.bands)
-    .findOne({ _id: song.bandId });
-  if (!band || !band.memberIds.includes(currentUser._id.toString()))
+  const band = await db.collection("bands").findOne({ _id: song.bandId });
+  if (
+    !band ||
+    !(band.members as Array<{ userId: string }>)?.some(
+      (m) => m.userId === currentUser._id.toString(),
+    )
+  )
     return null;
 
   return { db, song };
@@ -69,14 +71,14 @@ export async function POST(
       );
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    if (!allowed_types.includes(file.type)) {
       return NextResponse.json(
         { error: "Unsupported audio format" },
         { status: 400 },
       );
     }
 
-    if (file.size > MAX_AUDIO_BYTES) {
+    if (file.size > max_audio_bytes) {
       return NextResponse.json(
         { error: "File too large — max 8 MB" },
         { status: 400 },
@@ -102,7 +104,7 @@ export async function POST(
     }
 
     await authorised.db
-      .collection(COLLECTIONS.customSongs)
+      .collection("custom_songs")
       .updateOne({ _id: new ObjectId(id) }, { $set: setFields });
 
     return NextResponse.json({ audioUrl, duration }, { status: 200 });
@@ -136,7 +138,7 @@ export async function DELETE(
     }
 
     await authorised.db
-      .collection(COLLECTIONS.customSongs)
+      .collection("custom_songs")
       .updateOne(
         { _id: new ObjectId(id) },
         { $unset: { audioUrl: "" }, $set: { updatedAt: new Date() } },

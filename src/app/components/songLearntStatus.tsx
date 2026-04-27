@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -6,12 +6,12 @@ import { AvailUser, LearntMap } from "@/app/types";
 import { currentUserLearnt } from "@/app/lib/setlistUtils";
 import ExpandedUserList from "@/app/components/expandedUserList";
 
-const MAX_VISIBLE_AVATARS = 5;
+const max_visible_avatars = 5;
 
 interface SongLearntStatusProps {
   songId: string;
   learntMap: LearntMap;
-  userName: string | null | undefined;
+  userEmail: string | null | undefined;
   togglingIds: Set<string>;
   onToggleLearnt: (songId: string) => void;
 }
@@ -19,7 +19,7 @@ interface SongLearntStatusProps {
 export default function SongLearntStatus({
   songId,
   learntMap,
-  userName,
+  userEmail,
   togglingIds,
   onToggleLearnt,
 }: SongLearntStatusProps) {
@@ -29,7 +29,7 @@ export default function SongLearntStatus({
 
   const normalisedSongId = String(songId);
   const learners = learntMap[normalisedSongId] || [];
-  const isLearnt = currentUserLearnt(normalisedSongId, learntMap, userName);
+  const isLearnt = currentUserLearnt(normalisedSongId, learntMap, userEmail);
   const isToggling = togglingIds.has(normalisedSongId);
 
   return (
@@ -38,14 +38,14 @@ export default function SongLearntStatus({
         <button
           onClick={() => onToggleLearnt(normalisedSongId)}
           disabled={isToggling}
-          className={`btn btn-small ${isLearnt ? "btn--learnt" : "btn--tertiary"}`}
+          className={`button button-small ${isLearnt ? "button-learnt" : "button-tertiary"}`}
         >
           {isToggling ? "..." : isLearnt ? "✓ Learnt" : "Mark as Learnt"}
         </button>
 
         {learners.length > 0 && (
           <div className="learnt-avatars">
-            {learners.slice(0, MAX_VISIBLE_AVATARS).map((learner) => (
+            {learners.slice(0, max_visible_avatars).map((learner) => (
               <div
                 key={learner.userId}
                 className="learnt-avatar"
@@ -66,13 +66,13 @@ export default function SongLearntStatus({
                 )}
               </div>
             ))}
-            {learners.length > MAX_VISIBLE_AVATARS && (
+            {learners.length > max_visible_avatars && (
               <button
                 className="available-avatar-more"
                 onClick={() => setExpandedLearners(learners)}
                 title="Show all"
               >
-                +{learners.length - MAX_VISIBLE_AVATARS}
+                +{learners.length - max_visible_avatars}
               </button>
             )}
           </div>

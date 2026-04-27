@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 interface SongAlbumPickerProps {
   value: string;
@@ -30,7 +30,7 @@ export default function SongAlbumPicker({
         />
         <button
           type="button"
-          className="btn btn-small btn--tertiary"
+          className="button button-small button-tertiary"
           onClick={() => {
             onCustomToggle(false);
             onChange("");

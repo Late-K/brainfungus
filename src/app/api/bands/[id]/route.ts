@@ -1,12 +1,11 @@
-import {
-  COLLECTIONS,
+﻿import {
   getServerErrorStatus,
   requireBandMemberContext,
-} from "@/app/lib/serverData";
+} from "@/app/lib/serverUtils";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
-// GET - fetch a specific band with members
+// fetch a specific band with members
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -15,32 +14,36 @@ export async function GET(
     const { id } = await params;
     const { db, band } = await requireBandMemberContext(id);
 
-    // fetch member details
-    const memberIds = band.memberIds
-      .filter((memberId: string) => ObjectId.isValid(memberId))
-      .map((memberId: string) => new ObjectId(memberId));
-    const members = await db
-      .collection(COLLECTIONS.users)
-      .find({ _id: { $in: memberIds } })
+    const memberEntries =
+      (band.members as Array<{ userId: string; role: string }>) ?? [];
+    const memberObjectIds = memberEntries
+      .map((m) => m.userId)
+      .filter((uid) => ObjectId.isValid(uid))
+      .map((uid) => new ObjectId(uid));
+
+    const users = await db
+      .collection("users")
+      .find({ _id: { $in: memberObjectIds } })
       .toArray();
 
-    const adminIds: string[] = band.adminIds ?? [];
-    const creatorId = band.creatorId?.toString();
+    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
 
     return NextResponse.json(
       {
         band: {
           ...band,
-          members: members.map((m) => ({
-            id: m._id.toString(),
-            email: m.email,
-            name: m.name,
-            image: m.image,
-            isAdmin:
-              adminIds.includes(m._id.toString()) ||
-              m._id.toString() === creatorId,
-            isCreator: m._id.toString() === creatorId,
-          })),
+          members: memberEntries.map((entry) => {
+            const u = userMap.get(entry.userId);
+            return {
+              id: entry.userId,
+              email: u?.email ?? "",
+              name: u?.name ?? entry.userId,
+              image: u?.image,
+              role: entry.role,
+              isAdmin: entry.role === "admin" || entry.role === "creator",
+              isCreator: entry.role === "creator",
+            };
+          }),
         },
       },
       { status: 200 },

@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
 import { BandCover } from "@/app/types";
 import SongInfo from "@/app/components/songInfo";
+import { useFetchData } from "@/app/hooks/useFetchData";
 
 interface BandCoversListProps {
   bandId: string;
@@ -15,34 +15,10 @@ export default function BandCoversList({
   selectedSongs,
   onToggleCover,
 }: BandCoversListProps) {
-  const [covers, setCovers] = useState<BandCover[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const fetchCovers = async () => {
-      try {
-        setIsLoading(true);
-        setError("");
-
-        const res = await fetch(`/api/covers?bandId=${bandId}`);
-        if (!res.ok) {
-          throw new Error("Failed to fetch covers");
-        }
-
-        const data = await res.json();
-        setCovers(data.covers || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load covers");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (bandId) {
-      fetchCovers();
-    }
-  }, [bandId]);
+  const { data, isLoading, error } = useFetchData<{ covers: BandCover[] }>(
+    bandId ? `/api/covers?bandId=${bandId}` : null,
+  );
+  const covers = data?.covers ?? [];
 
   if (isLoading) {
     return <p>Loading covers...</p>;
@@ -58,7 +34,7 @@ export default function BandCoversList({
     <section className="card">
       <h3>Your Band Covers</h3>
 
-      {error && <p className="alert alert--error">{error}</p>}
+      {error && <p className="alert alert-error">{error}</p>}
 
       <div className="songs-grid">
         {covers.map((cover) => (

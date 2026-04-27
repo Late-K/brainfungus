@@ -1,13 +1,12 @@
-import {
-  COLLECTIONS,
+﻿import {
   getServerErrorStatus,
   normaliseSongId,
   requireBandMemberContext,
-} from "@/app/lib/serverData";
+} from "@/app/lib/serverUtils";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
-// GET - fetch all setlists for a band
+// fetch all setlists for a band
 export async function GET(request: NextRequest) {
   try {
     const bandId = request.nextUrl.searchParams.get("bandId");
@@ -21,7 +20,7 @@ export async function GET(request: NextRequest) {
     const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
     const bandSetlists = await db
-      .collection(COLLECTIONS.setlists)
+      .collection("setlists")
       .find({ bandId: bandObjectId })
       .sort({ createdAt: -1 })
       .toArray();
@@ -40,30 +39,51 @@ export async function GET(request: NextRequest) {
       })
       .filter((id): id is ObjectId => id !== null);
 
-    const durationMap: Record<string, number> = {};
+    const customSongMap: Record<
+      string,
+      { title?: string; album?: string; duration?: number }
+    > = {};
     if (customIds.length > 0) {
       const customDocs = await db
-        .collection(COLLECTIONS.customSongs)
+        .collection("custom_songs")
         .find(
           { _id: { $in: customIds } },
-          { projection: { _id: 1, duration: 1 } },
+          { projection: { _id: 1, title: 1, album: 1, duration: 1 } },
         )
         .toArray();
       for (const doc of customDocs) {
-        if (typeof doc.duration === "number" && Number.isFinite(doc.duration)) {
-          durationMap[doc._id.toString()] = doc.duration;
-        }
+        customSongMap[doc._id.toString()] = {
+          title: doc.title,
+          album: doc.album,
+          duration:
+            typeof doc.duration === "number" && Number.isFinite(doc.duration)
+              ? doc.duration
+              : undefined,
+        };
       }
     }
 
     const enrichedSetlists = bandSetlists.map((setlist) => ({
       ...setlist,
       songs: (setlist.songs || []).map(
-        (song: { id: string; isCustom?: boolean; duration?: number }) => {
+        (song: {
+          id: string;
+          isCustom?: boolean;
+          title?: string;
+          album?: string;
+          duration?: number;
+        }) => {
           const songId = normaliseSongId(song.id);
-          return song.isCustom && durationMap[songId] !== undefined
-            ? { ...song, id: songId, duration: durationMap[songId] }
-            : { ...song, id: songId };
+          if (!song.isCustom) return { ...song, id: songId };
+          const meta = customSongMap[songId];
+          if (!meta) return { ...song, id: songId };
+          return {
+            ...song,
+            id: songId,
+            title: meta.title ?? song.title,
+            album: meta.album ?? song.album,
+            duration: meta.duration ?? song.duration,
+          };
         },
       ),
     }));

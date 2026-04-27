@@ -1,9 +1,11 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import PageLoading from "@/app/components/pageLoading";
+import BandSubpageHeader from "@/app/components/bandSubpageHeader";
 import {
   deleteSetlistAction,
   setActiveSetlistAction,
@@ -11,7 +13,6 @@ import {
 } from "@/app/actions/setlists";
 import { Setlist, LearntMap } from "@/app/types";
 import { formatDuration, getProgress } from "@/app/lib/setlistUtils";
-import { Band } from "@/app/types";
 
 export default function SetlistsPage({
   params,
@@ -19,8 +20,7 @@ export default function SetlistsPage({
   params: Promise<{ id: string }>;
 }) {
   const { data: session, status } = useSession();
-  const [bandId, setBandId] = useState<string | null>(null);
-  const [band, setBand] = useState<Band | null>(null);
+  const { id: bandId } = use(params);
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -28,16 +28,6 @@ export default function SetlistsPage({
   const [memberCount, setMemberCount] = useState(0);
 
   useEffect(() => {
-    const unwrapParams = async () => {
-      const { id } = await params;
-      setBandId(id);
-    };
-    unwrapParams();
-  }, [params]);
-
-  useEffect(() => {
-    if (!bandId) return;
-
     async function fetchData() {
       try {
         setIsLoading(true);
@@ -60,8 +50,7 @@ export default function SetlistsPage({
 
         if (bandRes.ok) {
           const bandData = await bandRes.json();
-          setMemberCount(bandData.band?.memberIds?.length || 0);
-          setBand(bandData.band || null);
+          setMemberCount(bandData.band?.members?.length || 0);
         }
       } catch (err) {
         setError(
@@ -131,29 +120,27 @@ export default function SetlistsPage({
   };
 
   if (isLoading) {
-    return (
-      <div className="page-container">
-        <p className="empty-state">Loading setlists...</p>
-      </div>
-    );
+    return <PageLoading message="Loading setlists..." />;
   }
 
   return (
     <div className="page-container">
-      <div className="list margin-bottom">
-        <Link href={`/bands/${bandId}`} className="back-link">
-          ← Back to {band?.name || "Band"}
-        </Link>
-        <h1 className="text-center">Setlists</h1>
+      <BandSubpageHeader
+        title="Setlists"
+        description="Manage your band's setlists, track song readiness, and plan your next performance."
+        bandId={bandId}
+      />
+
+      <div className="flex-center margin-bottom">
         <Link
           href={`/bands/${bandId}/setlists/create`}
-          className="btn btn--primary align-self-center"
+          className="button button-primary"
         >
           + Create Setlist
         </Link>
       </div>
 
-      {error && <p className="alert alert--error">{error}</p>}
+      {error && <p className="alert alert-error">{error}</p>}
 
       {sortedSetlists.length === 0 ? (
         <section className="margin-bottom">
@@ -174,18 +161,17 @@ export default function SetlistsPage({
               return (
                 <div
                   key={setlist._id}
-                  className="card-item card-panel margin-bottom"
+                  className={`card-item card-panel margin-bottom${setlist.isActive ? " card-panel-active" : ""}`}
                 >
                   <div className="section-header">
                     <h4>{setlist.name}</h4>
-                    {setlist.isActive && (
-                      <span className="badge badge--active">Active</span>
-                    )}
+                    <span className="meta-text meta-text-medium no-margin">
+                      {formatDuration(totalDuration)}
+                    </span>
                   </div>
 
                   <p className="meta-text meta-text-medium no-margin">
-                    {setlist.songs.length} songs •{" "}
-                    {formatDuration(totalDuration)}
+                    {setlist.songs.length} songs
                   </p>
 
                   <p className="meta-text meta-text-medium no-margin margin-top">
@@ -204,10 +190,10 @@ export default function SetlistsPage({
                     <span className="progress-label">{progress}% learnt</span>
                   </div>
 
-                  <div className="action-row action-row-fill-tertiary">
+                  <div className="action-row action-row-center">
                     <Link
                       href={`/bands/${bandId}/setlists/${setlist._id}`}
-                      className="btn btn--tertiary"
+                      className="button button-tertiary"
                     >
                       View
                     </Link>
@@ -215,14 +201,14 @@ export default function SetlistsPage({
                     {setlist.isActive ? (
                       <button
                         onClick={() => handleDeactivate(setlist._id)}
-                        className="btn btn--tertiary"
+                        className="button button-tertiary"
                       >
                         Deactivate
                       </button>
                     ) : (
                       <button
                         onClick={() => handleSetActive(setlist._id)}
-                        className="btn btn--tertiary"
+                        className="button button-tertiary"
                       >
                         Set Active
                       </button>
@@ -231,7 +217,7 @@ export default function SetlistsPage({
                     {!setlist.isActive && (
                       <button
                         onClick={() => handleDelete(setlist._id)}
-                        className="btn btn--tertiary btn--tertiary-danger"
+                        className="button button-tertiary button-tertiary-danger"
                       >
                         Delete
                       </button>

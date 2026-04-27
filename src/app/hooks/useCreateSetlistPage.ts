@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSetlistAction } from "@/app/actions/setlists";
 import { DeezerResult, Song, BandCover } from "@/app/types";
@@ -9,7 +9,7 @@ import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 export function useCreateSetlistPage(params: Promise<{ id: string }>) {
   const router = useRouter();
 
-  const [bandId, setBandId] = useState<string | null>(null);
+  const { id: bandId } = use(params);
   const [setlistName, setSetlistName] = useState("");
   const [selectedSongs, setSelectedSongs] = useState<Song[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -22,14 +22,6 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
     searchError,
     handleSearch,
   } = useDeezerSearch();
-
-  useEffect(() => {
-    const unwrapParams = async () => {
-      const { id } = await params;
-      setBandId(id);
-    };
-    unwrapParams();
-  }, [params]);
 
   const handleAddSong = (result: DeezerResult) => {
     if (selectedSongs.some((s) => s.id === result.id)) {
@@ -85,7 +77,10 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
       setIsSaving(true);
       setError("");
 
-      await createSetlistAction(bandId, setlistName, selectedSongs);
+      const songsToSave = selectedSongs.map(
+        ({ audioUrl: _audioUrl, ...song }) => song,
+      );
+      await createSetlistAction(bandId, setlistName, songsToSave);
 
       router.push(`/bands/${bandId}`);
     } catch (err) {
@@ -186,6 +181,6 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
     handleRemoveSelectedSong,
     handleToggleCustomAlbum,
     handleToggleCoverSong,
-    handleCancel: () => router.push(`/bands/${bandId}`),
+    handleCancel: () => router.push(`/bands/${bandId}/setlists`),
   };
 }

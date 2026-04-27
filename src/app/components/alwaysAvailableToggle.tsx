@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import {
@@ -32,7 +32,7 @@ export default function AlwaysAvailableToggle() {
   return (
     <div className="always-available-section">
       <label
-        className={`availability-toggle ${alwaysAvailable ? "availability-toggle--available" : "availability-toggle--unavailable"}`}
+        className={`availability-toggle ${alwaysAvailable ? "availability-toggle-available" : "availability-toggle-unavailable"}`}
       >
         <input
           type="checkbox"

@@ -1,11 +1,10 @@
-"use client";
+﻿"use client";
 
+import { use } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { useEffect, useState } from "react";
 import BandCoversComponent from "@/app/components/bandCoversComponent";
-import { Band } from "@/app/types";
+import BandSubpageHeader from "@/app/components/bandSubpageHeader";
 
 export default function BandCoversPage({
   params,
@@ -13,53 +12,20 @@ export default function BandCoversPage({
   params: Promise<{ id: string }>;
 }) {
   const { data: session, status } = useSession();
-  const [bandId, setBandId] = useState<string | null>(null);
-  const [band, setBand] = useState<Band | null>(null);
-
-  useEffect(() => {
-    const unwrapParams = async () => {
-      const { id } = await params;
-      setBandId(id);
-    };
-
-    unwrapParams();
-  }, [params]);
-
-  useEffect(() => {
-    if (!bandId) return;
-    async function fetchBand() {
-      try {
-        const res = await fetch(`/api/bands/${bandId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setBand(data.band);
-        }
-      } catch (err) {
-        setBand(null);
-      }
-    }
-
-    fetchBand();
-  }, [bandId]);
+  const { id: bandId } = use(params);
 
   if (status === "loading") return null;
   if (!session) redirect("/login");
 
-  if (!bandId) {
-    return (
-      <div className="page-container">
-        <p className="empty-state">Loading covers...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="page-container">
-      <Link href={`/bands/${bandId}`} className="back-link">
-        ← Back to {band?.name || "Band"}
-      </Link>
+      <BandSubpageHeader
+        title="Covers"
+        description="Browse and manage the songs your band covers, sourced from Deezer."
+        bandId={bandId}
+      />
 
-      <BandCoversComponent bandId={bandId} userName={session.user?.name} />
+      <BandCoversComponent bandId={bandId} userEmail={session.user?.email} />
     </div>
   );
 }

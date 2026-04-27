@@ -1,6 +1,8 @@
 // calendar page
 "use client";
 
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
 import Image from "next/image";
 import CalendarView from "@/app/components/calendarView";
 import RehearsalForm from "@/app/components/rehearsalForm";
@@ -10,6 +12,8 @@ import CalendarModalDialog from "@/app/components/calendarModalDialog";
 import { useCalendarPage } from "@/app/hooks/useCalendarPage";
 
 export default function CalendarPage() {
+  const { data: session, status } = useSession();
+
   const {
     rehearsals,
     selectedDate,
@@ -36,8 +40,11 @@ export default function CalendarPage() {
     handleAvailabilityToggle,
   } = useCalendarPage();
 
+  if (status === "loading") return null;
+  if (!session) redirect("/login");
+
   return (
-    <div>
+    <div className="page-container">
       <div className="brand-spanned-wrap">
         <Image
           src="/brain-fungus-spanned.png"
@@ -48,7 +55,6 @@ export default function CalendarPage() {
           className="brand-spanned-image"
         />
       </div>
-      <h2>Calendar</h2>
 
       <div className="calendar-container">
         <CalendarView

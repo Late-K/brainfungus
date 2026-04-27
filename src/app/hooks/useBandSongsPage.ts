@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, use, useCallback, useEffect, useState } from "react";
 import {
   createSongAction,
   deleteSongAction,
@@ -52,7 +52,7 @@ async function parseApiResponse<T = Record<string, unknown>>(
 }
 
 export function useBandSongsPage(params: Promise<{ id: string }>) {
-  const [bandId, setBandId] = useState<string | null>(null);
+  const { id: bandId } = use(params);
   const [band, setBand] = useState<Band | null>(null);
   const [songs, setSongs] = useState<CustomSong[]>([]);
   const [learntMap, setLearntMap] = useState<LearntMap>({});
@@ -80,15 +80,6 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   );
 
   useEffect(() => {
-    const unwrapParams = async () => {
-      const { id } = await params;
-      setBandId(id);
-    };
-    unwrapParams();
-  }, [params]);
-
-  useEffect(() => {
-    if (!bandId) return;
     async function fetchBand() {
       try {
         const res = await fetch(`/api/bands/${bandId}`);

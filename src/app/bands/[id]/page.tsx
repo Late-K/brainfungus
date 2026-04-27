@@ -1,16 +1,17 @@
-// selected band page
+﻿// selected band page
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect, useRouter } from "next/navigation";
-import Link from "next/link";
 import SetlistComponent from "@/app/components/setlistComponent";
 import CustomSongsComponent from "@/app/components/customSongsComponent";
 import BandChatComponent from "@/app/components/bandChatComponent";
 import BandCoversPreview from "../../components/bandCoversPreview";
 import BandManagement from "@/app/components/bandManagement";
+import PageLoading from "@/app/components/pageLoading";
+import PageErrorCard from "@/app/components/pageErrorCard";
 import { Band } from "@/app/types";
 
 export default function BandDetailsPage({
@@ -21,23 +22,12 @@ export default function BandDetailsPage({
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const [bandId, setBandId] = useState<string | null>(null);
+  const { id: bandId } = use(params);
   const [band, setBand] = useState<Band | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const unwrapParams = async () => {
-      const { id } = await params;
-      setBandId(id);
-    };
-
-    unwrapParams();
-  }, [params]);
-
-  useEffect(() => {
-    if (!bandId) return;
-
     fetchBandDetails();
   }, [bandId]);
 
@@ -69,36 +59,19 @@ export default function BandDetailsPage({
     router.push("/");
   };
 
+  if (status === "loading") return null;
   if (!session) redirect("/login");
 
   if (isLoading) {
-    return <div>Loading band details...</div>;
+    return <PageLoading message="Loading band details..." />;
   }
 
   if (error) {
-    return (
-      <div>
-        <div>{error}</div>
-        <div>
-          <Link href="/">
-            <button>Back to Home</button>
-          </Link>
-        </div>
-      </div>
-    );
+    return <PageErrorCard error={error} backHref="/" />;
   }
 
   if (!band) {
-    return (
-      <div>
-        <div>Band not found</div>
-        <div>
-          <Link href="/">
-            <button>Back to Home</button>
-          </Link>
-        </div>
-      </div>
-    );
+    return <PageErrorCard error="Band not found" backHref="/" />;
   }
 
   return (

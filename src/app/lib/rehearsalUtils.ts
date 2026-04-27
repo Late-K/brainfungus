@@ -1,4 +1,4 @@
-import { Rehearsal, RehearsalRepeatType, AvailUser } from "@/app/types";
+import { Rehearsal, AvailUser } from "@/app/types";
 
 interface HasAvailUsers {
   repeatType: string;
@@ -36,12 +36,6 @@ export function updateRehearsalAvatars<T extends HasAvailUsers>(
 
 export function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-export function getRepeatLabel(type: RehearsalRepeatType | string): string {
-  if (type === "weekly") return "Weekly";
-  if (type === "biweekly") return "Biweekly";
-  return "One-time";
 }
 
 export function getNextOccurrence(rehearsal: Rehearsal): Date | null {
@@ -111,11 +105,4 @@ export function isRecurringRehearsal(rehearsal: Rehearsal): boolean {
   return (
     rehearsal.repeatType === "weekly" || rehearsal.repeatType === "biweekly"
   );
-}
-
-export function getRehearsalsForUser(
-  rehearsals: Rehearsal[],
-  userId: string,
-): Rehearsal[] {
-  return rehearsals.filter((rehearsal) => rehearsal.createdBy === userId);
 }
