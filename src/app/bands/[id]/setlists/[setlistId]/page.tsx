@@ -53,6 +53,7 @@ export default function SetlistDetailPage({
       <div className="page-container">
         <SetlistEditMode
           bandId={setlistDetailPage.bandId!}
+          collapseSongPickers
           editName={setlistDetailPage.editor.editName}
           setEditName={setlistDetailPage.editor.setEditName}
           editSongs={setlistDetailPage.editor.editSongs}

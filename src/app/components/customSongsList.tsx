@@ -6,6 +6,9 @@ import { useFetchData } from "@/app/hooks/useFetchData";
 
 interface CustomSongsListProps {
   bandId: string;
+  title?: string;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
   selectedSongs: Array<{
     id: string;
     title: string;
@@ -20,6 +23,9 @@ interface CustomSongsListProps {
 
 export default function CustomSongsList({
   bandId,
+  title = "Your Custom Songs",
+  collapsible = false,
+  defaultOpen = true,
   selectedSongs,
   onToggleSong,
   onToggleAlbum,
@@ -28,6 +34,7 @@ export default function CustomSongsList({
     bandId ? `/api/songs?bandId=${bandId}` : null,
   );
   const customSongs = data?.songs ?? [];
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const [expandedAlbums, setExpandedAlbums] = useState<Set<string>>(new Set());
 
   if (isLoading) {
@@ -92,63 +99,84 @@ export default function CustomSongsList({
 
   return (
     <section className="card">
-      <h3>Your Custom Songs</h3>
+      {collapsible ? (
+        <button
+          type="button"
+          className="accordion-trigger"
+          onClick={() => setIsOpen((prev) => !prev)}
+        >
+          <span
+            className={`accordion-icon ${isOpen ? "accordion-icon-open" : ""}`}
+          >
+            &#9654;
+          </span>
+          <span className="accordion-title">{title}</span>
+          <span className="accordion-count">
+            {customSongs.length} song{customSongs.length !== 1 ? "s" : ""}
+          </span>
+        </button>
+      ) : (
+        <h3>{title}</h3>
+      )}
 
       {error && <p className="alert alert-error">{error}</p>}
 
-      <div className="songs-grid">
-        {albums.map(([albumName, albumSongs]) => {
-          const allSelected = isAlbumSelected(albumSongs);
+      {isOpen && (
+        <div className="songs-grid">
+          {albums.map(([albumName, albumSongs]) => {
+            const allSelected = isAlbumSelected(albumSongs);
 
-          return (
-            <div key={albumName} className="accordion">
-              <div className="accordion-header">
-                <button
-                  type="button"
-                  className="accordion-trigger"
-                  onClick={() => toggleAlbum(albumName)}
-                >
-                  <span
-                    className={`accordion-icon ${expandedAlbums.has(albumName) ? "accordion-icon-open" : ""}`}
-                  >
-                    &#9654;
-                  </span>
-                  <span className="accordion-title">{albumName}</span>
-                  <span className="accordion-count">
-                    {albumSongs.length} song{albumSongs.length !== 1 ? "s" : ""}
-                  </span>
-                </button>
-                {onToggleAlbum && (
+            return (
+              <div key={albumName} className="accordion">
+                <div className="accordion-header">
                   <button
                     type="button"
-                    onClick={() =>
-                      onToggleAlbum(
-                        albumName,
-                        albumSongs.map((song) => ({
-                          id: song._id,
-                          title: song.title,
-                          duration: song.duration,
-                        })),
-                      )
-                    }
-                    className="button button-tertiary button-small"
+                    className="accordion-trigger"
+                    onClick={() => toggleAlbum(albumName)}
                   >
-                    {allSelected ? "Remove Album" : "Add Album"}
+                    <span
+                      className={`accordion-icon ${expandedAlbums.has(albumName) ? "accordion-icon-open" : ""}`}
+                    >
+                      &#9654;
+                    </span>
+                    <span className="accordion-title">{albumName}</span>
+                    <span className="accordion-count">
+                      {albumSongs.length} song
+                      {albumSongs.length !== 1 ? "s" : ""}
+                    </span>
                   </button>
+                  {onToggleAlbum && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onToggleAlbum(
+                          albumName,
+                          albumSongs.map((song) => ({
+                            id: song._id,
+                            title: song.title,
+                            duration: song.duration,
+                          })),
+                        )
+                      }
+                      className="button button-tertiary button-small"
+                    >
+                      {allSelected ? "Remove Album" : "Add Album"}
+                    </button>
+                  )}
+                </div>
+
+                {expandedAlbums.has(albumName) && (
+                  <div className="accordion-content">
+                    {albumSongs.map(renderSongCheckbox)}
+                  </div>
                 )}
               </div>
+            );
+          })}
 
-              {expandedAlbums.has(albumName) && (
-                <div className="accordion-content">
-                  {albumSongs.map(renderSongCheckbox)}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {looseSongs.map(renderSongCheckbox)}
-      </div>
+          {looseSongs.map(renderSongCheckbox)}
+        </div>
+      )}
     </section>
   );
 }

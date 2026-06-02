@@ -8,6 +8,7 @@ import DeezerSearch from "@/app/components/deezerSearch";
 
 interface SetlistEditModeProps {
   bandId: string;
+  collapseSongPickers?: boolean;
   editName: string;
   setEditName: (name: string) => void;
   editSongs: Song[];
@@ -41,6 +42,7 @@ interface SetlistEditModeProps {
 
 export default function SetlistEditMode({
   bandId,
+  collapseSongPickers = false,
   editName,
   setEditName,
   editSongs,
@@ -159,6 +161,8 @@ export default function SetlistEditMode({
 
       <CustomSongsList
         bandId={bandId || ""}
+        collapsible={collapseSongPickers}
+        defaultOpen={!collapseSongPickers}
         selectedSongs={editSongs}
         onToggleSong={onToggleCustomSong}
         onToggleAlbum={onToggleCustomAlbum}
@@ -166,6 +170,8 @@ export default function SetlistEditMode({
 
       <BandCoversList
         bandId={bandId || ""}
+        collapsible={collapseSongPickers}
+        defaultOpen={!collapseSongPickers}
         selectedSongs={editSongs}
         onToggleCover={onToggleCoverSong}
       />
