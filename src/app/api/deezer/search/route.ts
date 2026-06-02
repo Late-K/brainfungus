@@ -25,7 +25,7 @@ interface DeezerSearchResponse {
 export async function GET(request: NextRequest) {
   try {
     const query = request.nextUrl.searchParams.get("q");
-    const type = request.nextUrl.searchParams.get("type") || "track"; // track, artist, album
+    const type = request.nextUrl.searchParams.get("type") || "track";
 
     if (!query) {
       return NextResponse.json(

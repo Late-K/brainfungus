@@ -4,8 +4,10 @@ import { FormEvent, use, useCallback, useEffect, useState } from "react";
 import {
   createSongAction,
   deleteSongAction,
+  deleteAudioAction,
   reorderAlbumSongsAction,
   updateSongAction,
+  uploadAudioAction,
 } from "@/app/actions/songs";
 import { toggleLearntSongAction } from "@/app/actions/learntSongs";
 import { Band, CustomSong, LearntMap } from "@/app/types";
@@ -171,26 +173,11 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
             formData.append("durationSeconds", String(durationSeconds));
           }
 
-          const uploadRes = await fetch(`/api/songs/${result.song._id}/audio`, {
-            method: "POST",
-            body: formData,
-          });
-          const { data: uploadData, errorMessage } = await parseApiResponse<{
-            audioUrl?: string;
-            duration?: number;
-            error?: string;
-          }>(uploadRes);
-          if (!uploadRes.ok) {
-            throw new Error(errorMessage || "Audio upload failed");
-          }
-
-          if (!uploadData) {
-            throw new Error("Audio upload failed");
-          }
+          const uploadData = await uploadAudioAction(result.song._id, formData);
 
           createdSong = {
             ...createdSong,
-            audioUrl: uploadData.audioUrl,
+            audioUrl: `${uploadData.audioUrl}?v=${Date.now()}`,
             duration:
               typeof uploadData.duration === "number"
                 ? uploadData.duration
@@ -274,23 +261,13 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
       if (durationSeconds !== undefined) {
         formData.append("durationSeconds", String(durationSeconds));
       }
-      const res = await fetch(`/api/songs/${songId}/audio`, {
-        method: "POST",
-        body: formData,
-      });
-      const { data, errorMessage } = await parseApiResponse<{
-        audioUrl?: string;
-        duration?: number;
-        error?: string;
-      }>(res);
-      if (!res.ok) throw new Error(errorMessage || "Upload failed");
-      if (!data) throw new Error("Upload failed");
+      const data = await uploadAudioAction(songId, formData);
       setSongs((prev) =>
         prev.map((s) =>
           s._id === songId
             ? {
                 ...s,
-                audioUrl: data.audioUrl,
+                audioUrl: `${data.audioUrl}?v=${Date.now()}`,
                 duration:
                   typeof data.duration === "number"
                     ? data.duration
@@ -313,10 +290,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const handleDeleteAudio = async (songId: string) => {
     setUploadingAudioIds((prev) => new Set(prev).add(songId));
     try {
-      const res = await fetch(`/api/songs/${songId}/audio`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to remove audio");
+      await deleteAudioAction(songId);
       setSongs((prev) =>
         prev.map((s) => (s._id === songId ? { ...s, audioUrl: undefined } : s)),
       );

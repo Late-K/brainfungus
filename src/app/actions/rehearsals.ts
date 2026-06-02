@@ -254,8 +254,8 @@ export async function getUserRehearsalsAction() {
       };
     }
 
-    // build per-rehearsal available users maps
-    // for one-time/base availability vs occurrence-specific availability
+    // build per rehearsal available users maps
+    // for one time availability vs occurrence availability
     const { availableUsersBase, availableUsersOcc } = buildAvailableUsersMaps(
       allAvailabilities,
       userMap,
@@ -411,7 +411,7 @@ export async function cancelRehearsalOccurrenceAction(
         $set: { updatedAt: new Date() },
       },
     );
-    // clean up any occurrence-specific availability for that date
+    // clean up any occurrence availability for that date
     await db.collection("rehearsal_availability").deleteMany({
       rehearsalId: new ObjectId(rehearsalId),
       occurrenceDate,
@@ -526,7 +526,7 @@ export async function updateRehearsalAction(
   }
 }
 
-// get band rehearsals with current user's availability (for home page band cards)
+// get band rehearsals with current users availability (for home page band cards)
 export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
   try {
     const { db, user } = await getAuthUser();
@@ -592,7 +592,7 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
       };
     }
 
-    // build per-rehearsal available users
+    // build per rehearsal available users
     const { availableUsersBase, availableUsersOcc } = buildAvailableUsersMaps(
       allAvailabilities,
       userInfoMap,
@@ -616,7 +616,7 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
       }
     }
 
-    // auto-mark occurrence records for the next 7 days
+    // auto mark occurrence for the next 7 days
     const userAlwaysAvailable = user.alwaysAvailable ?? false;
     if (userAlwaysAvailable) {
       const today = new Date();
@@ -627,7 +627,6 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
         return d;
       });
 
-      // collect bulk operations instead of writing one-by-one
       const bulkOps: AnyBulkWriteOperation<Document>[] = [];
 
       for (const r of rehearsals) {

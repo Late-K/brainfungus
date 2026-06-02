@@ -41,9 +41,10 @@ async function getSongMetadataForBand(
         title: customSong.title,
         album: customSong.album,
         duration: customSong.duration,
-        preview:
-          (customSong.audioUrl as string | undefined) ??
-          (customSong.preview as string | undefined),
+        preview: customSong.hasAudio
+          ? `/api/songs/${songId}/audio`
+          : ((customSong.audioUrl as string | undefined) ??
+            (customSong.preview as string | undefined)),
         image: customSong.image,
         notes: customSong.notes as string | undefined,
         isCustom: true,
@@ -189,7 +190,6 @@ export async function addPersonalLearntSongAction(song: {
       });
     }
   } else {
-    // Update metadata on existing active entry in case it was previously missing
     await db
       .collection("learnt_songs")
       .updateOne(

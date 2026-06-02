@@ -19,11 +19,21 @@ export async function GET(request: NextRequest) {
 
     const bandSongs = await db
       .collection("custom_songs")
-      .find({ bandId: bandObjectId })
+      .find(
+        { bandId: bandObjectId },
+        { projection: { audioData: 0, audioUrl: 0 } }, // exclude large binary/base64 fields
+      )
       .sort({ createdAt: 1 })
       .toArray();
 
-    return NextResponse.json({ songs: bandSongs }, { status: 200 });
+    const songs = bandSongs.map((song) => ({
+      ...song,
+      audioUrl: song.hasAudio
+        ? `/api/songs/${(song._id as { toString(): string }).toString()}/audio`
+        : undefined,
+    }));
+
+    return NextResponse.json({ songs }, { status: 200 });
   } catch (error) {
     console.error("Error fetching songs:", error);
     const status = getServerErrorStatus(error);

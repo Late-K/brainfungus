@@ -9,7 +9,7 @@ Brain Fungus is a band management web app built for musicians. It gives bands a 
 | Feature       | Description                                                                                                         |
 | ------------- | ------------------------------------------------------------------------------------------------------------------- |
 | Bands         | Create or join bands with role-based access (creator, admin, member)                                                |
-| Custom Songs  | Add band-specific songs and albums with audio                                                                       |
+| Custom Songs  | Add band-specific songs and albums with private Blob audio uploads                                                  |
 | Covers        | Search and save cover songs via the Deezer API                                                                      |
 | Setlists      | Build ordered setlists from custom songs and covers                                                                 |
 | Song Learning | Mark songs as learnt - bands showing completion percentage                                                          |
@@ -25,13 +25,14 @@ Brain Fungus is a band management web app built for musicians. It gives bands a 
 - Next.js
 - React
 - MongoDB
+- Vercel Blob
 - NextAuth - Google OAuth with JWT sessions
 - Deezer API
 - Vercel (hosting)
 
 ### MongoDB Collections
 
-`users`, `bands`, `songs`, `covers`, `setlists`, `learnt-songs`, `rehearsals`, `rehearsal-availability`, `messages`
+`users`, `bands`, `custom_songs`, `covers`, `setlists`, `learnt_songs`, `rehearsals`, `rehearsal_availability`, `messages`
 
 ---
 
@@ -42,6 +43,7 @@ Brain Fungus is a band management web app built for musicians. It gives bands a 
 - Node.js 18+
 - A MongoDB database
 - A Google OAuth application (Client ID + Secret)
+- A Vercel Blob
 
 ### 1. Clone the repository
 
@@ -61,6 +63,9 @@ NEXTAUTH_SECRET=your_nextauth_secret
 NEXTAUTH_URL=http://localhost:3000
 CLIENT_ID=your_google_client_id
 CLIENT_SECRET=your_google_client_secret
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_read_write_token
+BLOB_STORE_ID=your_vercel_blob_store_id
+BLOB_WEBHOOK_PUBLIC_KEY=your_vercel_blob_webhook_public_key
 ```
 
 ### 3. Install dependencies
@@ -95,11 +100,12 @@ src/app/
 
 ## Technical Notes
 
-- Auth — NextAuth `signIn` callback upserts the user into MongoDB on every login. `getAuthUser()` validates the session and returns `{ db, user, session }` for use in server actions.
-- DB — `MongoClient` is cached on the Node.js global in development to survive hot-reloads. All modules access it via `getDb()`.
-- Authorisation — `requireBandMemberContext(bandId)` combines session validation and band membership into one call for user auth.
-- Rehearsal recurrence — Rehearsals store an anchor date, `repeatType` (`once` / `weekly` / `biweekly`) and optional `endDate`, with all complicated occurance computation and calls happening in the background at runtime.
-- Setlists — Songs are stored as minimal references, setlists are set active to display on band dashboard and song learning is tracked in a separate `learnt-songs` collection for globalisation.
-- Band roles — `creator` / `admin` / `member` roles. Band deletion cascades to all dependent collections.
-- Deezer — Two Next.js route handlers (`/api/deezer/search` and `/api/deezer/track/[id]`) forward requests to the public Deezer API. Results are not cached; saving a result persists it as `BandCover` in MongoDB.
-- Modularity — UI is split into focused single-purpose components. Large page logic lives in dedicated hooks, keeping components thin. Shared utilities are reused across both components and server actions.
+- Auth - NextAuth `signIn` callback upserts the user into MongoDB on every login. `getAuthUser()` validates the session and returns `{ db, user, session }` for use in server actions.
+- DB - `MongoClient` is cached on the Node.js global in development to survive hot-reloads. All modules access it via `getDb()`.
+- Authorisation - `requireBandMemberContext(bandId)` combines session validation and band membership into one call for user auth.
+- Rehearsal recurrence - Rehearsals store an anchor date, `repeatType` (`once` / `weekly` / `biweekly`) and optional `endDate`, with all complicated occurance computation and calls happening in the background at runtime.
+- Setlists - Songs are stored as minimal references, setlists are set active to display on band dashboard and song learning is tracked in a separate `learnt-songs` collection for globalisation.
+- Band roles - `creator` / `admin` / `member` roles. Band deletion cascades to all dependent collections.
+- Deezer - Two Next.js route handlers (`/api/deezer/search` and `/api/deezer/track/[id]`) forward requests to the public Deezer API. Results are not cached; saving a result persists it as `BandCover` in MongoDB.
+- Modularity - UI is split into focused single-purpose components. Large page logic lives in dedicated hooks, keeping components thin. Shared utilities are reused across both components and server actions.
+- Audio storage - Custom song audio files are uploaded to private Vercel Blob storage

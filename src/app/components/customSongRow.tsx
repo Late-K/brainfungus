@@ -103,7 +103,6 @@ export default function CustomSongRow({
             />
           </div>
           <div className="audio-section">
-            <p className="audio-label">Audio</p>
             {song.audioUrl && (
               <div className="audio-current">
                 <audio src={song.audioUrl} controls className="audio-player" />
@@ -117,23 +116,30 @@ export default function CustomSongRow({
                 </button>
               </div>
             )}
-            {!song.audioUrl && (
-              <label className="audio-upload">
-                <input
-                  type="file"
-                  accept="audio/*"
-                  disabled={isUploadingAudio}
-                  className="audio-file-input"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) onUploadAudio(song._id, file);
-                    e.target.value = "";
-                  }}
-                />
-                {isUploadingAudio ? "Uploading..." : "Upload audio file"}
+            <div className="form-group">
+              <label htmlFor={`editSongAudio-${song._id}`}>
+                Audio File (optional)
               </label>
-            )}
-            <p className="audio-hint">MP3, WAV, OGG, FLAC — max 8 MB</p>
+              <input
+                id={`editSongAudio-${song._id}`}
+                type="file"
+                accept="audio/*"
+                className="input"
+                disabled={isUploadingAudio}
+                onClick={(e) => {
+                  e.currentTarget.value = "";
+                }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onUploadAudio(song._id, file);
+                }}
+              />
+              <p className="audio-hint">
+                {isUploadingAudio
+                  ? "Uploading..."
+                  : "MP3, WAV, OGG, FLAC - max 8 MB"}
+              </p>
+            </div>
           </div>
 
           <div className="edit-actions">

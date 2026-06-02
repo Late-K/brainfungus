@@ -59,17 +59,18 @@ export async function GET(
               _id: 1,
               title: 1,
               album: 1,
-              audioUrl: 1,
+              hasAudio: 1,
               duration: 1,
             },
           },
         )
         .toArray();
       for (const doc of customDocs) {
-        customMeta[doc._id.toString()] = {
+        const songId = doc._id.toString();
+        customMeta[songId] = {
           title: doc.title,
           album: doc.album,
-          audioUrl: doc.audioUrl,
+          audioUrl: doc.hasAudio ? `/api/songs/${songId}/audio` : undefined,
           duration:
             typeof doc.duration === "number" && Number.isFinite(doc.duration)
               ? doc.duration

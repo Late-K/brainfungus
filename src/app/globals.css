@@ -1106,14 +1106,6 @@ h4 {
   border-top: 1px solid var(--border);
   margin-top: 0.25rem;
 }
-.audio-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--primary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 0;
-}
 .audio-current {
   display: flex;
   flex-direction: column;
@@ -1126,30 +1118,6 @@ h4 {
   margin: 0.5rem 0;
   background: #1a1a1a;
   color-scheme: dark;
-}
-.audio-upload {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.85rem;
-  border: 1px dashed rgba(183, 90, 185, 0.55);
-  border-radius: var(--radius-sm);
-  background: rgba(183, 90, 185, 0.08);
-  font-size: 0.85rem;
-  color: var(--muted);
-  cursor: pointer;
-  transition:
-    border-color 0.15s,
-    color 0.15s,
-    background 0.15s;
-}
-.audio-upload:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: rgba(183, 90, 185, 0.15);
-}
-.audio-file-input {
-  display: none;
 }
 .audio-hint {
   font-size: 0.75rem;

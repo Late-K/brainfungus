@@ -4,18 +4,6 @@ import { getDb } from "@/app/lib/mongodb";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
-const max_audio_bytes = 8 * 1024 * 1024; // 8 MB
-const allowed_types = [
-  "audio/mpeg",
-  "audio/mp3",
-  "audio/wav",
-  "audio/ogg",
-  "audio/mp4",
-  "audio/x-m4a",
-  "audio/flac",
-  "audio/webm",
-];
-
 async function getAuthorisedSong(songId: string, userEmail: string) {
   const db = await getDb();
   const currentUser = await db
@@ -40,8 +28,8 @@ async function getAuthorisedSong(songId: string, userEmail: string) {
   return { db, song };
 }
 
-// POST /api/songs/[id]/audio — upload audio file
-export async function POST(
+// stream song audio to the browser
+export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -60,95 +48,67 @@ export async function POST(
       );
     }
 
-    const formData = await request.formData();
-    const file = formData.get("audio");
-    const durationRaw = formData.get("durationSeconds");
+    const blobUrl = authorised.song.audioBlobUrl as string | undefined;
+    if (!blobUrl) {
+      return NextResponse.json({ error: "No audio found" }, { status: 404 });
+    }
 
-    if (!(file instanceof File)) {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const rangeHeader = request.headers.get("range");
+    const blobRequestHeaders: Record<string, string> = {};
+    if (token) {
+      blobRequestHeaders.Authorization = `Bearer ${token}`;
+    }
+    if (rangeHeader) {
+      blobRequestHeaders.Range = rangeHeader;
+    }
+
+    const blobResponse = await fetch(blobUrl, {
+      headers: Object.keys(blobRequestHeaders).length
+        ? blobRequestHeaders
+        : undefined,
+      cache: "no-store",
+    });
+
+    if (!blobResponse.ok || !blobResponse.body) {
       return NextResponse.json(
-        { error: "No audio file provided" },
-        { status: 400 },
+        { error: "Audio file unavailable" },
+        { status: 502 },
       );
     }
 
-    if (!allowed_types.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Unsupported audio format" },
-        { status: 400 },
-      );
-    }
-
-    if (file.size > max_audio_bytes) {
-      return NextResponse.json(
-        { error: "File too large — max 8 MB" },
-        { status: 400 },
-      );
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString("base64");
-    const audioUrl = `data:${file.type};base64,${base64}`;
-    const parsedDuration =
-      typeof durationRaw === "string" ? Number(durationRaw) : NaN;
-    const duration =
-      Number.isFinite(parsedDuration) && parsedDuration > 0
-        ? Math.round(parsedDuration)
-        : undefined;
-
-    const setFields: Record<string, unknown> = {
-      audioUrl,
-      updatedAt: new Date(),
-    };
-    if (duration !== undefined) {
-      setFields.duration = duration;
-    }
-
-    await authorised.db
-      .collection("custom_songs")
-      .updateOne({ _id: new ObjectId(id) }, { $set: setFields });
-
-    return NextResponse.json({ audioUrl, duration }, { status: 200 });
-  } catch (error) {
-    console.error("Error uploading audio:", error);
-    return NextResponse.json(
-      { error: "Failed to upload audio" },
-      { status: 500 },
+    const responseHeaders = new Headers();
+    responseHeaders.set(
+      "Content-Type",
+      (authorised.song.audioMimeType as string | undefined) ||
+        blobResponse.headers.get("content-type") ||
+        "audio/mpeg",
     );
-  }
-}
+    responseHeaders.set("Accept-Ranges", "bytes");
 
-// DELETE /api/songs/[id]/audio — remove audio from song
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const contentLength = blobResponse.headers.get("content-length");
+    if (contentLength) {
+      responseHeaders.set("Content-Length", contentLength);
     }
 
-    const { id } = await params;
-    const authorised = await getAuthorisedSong(id, session.user.email);
-    if (!authorised) {
-      return NextResponse.json(
-        { error: "Song not found or not authorised" },
-        { status: 404 },
-      );
+    const contentRange = blobResponse.headers.get("content-range");
+    if (contentRange) {
+      responseHeaders.set("Content-Range", contentRange);
     }
 
-    await authorised.db
-      .collection("custom_songs")
-      .updateOne(
-        { _id: new ObjectId(id) },
-        { $unset: { audioUrl: "" }, $set: { updatedAt: new Date() } },
-      );
+    responseHeaders.set(
+      "Cache-Control",
+      "private, no-store, no-cache, must-revalidate, max-age=0",
+    );
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return new NextResponse(blobResponse.body, {
+      status: blobResponse.status,
+      headers: responseHeaders,
+    });
   } catch (error) {
-    console.error("Error deleting audio:", error);
+    console.error("Error streaming audio:", error);
     return NextResponse.json(
-      { error: "Failed to delete audio" },
+      { error: "Failed to stream audio" },
       { status: 500 },
     );
   }
