@@ -10,7 +10,14 @@ import {
   uploadAudioAction,
 } from "@/app/actions/songs";
 import { toggleLearntSongAction } from "@/app/actions/learntSongs";
+import {
+  compareByDate,
+  compareByKnownCount,
+  safeTimestamp,
+} from "@/app/lib/sortUtils";
 import { Band, CustomSong, LearntMap } from "@/app/types";
+
+type KnownSongSort = "newest" | "oldest" | "mostKnown" | "leastKnown";
 
 async function getAudioDurationSeconds(
   file: File,
@@ -80,6 +87,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const [uploadingAudioIds, setUploadingAudioIds] = useState<Set<string>>(
     new Set(),
   );
+  const [sortBy, setSortBy] = useState<KnownSongSort>("newest");
 
   useEffect(() => {
     async function fetchBand() {
@@ -346,6 +354,38 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     }
   };
 
+  const getSongTimestamp = (song: CustomSong) => {
+    return safeTimestamp(song.createdAt);
+  };
+
+  const getKnownCount = (song: CustomSong) => learntMap[song._id]?.length ?? 0;
+
+  const compareSongs = (a: CustomSong, b: CustomSong) => {
+    if (sortBy === "newest") {
+      return compareByDate(getSongTimestamp(a), getSongTimestamp(b), "newest");
+    }
+    if (sortBy === "oldest") {
+      return compareByDate(getSongTimestamp(a), getSongTimestamp(b), "oldest");
+    }
+    if (sortBy === "mostKnown") {
+      const knownDiff = compareByKnownCount(
+        getKnownCount(a),
+        getKnownCount(b),
+        "mostKnown",
+      );
+      if (knownDiff !== 0) return knownDiff;
+      return compareByDate(getSongTimestamp(a), getSongTimestamp(b), "newest");
+    }
+
+    const knownDiff = compareByKnownCount(
+      getKnownCount(a),
+      getKnownCount(b),
+      "leastKnown",
+    );
+    if (knownDiff !== 0) return knownDiff;
+    return compareByDate(getSongTimestamp(a), getSongTimestamp(b), "newest");
+  };
+
   const groupedSongs = songs.reduce<Record<string, CustomSong[]>>(
     (acc, song) => {
       const key = song.album || "";
@@ -357,11 +397,50 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   );
 
   for (const key of Object.keys(groupedSongs)) {
-    groupedSongs[key].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    if (key === "") {
+      groupedSongs[key].sort(compareSongs);
+    } else {
+      groupedSongs[key].sort((a, b) => {
+        const orderDiff = (a.order ?? 0) - (b.order ?? 0);
+        if (orderDiff !== 0) return orderDiff;
+        return getSongTimestamp(a) - getSongTimestamp(b);
+      });
+    }
   }
 
   const looseSongs = groupedSongs[""] || [];
-  const albums = Object.entries(groupedSongs).filter(([key]) => key !== "");
+  const albums = Object.entries(groupedSongs)
+    .filter(([key]) => key !== "")
+    .sort(([, songsA], [, songsB]) => {
+      if (sortBy === "newest") {
+        const newestA = Math.max(...songsA.map(getSongTimestamp));
+        const newestB = Math.max(...songsB.map(getSongTimestamp));
+        return compareByDate(newestA, newestB, "newest");
+      }
+
+      if (sortBy === "oldest") {
+        const oldestA = Math.min(...songsA.map(getSongTimestamp));
+        const oldestB = Math.min(...songsB.map(getSongTimestamp));
+        return compareByDate(oldestA, oldestB, "oldest");
+      }
+
+      const knownA = songsA.reduce((sum, song) => sum + getKnownCount(song), 0);
+      const knownB = songsB.reduce((sum, song) => sum + getKnownCount(song), 0);
+
+      if (sortBy === "mostKnown") {
+        const knownDiff = compareByKnownCount(knownA, knownB, "mostKnown");
+        if (knownDiff !== 0) return knownDiff;
+        const newestA = Math.max(...songsA.map(getSongTimestamp));
+        const newestB = Math.max(...songsB.map(getSongTimestamp));
+        return compareByDate(newestA, newestB, "newest");
+      }
+
+      const knownDiff = compareByKnownCount(knownA, knownB, "leastKnown");
+      if (knownDiff !== 0) return knownDiff;
+      const newestA = Math.max(...songsA.map(getSongTimestamp));
+      const newestB = Math.max(...songsB.map(getSongTimestamp));
+      return compareByDate(newestA, newestB, "newest");
+    });
   const existingAlbums = albums.map(([name]) => name);
 
   return {
@@ -399,6 +478,8 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     looseSongs,
     existingAlbums,
     uploadingAudioIds,
+    sortBy,
+    setSortBy,
     handleUploadAudio,
     handleDeleteAudio,
     handleToggleLearnt,

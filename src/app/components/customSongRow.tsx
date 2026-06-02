@@ -37,6 +37,7 @@ interface CustomSongRowProps {
   onCancelEditing: () => void;
   onUploadAudio: (songId: string, file: File) => void;
   onDeleteAudio: (songId: string) => void;
+  allowReorder?: boolean;
 }
 
 export default function CustomSongRow({
@@ -66,6 +67,7 @@ export default function CustomSongRow({
   onCancelEditing,
   onUploadAudio,
   onDeleteAudio,
+  allowReorder = false,
 }: CustomSongRowProps) {
   if (isEditing) {
     return (
@@ -170,30 +172,33 @@ export default function CustomSongRow({
   return (
     <div key={song._id} className="card-item card-item-stack card-item-regular">
       <div className="song-main-row">
-        {albumName && albumSongs && indexInAlbum !== undefined && (
-          <div className="reorder-buttons">
-            <button
-              onClick={() =>
-                onMoveSong(albumName, albumSongs, indexInAlbum, "up")
-              }
-              disabled={indexInAlbum === 0}
-              className="button-reorder"
-              title="Move up"
-            >
-              ▲
-            </button>
-            <button
-              onClick={() =>
-                onMoveSong(albumName, albumSongs, indexInAlbum, "down")
-              }
-              disabled={indexInAlbum === albumSongs.length - 1}
-              className="button-reorder"
-              title="Move down"
-            >
-              ▼
-            </button>
-          </div>
-        )}
+        {allowReorder &&
+          albumName &&
+          albumSongs &&
+          indexInAlbum !== undefined && (
+            <div className="reorder-buttons">
+              <button
+                onClick={() =>
+                  onMoveSong(albumName, albumSongs, indexInAlbum, "up")
+                }
+                disabled={indexInAlbum === 0}
+                className="button-reorder"
+                title="Move up"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() =>
+                  onMoveSong(albumName, albumSongs, indexInAlbum, "down")
+                }
+                disabled={indexInAlbum === albumSongs.length - 1}
+                className="button-reorder"
+                title="Move down"
+              >
+                ▼
+              </button>
+            </div>
+          )}
 
         <div className="song-info">
           <h3 className="item-title">{song.title}</h3>

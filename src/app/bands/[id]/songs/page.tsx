@@ -8,6 +8,14 @@ import { useBandSongsPage } from "@/app/hooks/useBandSongsPage";
 import CustomSongCreateForm from "@/app/components/customSongCreateForm";
 import CustomSongRow from "@/app/components/customSongRow";
 import BandSubpageHeader from "@/app/components/bandSubpageHeader";
+import SortControls from "@/app/components/sortControls";
+
+const knownSongSortOptions = [
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "mostKnown", label: "Most known" },
+  { value: "leastKnown", label: "Least known" },
+] as const;
 
 export default function SongsPage({
   params,
@@ -38,6 +46,13 @@ export default function SongsPage({
             {songsPage.showForm ? "Cancel" : "+ Add Song"}
           </button>
         </div>
+
+        <SortControls
+          id="custom-song-sort"
+          value={songsPage.sortBy}
+          onChange={songsPage.setSortBy}
+          options={knownSongSortOptions}
+        />
 
         {songsPage.error && (
           <p className="alert alert-error">{songsPage.error}</p>
@@ -119,6 +134,7 @@ export default function SongsPage({
                         onCancelEditing={songsPage.cancelEditing}
                         onUploadAudio={songsPage.handleUploadAudio}
                         onDeleteAudio={songsPage.handleDeleteAudio}
+                        allowReorder
                       />
                     ))}
                   </div>

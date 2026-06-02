@@ -12,7 +12,22 @@ import SongAudioPlayer from "@/app/components/songAudioPlayer";
 import SongLearntStatus from "@/app/components/songLearntStatus";
 import DeezerSearch from "@/app/components/deezerSearch";
 import SongInfo from "@/app/components/songInfo";
+import SortControls from "@/app/components/sortControls";
 import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
+import {
+  compareByDate,
+  compareByKnownCount,
+  safeTimestamp,
+} from "@/app/lib/sortUtils";
+
+type KnownSongSort = "newest" | "oldest" | "mostKnown" | "leastKnown";
+
+const knownSongSortOptions = [
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "mostKnown", label: "Most known" },
+  { value: "leastKnown", label: "Least known" },
+] as const;
 
 interface BandCoversComponentProps {
   bandId: string;
@@ -31,6 +46,7 @@ export default function BandCoversComponent({
     new Set(),
   );
   const [savingCoverIds, setSavingCoverIds] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<KnownSongSort>("newest");
 
   const {
     searchQuery,
@@ -45,6 +61,43 @@ export default function BandCoversComponent({
     () => new Set(covers.map((cover) => cover.songId)),
     [covers],
   );
+
+  const sortedCovers = useMemo(() => {
+    const getTimestamp = (cover: BandCover) => {
+      return safeTimestamp(cover.createdAt);
+    };
+
+    const getKnownCount = (cover: BandCover) =>
+      learntMap[cover.songId]?.length ?? 0;
+
+    const sorted = [...covers];
+    sorted.sort((a, b) => {
+      if (sortBy === "newest") {
+        return compareByDate(getTimestamp(a), getTimestamp(b), "newest");
+      }
+      if (sortBy === "oldest") {
+        return compareByDate(getTimestamp(a), getTimestamp(b), "oldest");
+      }
+      if (sortBy === "mostKnown") {
+        const knownDiff = compareByKnownCount(
+          getKnownCount(a),
+          getKnownCount(b),
+          "mostKnown",
+        );
+        if (knownDiff !== 0) return knownDiff;
+        return compareByDate(getTimestamp(a), getTimestamp(b), "newest");
+      }
+
+      const knownDiff = compareByKnownCount(
+        getKnownCount(a),
+        getKnownCount(b),
+        "leastKnown",
+      );
+      if (knownDiff !== 0) return knownDiff;
+      return compareByDate(getTimestamp(a), getTimestamp(b), "newest");
+    });
+    return sorted;
+  }, [covers, learntMap, sortBy]);
 
   const fetchLearntMap = useCallback(
     async (signal?: AbortSignal) => {
@@ -176,7 +229,16 @@ export default function BandCoversComponent({
         isSongSelected={(songId) => coverSongIds.has(songId)}
       />
       <div className="card">
-        <h2>Band Covers</h2>
+        <div className="section-header">
+          <h2>Band Covers</h2>
+        </div>
+
+        <SortControls
+          id="covers-sort"
+          value={sortBy}
+          onChange={setSortBy}
+          options={knownSongSortOptions}
+        />
 
         {error && <p className="alert alert-error">{error}</p>}
 
@@ -188,7 +250,7 @@ export default function BandCoversComponent({
           </p>
         ) : (
           <div className="list list-top">
-            {covers.map((cover) => (
+            {sortedCovers.map((cover) => (
               <div key={cover._id} className="card-item card-item-compact">
                 <div className="song-row">
                   <SongInfo

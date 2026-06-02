@@ -241,6 +241,27 @@ h4 {
   flex: 1;
   min-width: 100px;
 }
+.sort-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  width: fit-content;
+  margin-inline: auto;
+  margin-bottom: 1rem;
+}
+.sort-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.sort-select {
+  width: 96px;
+  min-width: 96px;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.9rem;
+}
 .stat-grid {
   display: flex;
   gap: 0.5rem;

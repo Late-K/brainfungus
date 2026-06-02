@@ -10,13 +10,23 @@ import { formatDuration } from "@/app/lib/setlistUtils";
 import DeezerSearch from "@/app/components/deezerSearch";
 import SongInfo from "@/app/components/songInfo";
 import SongAudioPlayer from "@/app/components/songAudioPlayer";
+import SortControls from "@/app/components/sortControls";
 import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
+import { compareByDate, safeTimestamp } from "@/app/lib/sortUtils";
+
+type DateSort = "newest" | "oldest";
+
+const dateSortOptions = [
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+] as const;
 
 export default function ProfileLearntSongsComponent() {
   const [songs, setSongs] = useState<ProfileLearntSong[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<DateSort>("newest");
 
   const {
     searchQuery,
@@ -41,7 +51,7 @@ export default function ProfileLearntSongsComponent() {
   );
 
   // Deduplicate by songId — prefer personal entry, then most recent
-  const dedupedSongs = useMemo(() => {
+  const sortedSongs = useMemo(() => {
     const seen = new Set<string>();
     const deduped: ProfileLearntSong[] = [];
     // personal first so they take priority
@@ -56,8 +66,15 @@ export default function ProfileLearntSongsComponent() {
         deduped.push(s);
       }
     }
-    return deduped;
-  }, [songs]);
+
+    const getTimestamp = (song: ProfileLearntSong) => {
+      return safeTimestamp(song.createdAt);
+    };
+
+    return deduped.sort((a, b) =>
+      compareByDate(getTimestamp(a), getTimestamp(b), sortBy),
+    );
+  }, [songs, sortBy]);
 
   const fetchSongs = useCallback(async () => {
     try {
@@ -138,7 +155,16 @@ export default function ProfileLearntSongsComponent() {
       />
 
       <div className="card">
-        <h2>All Learnt Songs</h2>
+        <div className="section-header">
+          <h2>All Learnt Songs</h2>
+        </div>
+
+        <SortControls
+          id="profile-learnt-sort"
+          value={sortBy}
+          onChange={setSortBy}
+          options={dateSortOptions}
+        />
 
         {error && <p className="alert alert-error">{error}</p>}
 
@@ -150,7 +176,7 @@ export default function ProfileLearntSongsComponent() {
           </p>
         ) : (
           <div className="list list-top">
-            {dedupedSongs.map((song) => (
+            {sortedSongs.map((song) => (
               <div key={song.id} className="card-item card-item-compact">
                 <div className="song-row">
                   <SongInfo
