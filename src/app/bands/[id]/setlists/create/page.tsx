@@ -39,16 +39,10 @@ export default function CreateSetlistPage({
         setEditName={createSetlistPage.setSetlistName}
         editSongs={createSetlistPage.selectedSongs}
         isSaving={createSetlistPage.isSaving}
-        searchQuery={createSetlistPage.searchQuery}
-        setSearchQuery={createSetlistPage.setSearchQuery}
-        searchResults={createSetlistPage.searchResults}
-        isSearching={createSetlistPage.isSearching}
-        searchError={createSetlistPage.searchError}
         onSave={createSetlistPage.handleCreateSetlist}
         onCancel={createSetlistPage.handleCancel}
         onRemoveSong={createSetlistPage.handleRemoveSelectedSong}
         onMoveSong={createSetlistPage.handleMoveSong}
-        onSearch={createSetlistPage.handleSearch}
         onAddFromSearch={createSetlistPage.handleAddSong}
         onToggleCustomSong={createSetlistPage.handleToggleCustomSong}
         onToggleCustomAlbum={createSetlistPage.handleToggleCustomAlbum}

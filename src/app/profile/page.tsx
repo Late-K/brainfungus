@@ -7,6 +7,7 @@ import Image from "next/image";
 import SignOutButton from "@/app/components/signOutButton";
 import ProfileCard from "@/app/components/profileCard";
 import ProfileLearntSongsPreview from "@/app/components/profileLearntSongsPreview";
+import FindPeopleComponent from "@/app/components/findPeopleComponent";
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions);
@@ -27,12 +28,26 @@ export default async function ProfilePage() {
           className="brand-spanned-image"
         />
       </div>
-      <ProfileCard session={session} />
+      <div className="page-heading desktop-only">
+        <h1>Profile</h1>
+      </div>
 
-      <ProfileLearntSongsPreview />
+      <div className="profile-layout">
+        <div className="profile-layout-card">
+          <ProfileCard session={session} />
+        </div>
 
-      <div className="row-center">
-        <SignOutButton />
+        <div className="profile-layout-songs">
+          <ProfileLearntSongsPreview />
+        </div>
+
+        <div className="profile-layout-people">
+          <FindPeopleComponent />
+        </div>
+
+        <div className="row-center profile-layout-signout">
+          <SignOutButton />
+        </div>
       </div>
     </>
   );

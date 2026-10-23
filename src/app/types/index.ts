@@ -57,6 +57,37 @@ export interface DeezerResult {
   url?: string;
 }
 
+export type DeezerSearchType = "track" | "artist" | "album";
+
+export interface DeezerArtist {
+  id: string;
+  name: string;
+  image?: string;
+  albumCount: number;
+  fanCount: number;
+}
+
+export interface DeezerAlbum {
+  id: string;
+  title: string;
+  artist: string;
+  image?: string;
+  recordType: string;
+  releaseDate?: string;
+  trackCount: number;
+}
+
+export interface DeezerArtistDetail {
+  artist: DeezerArtist;
+  topTracks: DeezerResult[];
+  albums: DeezerAlbum[];
+}
+
+export interface DeezerAlbumDetail {
+  album: DeezerAlbum;
+  tracks: DeezerResult[];
+}
+
 export interface Setlist {
   _id: string;
   bandId: string;
@@ -106,6 +137,7 @@ export interface User {
   email: string;
   image?: string;
   alwaysAvailable?: boolean;
+  learntSongsPrivate?: boolean;
 }
 
 export type RehearsalRepeatType = "once" | "weekly" | "biweekly";
@@ -160,4 +192,17 @@ export interface ProfileLearntSong {
   bandName?: string;
   source: "personal" | "band";
   createdAt: string;
+}
+
+export interface PublicUserProfile {
+  user: {
+    _id: string;
+    name: string;
+    image?: string;
+  };
+  isPrivate: boolean;
+  // the viewed user's songs, empty when their profile is private
+  songs: ProfileLearntSong[];
+  // the current user's songs, for comparison
+  mySongs: ProfileLearntSong[];
 }

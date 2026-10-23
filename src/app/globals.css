@@ -19,6 +19,7 @@
   --radius: 10px;
   --radius-sm: 6px;
   --radius-lg: 16px;
+  --topbar-height: 64px;
 }
 
 /* RESET */
@@ -525,6 +526,20 @@ h4 {
 .nav-item:hover {
   color: var(--primary);
 }
+.nav-item img {
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.nav-item-active {
+  color: var(--primary);
+}
+.nav-item-active img,
+.nav-item:hover img {
+  opacity: 1;
+}
+.navbar-brand {
+  display: none;
+}
 
 /* PAGE LAYOUTS */
 .page-shell {
@@ -564,7 +579,7 @@ h4 {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -974,6 +989,35 @@ h4 {
 }
 .search-row .button {
   flex-shrink: 0;
+}
+.deezer-search-tabs {
+  margin-top: 0.75rem;
+}
+.deezer-browse-row {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.deezer-browse-row:hover {
+  background: var(--card-hover);
+}
+.deezer-browse-chevron {
+  font-size: 1.5rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.song-thumbnail-round {
+  border-radius: 50%;
+}
+.deezer-browse-header {
+  margin: 1rem 0;
+}
+.deezer-browse-header .song-thumbnail {
+  width: 96px;
+  height: 96px;
 }
 
 /* REORDER BUTTONS */
@@ -1736,4 +1780,325 @@ h4 {
 .availability-toggle-unavailable {
   color: var(--muted);
   border-color: var(--border);
+}
+
+/* USER PROFILES */
+.member-link {
+  color: inherit;
+  text-decoration: none;
+}
+.member-link:hover,
+.member-name-link:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.member-name-link {
+  color: inherit;
+  text-decoration: none;
+}
+.compare-tabs {
+  flex-wrap: wrap;
+}
+.compare-tabs .tab {
+  flex: 1 1 auto;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.compare-badge {
+  flex-shrink: 0;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgba(183, 90, 185, 0.7);
+  border-radius: 999px;
+  background: #351e31;
+  color: #fef4ff;
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.profile-toggles {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+.profile-toggles .always-available-section {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-top: 0;
+}
+
+/* RESPONSIVE VISIBILITY */
+.desktop-only {
+  display: none;
+}
+
+/* DESKTOP (>= 1024px): bottom tab bar moves to the top, pages widen
+   and the busier ones split into columns. mobile layout above is untouched */
+@media (min-width: 1024px) {
+  body {
+    padding-bottom: 0;
+  }
+  body:has(.navbar) {
+    padding-top: var(--topbar-height);
+  }
+
+  .desktop-only {
+    display: flex;
+  }
+  .mobile-only,
+  .brand-spanned-wrap {
+    display: none;
+  }
+
+  .app-main {
+    max-width: 76rem;
+    margin: 0 auto;
+    padding: 1.5rem 2rem 3rem;
+  }
+
+  /* top bar */
+  .navbar {
+    top: 0;
+    bottom: auto;
+    height: var(--topbar-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 0 max(2rem, calc((100% - 76rem) / 2 + 2rem));
+    border-top: none;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25);
+  }
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+  }
+  .navbar-brand-image {
+    width: auto;
+    height: 36px;
+    filter: drop-shadow(0 6px 18px rgba(255, 77, 166, 0.28));
+  }
+  .navbar-inner {
+    gap: 0.25rem;
+    padding: 0;
+  }
+  .nav-item {
+    flex-direction: row;
+    gap: 0.5rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition:
+      color 0.15s,
+      background 0.15s;
+  }
+  .nav-item img {
+    width: 20px;
+    height: 20px;
+  }
+  .nav-item:hover {
+    background: var(--card-hover);
+    color: var(--fg);
+  }
+  .nav-item-active,
+  .nav-item-active:hover {
+    background: #2a1925;
+    color: var(--primary);
+    box-shadow: inset 0 -2px 0 var(--primary);
+  }
+
+  /* page chrome */
+  .page-container {
+    max-width: 64rem;
+  }
+  .page-shell {
+    min-height: 0;
+    padding: 0;
+  }
+  .page-shell .page-container {
+    max-width: 42rem;
+  }
+  .page-heading {
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.5rem 0 1.5rem;
+  }
+  .floating-gear-button {
+    position: static;
+    box-shadow: none;
+  }
+  .page-chat {
+    height: calc(100dvh - var(--topbar-height) - 4.5rem);
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  /* cards sit flush inside grid columns instead of insetting themselves */
+  .band-grid .card,
+  .band-layout .card,
+  .calendar-layout .card,
+  .profile-layout .card,
+  .detail-layout .card,
+  .editor-layout .card {
+    width: 100%;
+    margin: 0 0 1.25rem;
+  }
+
+  /* home: bands as a grid of cards */
+  .band-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.25rem;
+    align-items: start;
+    margin-bottom: 1.5rem;
+  }
+  .band-grid .card {
+    margin: 0;
+    height: 100%;
+    transition:
+      border-color 0.15s,
+      transform 0.15s;
+  }
+  .band-grid .card:hover {
+    border-color: #784179;
+    transform: translateY(-2px);
+  }
+
+  /* band page: content left, chat pinned on the right */
+  .band-page > h2,
+  .band-page > p {
+    text-align: left;
+  }
+  .band-page > .row-end {
+    float: right;
+    margin-top: 1rem;
+  }
+  .band-layout {
+    clear: both;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 26rem);
+    gap: 1.5rem;
+    align-items: start;
+    margin-top: 1rem;
+  }
+  .band-layout-main {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .band-layout-side {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: calc(var(--topbar-height) + 1.5rem);
+  }
+  .band-layout-side .chat-container {
+    max-height: calc(100dvh - var(--topbar-height) - 12rem);
+  }
+
+  /* calendar: month grid left, selected day right */
+  .calendar-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 24rem);
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .calendar-container,
+  .calendar-detail,
+  .calendar {
+    max-width: none;
+    margin: 0;
+    padding-inline: 0;
+  }
+  .calendar {
+    padding: 1.25rem;
+  }
+  .calendar-day {
+    min-height: 88px;
+  }
+  .calendar-detail {
+    position: sticky;
+    top: calc(var(--topbar-height) + 1.5rem);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+  }
+
+  /* profile: account + people left, learnt songs right */
+  .profile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "card songs"
+      "people songs"
+      "signout songs";
+    column-gap: 1.5rem;
+    align-items: start;
+  }
+  .profile-layout-card {
+    grid-area: card;
+  }
+  .profile-layout-songs {
+    grid-area: songs;
+  }
+  .profile-layout-people {
+    grid-area: people;
+  }
+  .profile-layout-signout {
+    grid-area: signout;
+    margin-top: 0.25rem;
+  }
+
+  /* setlists list: two per row */
+  .setlist-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+    margin-inline: 0;
+  }
+  .setlist-grid > .card-item {
+    margin-bottom: 0;
+  }
+
+  /* setlist view: summary pinned left, songs right */
+  .detail-layout {
+    display: grid;
+    grid-template-columns: minmax(300px, 24rem) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .detail-layout-side {
+    position: sticky;
+    top: calc(var(--topbar-height) + 1.5rem);
+  }
+  .detail-layout-side .stat-grid {
+    flex-wrap: wrap;
+  }
+  .detail-layout-side .stat-card {
+    min-width: 6rem;
+  }
+
+  /* setlist create / edit: current setlist pinned left, song pickers right */
+  .editor-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .editor-layout-main {
+    position: sticky;
+    top: calc(var(--topbar-height) + 1.5rem);
+    max-height: calc(100dvh - var(--topbar-height) - 3rem);
+    overflow-y: auto;
+    border-radius: var(--radius);
+  }
+  .editor-layout-side {
+    min-width: 0;
+  }
 }

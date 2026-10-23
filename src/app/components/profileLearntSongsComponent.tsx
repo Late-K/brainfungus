@@ -11,7 +11,6 @@ import DeezerSearch from "@/app/components/deezerSearch";
 import SongInfo from "@/app/components/songInfo";
 import SongAudioPlayer from "@/app/components/songAudioPlayer";
 import SortControls from "@/app/components/sortControls";
-import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 import { compareByDate, safeTimestamp } from "@/app/lib/sortUtils";
 
 type DateSort = "newest" | "oldest";
@@ -27,15 +26,6 @@ export default function ProfileLearntSongsComponent() {
   const [error, setError] = useState("");
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<DateSort>("newest");
-
-  const {
-    searchQuery,
-    setSearchQuery,
-    searchResults,
-    isSearching,
-    searchError,
-    handleSearch,
-  } = useDeezerSearch();
 
   const personalSongIds = useMemo(
     () =>
@@ -144,12 +134,6 @@ export default function ProfileLearntSongsComponent() {
   return (
     <section>
       <DeezerSearch
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        searchResults={searchResults}
-        isSearching={isSearching}
-        searchError={searchError}
-        onSearch={handleSearch}
         onAddFromSearch={handleAddSong}
         isSongSelected={(songId) => allSongIds.has(songId)}
       />

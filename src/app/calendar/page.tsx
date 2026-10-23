@@ -55,28 +55,33 @@ export default function CalendarPage() {
           className="brand-spanned-image"
         />
       </div>
-
-      <div className="calendar-container">
-        <CalendarView
-          rehearsals={rehearsals}
-          selectedDate={selectedDate}
-          onSelectDate={handleSelectDate}
-        />
+      <div className="page-heading desktop-only">
+        <h1>Calendar</h1>
       </div>
 
-      {selectedDate && (
-        <CalendarRehearsals
-          rehearsals={rehearsals}
-          selectedDate={selectedDate}
-          onCreateRehearsal={openCreateForm}
-          onEditRehearsal={handleEditClick}
-          onDeleteRehearsal={handleDeleteClick}
-          onToggleAvailability={handleAvailabilityToggle}
-          getAvailabilityForDate={getAvailabilityForDate}
-          getAvailableUsersForDate={getAvailableUsersForDate}
-          onShowAllUsers={setExpandedUsers}
-        />
-      )}
+      <div className="calendar-layout">
+        <div className="calendar-container">
+          <CalendarView
+            rehearsals={rehearsals}
+            selectedDate={selectedDate}
+            onSelectDate={handleSelectDate}
+          />
+        </div>
+
+        {selectedDate && (
+          <CalendarRehearsals
+            rehearsals={rehearsals}
+            selectedDate={selectedDate}
+            onCreateRehearsal={openCreateForm}
+            onEditRehearsal={handleEditClick}
+            onDeleteRehearsal={handleDeleteClick}
+            onToggleAvailability={handleAvailabilityToggle}
+            getAvailabilityForDate={getAvailabilityForDate}
+            getAvailableUsersForDate={getAvailableUsersForDate}
+            onShowAllUsers={setExpandedUsers}
+          />
+        )}
+      </div>
 
       {choiceTarget && choiceAction && (
         <CalendarModalDialog

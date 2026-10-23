@@ -27,3 +27,29 @@ export async function setAlwaysAvailableUserAction(alwaysAvailable: boolean) {
     throw error;
   }
 }
+
+export async function getLearntSongsPrivateAction() {
+  try {
+    const { user } = await getAuthUser();
+    return { learntSongsPrivate: user.learntSongsPrivate ?? false };
+  } catch (error) {
+    console.error("getLearntSongsPrivateAction error:", error);
+    throw error;
+  }
+}
+
+export async function setLearntSongsPrivateAction(learntSongsPrivate: boolean) {
+  try {
+    const { db, user } = await getAuthUser();
+    await db
+      .collection("users")
+      .updateOne(
+        { _id: user._id },
+        { $set: { learntSongsPrivate, updatedAt: new Date() } },
+      );
+    return { success: true, learntSongsPrivate };
+  } catch (error) {
+    console.error("setLearntSongsPrivateAction error:", error);
+    throw error;
+  }
+}

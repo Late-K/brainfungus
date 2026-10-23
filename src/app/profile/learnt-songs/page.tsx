@@ -14,7 +14,7 @@ export default async function ProfileLearntSongsPage() {
   }
 
   return (
-    <>
+    <div className="page-container">
       <div className="card">
         <div className="section-header">
           <h1 className="heading-small">My Learnt Songs</h1>
@@ -29,6 +29,6 @@ export default async function ProfileLearntSongsPage() {
       </div>
 
       <ProfileLearntSongsComponent />
-    </>
+    </div>
   );
 }

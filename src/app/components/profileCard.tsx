@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { Session } from "next-auth";
 import AlwaysAvailableToggle from "@/app/components/alwaysAvailableToggle";
+import LearntSongsPrivacyToggle from "@/app/components/learntSongsPrivacyToggle";
 
 export default function ProfileCard({ session }: { session: Session | null }) {
   return (
@@ -29,8 +30,9 @@ export default function ProfileCard({ session }: { session: Session | null }) {
           </p>
         </div>
       </div>
-      <div>
+      <div className="profile-toggles">
         <AlwaysAvailableToggle />
+        <LearntSongsPrivacyToggle />
       </div>
     </div>
   );

@@ -25,8 +25,14 @@ export default async function HomePage() {
           className="brand-spanned-image"
         />
       </div>
+      <div className="page-heading desktop-only">
+        <h1>Your Bands</h1>
+        <Link href="/bands/create" className="button button-primary">
+          + Create Band
+        </Link>
+      </div>
       <BandList />
-      <div className="flex-center">
+      <div className="flex-center mobile-only">
         <Link href="/bands/create" className="button-link">
           Create Band
         </Link>

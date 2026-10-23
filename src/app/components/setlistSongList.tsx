@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Song, LearntMap } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
@@ -12,6 +12,9 @@ interface SetlistSongListProps {
   userEmail: string | null | undefined;
   togglingIds: Set<string>;
   onToggleLearnt: (songId: string) => void;
+  coverSongIds?: Set<string>;
+  addingCoverIds?: Set<string>;
+  onAddToCovers?: (song: Song) => void;
 }
 
 export default function SetlistSongList({
@@ -20,6 +23,9 @@ export default function SetlistSongList({
   userEmail,
   togglingIds,
   onToggleLearnt,
+  coverSongIds,
+  addingCoverIds,
+  onAddToCovers,
 }: SetlistSongListProps) {
   if (songs.length === 0) {
     return <p className="empty-state">No songs in this setlist</p>;
@@ -48,6 +54,21 @@ export default function SetlistSongList({
               <span className="song-duration">
                 {formatDuration(song.duration)}
               </span>
+              {onAddToCovers &&
+                !song.isCustom &&
+                (coverSongIds?.has(song.id) ? (
+                  <span className="meta-text meta-text-small">✓ Cover</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onAddToCovers(song)}
+                    disabled={addingCoverIds?.has(song.id)}
+                    className="button button-small button-secondary"
+                    title="Add to band covers"
+                  >
+                    {addingCoverIds?.has(song.id) ? "..." : "+ Covers"}
+                  </button>
+                ))}
             </div>
 
             <SongAudioPlayer

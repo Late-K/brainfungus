@@ -13,7 +13,8 @@ import SongLearntStatus from "@/app/components/songLearntStatus";
 import DeezerSearch from "@/app/components/deezerSearch";
 import SongInfo from "@/app/components/songInfo";
 import SortControls from "@/app/components/sortControls";
-import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
+import ActiveSetlistButton from "@/app/components/activeSetlistButton";
+import { useActiveSetlist } from "@/app/hooks/useActiveSetlist";
 import {
   compareByDate,
   compareByKnownCount,
@@ -49,13 +50,11 @@ export default function BandCoversComponent({
   const [sortBy, setSortBy] = useState<KnownSongSort>("newest");
 
   const {
-    searchQuery,
-    setSearchQuery,
-    searchResults,
-    isSearching,
-    searchError,
-    handleSearch,
-  } = useDeezerSearch();
+    activeSetlist,
+    togglingSetlistIds,
+    isInActiveSetlist,
+    handleToggleActiveSetlist,
+  } = useActiveSetlist(bandId);
 
   const coverSongIds = useMemo(
     () => new Set(covers.map((cover) => cover.songId)),
@@ -219,12 +218,6 @@ export default function BandCoversComponent({
   return (
     <section>
       <DeezerSearch
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        searchResults={searchResults}
-        isSearching={isSearching}
-        searchError={searchError}
-        onSearch={handleSearch}
         onAddFromSearch={handleAddCover}
         isSongSelected={(songId) => coverSongIds.has(songId)}
       />
@@ -239,6 +232,12 @@ export default function BandCoversComponent({
           onChange={setSortBy}
           options={knownSongSortOptions}
         />
+
+        {!activeSetlist && (
+          <p className="meta-text meta-text-small margin-top">
+            Set a setlist as active to add covers to it from here.
+          </p>
+        )}
 
         {error && <p className="alert alert-error">{error}</p>}
 
@@ -267,6 +266,24 @@ export default function BandCoversComponent({
                   <span className="song-duration">
                     {formatDuration(cover.duration)}
                   </span>
+                  {activeSetlist && (
+                    <ActiveSetlistButton
+                      isInSetlist={isInActiveSetlist(cover.songId)}
+                      isToggling={togglingSetlistIds.has(cover.songId)}
+                      onToggle={() =>
+                        handleToggleActiveSetlist({
+                          id: cover.songId,
+                          title: cover.title,
+                          artist: cover.artist,
+                          album: cover.album,
+                          duration: cover.duration ?? 0,
+                          preview: cover.preview,
+                          image: cover.image,
+                          isCover: true,
+                        })
+                      }
+                    />
+                  )}
                   <button
                     onClick={() => handleRemoveCover(cover.songId)}
                     disabled={savingCoverIds.has(cover.songId)}

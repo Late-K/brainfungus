@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Band, User } from "@/app/types";
 
 interface BandMembersTabProps {
@@ -59,7 +60,12 @@ export default function BandMembersTab({
                 )}
               </div>
               <div>
-                <span className="member-name">{member.name}</span>
+                <Link
+                  href={`/users/${member.id}`}
+                  className="member-name member-name-link"
+                >
+                  {member.name}
+                </Link>
                 {member.isCreator ? (
                   <span className="member-role">Creator</span>
                 ) : member.isAdmin ? (

@@ -55,7 +55,7 @@ export default function BandList({ refresh = 0 }: BandListProps) {
   }
 
   return (
-    <div className="full-width">
+    <div className="full-width band-grid">
       {bands.map((band) => (
         <div key={band._id} className="card">
           <Link href={`/bands/${band._id}`}>

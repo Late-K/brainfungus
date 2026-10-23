@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { Setlist, LearntMap } from "@/app/types";
+import { Setlist, LearntMap, Song } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import SetlistSongList from "@/app/components/setlistSongList";
 
@@ -11,6 +11,8 @@ interface SetlistViewModeProps {
   isDeleting: boolean;
   learntMap: LearntMap;
   togglingIds: Set<string>;
+  coverSongIds: Set<string>;
+  addingCoverIds: Set<string>;
   userEmail: string | null | undefined;
   totalDuration: number;
   progress: number;
@@ -18,6 +20,7 @@ interface SetlistViewModeProps {
   onToggleActive: () => void;
   onDelete: () => void;
   onToggleLearnt: (songId: string) => void;
+  onAddToCovers: (song: Song) => void;
 }
 
 export default function SetlistViewMode({
@@ -26,6 +29,8 @@ export default function SetlistViewMode({
   isDeleting,
   learntMap,
   togglingIds,
+  coverSongIds,
+  addingCoverIds,
   userEmail,
   totalDuration,
   progress,
@@ -33,11 +38,12 @@ export default function SetlistViewMode({
   onToggleActive,
   onDelete,
   onToggleLearnt,
+  onAddToCovers,
 }: SetlistViewModeProps) {
   return (
-    <>
+    <div className="detail-layout">
       <div
-        className={`card margin-bottom${setlist.isActive ? " card-panel-active" : ""}`}
+        className={`card margin-bottom detail-layout-side${setlist.isActive ? " card-panel-active" : ""}`}
       >
         <div className="stack margin-bottom">
           <div className="row">
@@ -110,8 +116,11 @@ export default function SetlistViewMode({
           userEmail={userEmail}
           togglingIds={togglingIds}
           onToggleLearnt={onToggleLearnt}
+          coverSongIds={coverSongIds}
+          addingCoverIds={addingCoverIds}
+          onAddToCovers={onAddToCovers}
         />
       </div>
-    </>
+    </div>
   );
 }

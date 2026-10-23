@@ -1,7 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { DeezerResult } from "@/app/types";
+import {
+  DeezerAlbum,
+  DeezerArtist,
+  DeezerResult,
+  DeezerSearchType,
+} from "@/app/types";
 
 interface UseDeezerSearchOptions {
   debounceMs?: number;
@@ -14,15 +19,24 @@ export function useDeezerSearch(options?: UseDeezerSearchOptions) {
   const minQueryLength = options?.minQueryLength ?? 2;
   const autoSearch = options?.autoSearch ?? true;
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState<DeezerSearchType>("track");
   const [searchResults, setSearchResults] = useState<DeezerResult[]>([]);
+  const [artistResults, setArtistResults] = useState<DeezerArtist[]>([]);
+  const [albumResults, setAlbumResults] = useState<DeezerAlbum[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const activeControllerRef = useRef<AbortController | null>(null);
 
-  const runSearch = async (query: string) => {
+  const clearResults = () => {
+    setSearchResults([]);
+    setArtistResults([]);
+    setAlbumResults([]);
+  };
+
+  const runSearch = async (query: string, type: DeezerSearchType) => {
     const trimmedQuery = query.trim();
     if (trimmedQuery.length < minQueryLength) {
-      setSearchResults([]);
+      clearResults();
       setSearchError("");
       setIsSearching(false);
       return;
@@ -37,39 +51,53 @@ export function useDeezerSearch(options?: UseDeezerSearchOptions) {
       setSearchError("");
 
       const res = await fetch(
-        `/api/deezer/search?q=${encodeURIComponent(trimmedQuery)}&type=track`,
+        `/api/deezer/search?q=${encodeURIComponent(trimmedQuery)}&type=${type}`,
         { signal: controller.signal },
       );
 
       if (!res.ok) {
-        throw new Error("Failed to search songs");
+        throw new Error("Failed to search Deezer");
       }
 
       const data = await res.json();
-      setSearchResults(data.results || []);
+      const results = data.results || [];
+      setSearchResults(type === "track" ? results : []);
+      setArtistResults(type === "artist" ? results : []);
+      setAlbumResults(type === "album" ? results : []);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
       }
       setSearchError(
-        err instanceof Error ? err.message : "Failed to search songs",
+        err instanceof Error ? err.message : "Failed to search Deezer",
       );
     } finally {
-      setIsSearching(false);
+      if (activeControllerRef.current === controller) {
+        setIsSearching(false);
+      }
     }
   };
 
   const resetSearch = () => {
     activeControllerRef.current?.abort();
     setSearchQuery("");
-    setSearchResults([]);
+    clearResults();
     setSearchError("");
     setIsSearching(false);
   };
 
+  const changeSearchType = (type: DeezerSearchType) => {
+    if (type === searchType) return;
+    setSearchType(type);
+    // avoid flashing "no results" before the debounced search for the new tab fires
+    if (searchQuery.trim().length >= minQueryLength) {
+      setIsSearching(true);
+    }
+  };
+
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
-    await runSearch(searchQuery);
+    await runSearch(searchQuery, searchType);
   };
 
   useEffect(() => {
@@ -78,18 +106,18 @@ export function useDeezerSearch(options?: UseDeezerSearchOptions) {
     const trimmedQuery = searchQuery.trim();
     if (trimmedQuery.length === 0) {
       activeControllerRef.current?.abort();
-      setSearchResults([]);
+      clearResults();
       setSearchError("");
       setIsSearching(false);
       return;
     }
 
     const timeout = setTimeout(() => {
-      void runSearch(searchQuery);
+      void runSearch(searchQuery, searchType);
     }, debounceMs);
 
     return () => clearTimeout(timeout);
-  }, [searchQuery, autoSearch, debounceMs]);
+  }, [searchQuery, searchType, autoSearch, debounceMs]);
 
   useEffect(() => {
     return () => {
@@ -100,7 +128,11 @@ export function useDeezerSearch(options?: UseDeezerSearchOptions) {
   return {
     searchQuery,
     setSearchQuery,
+    searchType,
+    setSearchType: changeSearchType,
     searchResults,
+    artistResults,
+    albumResults,
     isSearching,
     searchError,
     handleSearch,

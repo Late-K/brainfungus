@@ -150,7 +150,7 @@ export default function SetlistsPage({
         </section>
       ) : (
         <section className="margin-bottom">
-          <div className="list margin-horizontal">
+          <div className="list margin-horizontal setlist-grid">
             {sortedSetlists.map((setlist) => {
               const progress = getProgress(setlist, learntMap, memberCount);
               const totalDuration = setlist.songs.reduce(

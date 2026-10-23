@@ -58,18 +58,12 @@ export default function SetlistDetailPage({
           setEditName={setlistDetailPage.editor.setEditName}
           editSongs={setlistDetailPage.editor.editSongs}
           isSaving={setlistDetailPage.editor.isSaving}
-          searchQuery={setlistDetailPage.editor.searchQuery}
-          setSearchQuery={setlistDetailPage.editor.setSearchQuery}
-          searchResults={setlistDetailPage.editor.searchResults}
-          isSearching={setlistDetailPage.editor.isSearching}
-          searchError={setlistDetailPage.editor.searchError}
           onSave={() =>
             setlistDetailPage.editor.handleSave(setlistDetailPage.setlistId!)
           }
           onCancel={setlistDetailPage.editor.cancelEditing}
           onRemoveSong={setlistDetailPage.editor.handleRemoveEditSong}
           onMoveSong={setlistDetailPage.editor.handleMoveSong}
-          onSearch={setlistDetailPage.editor.handleSearch}
           onAddFromSearch={setlistDetailPage.editor.handleAddFromSearch}
           onToggleCustomSong={setlistDetailPage.editor.handleToggleCustomSong}
           onToggleCustomAlbum={setlistDetailPage.editor.handleToggleCustomAlbum}
@@ -89,6 +83,8 @@ export default function SetlistDetailPage({
         isDeleting={setlistDetailPage.isDeleting}
         learntMap={setlistDetailPage.learntMap}
         togglingIds={setlistDetailPage.togglingIds}
+        coverSongIds={setlistDetailPage.coverSongIds}
+        addingCoverIds={setlistDetailPage.addingCoverIds}
         userEmail={session.user?.email}
         totalDuration={setlistDetailPage.totalDuration}
         progress={setlistDetailPage.progress}
@@ -98,6 +94,7 @@ export default function SetlistDetailPage({
         onToggleActive={setlistDetailPage.handleToggleActive}
         onDelete={setlistDetailPage.handleDelete}
         onToggleLearnt={setlistDetailPage.handleToggleLearnt}
+        onAddToCovers={setlistDetailPage.handleAddToCovers}
       />
     </div>
   );

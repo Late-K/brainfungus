@@ -4,6 +4,7 @@ import { Dispatch, SetStateAction } from "react";
 import { CustomSong, LearntMap } from "@/app/types";
 import SongLearntStatus from "@/app/components/songLearntStatus";
 import SongAlbumPicker from "@/app/components/songAlbumPicker";
+import ActiveSetlistButton from "@/app/components/activeSetlistButton";
 
 interface CustomSongRowProps {
   song: CustomSong;
@@ -38,6 +39,9 @@ interface CustomSongRowProps {
   onUploadAudio: (songId: string, file: File) => void;
   onDeleteAudio: (songId: string) => void;
   allowReorder?: boolean;
+  isInActiveSetlist?: boolean;
+  isTogglingSetlist?: boolean;
+  onToggleActiveSetlist?: (song: CustomSong) => void;
 }
 
 export default function CustomSongRow({
@@ -68,6 +72,9 @@ export default function CustomSongRow({
   onUploadAudio,
   onDeleteAudio,
   allowReorder = false,
+  isInActiveSetlist = false,
+  isTogglingSetlist = false,
+  onToggleActiveSetlist,
 }: CustomSongRowProps) {
   if (isEditing) {
     return (
@@ -208,6 +215,13 @@ export default function CustomSongRow({
         </div>
 
         <div className="inline-actions-small">
+          {onToggleActiveSetlist && (
+            <ActiveSetlistButton
+              isInSetlist={isInActiveSetlist}
+              isToggling={isTogglingSetlist}
+              onToggle={() => onToggleActiveSetlist(song)}
+            />
+          )}
           <button
             onClick={() => onStartEditing(song)}
             className="button button-small button-tertiary"

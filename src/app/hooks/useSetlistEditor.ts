@@ -5,7 +5,6 @@
 import { useState } from "react";
 import { Song, DeezerResult, BandCover } from "@/app/types";
 import { updateSetlistAction } from "@/app/actions/setlists";
-import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 
 interface UseSetlistEditorOptions {
   onSaveSuccess?: (name: string, songs: Song[]) => void;
@@ -16,26 +15,15 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
   const [editName, setEditName] = useState("");
   const [editSongs, setEditSongs] = useState<Song[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const {
-    searchQuery,
-    setSearchQuery,
-    searchResults,
-    isSearching,
-    searchError,
-    handleSearch,
-    resetSearch,
-  } = useDeezerSearch();
 
   const startEditing = (name: string, songs: Song[]) => {
     setEditName(name);
     setEditSongs(songs);
-    resetSearch();
     setIsEditing(true);
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
-    resetSearch();
   };
 
   const handleSave = async (setlistId: string) => {
@@ -159,17 +147,11 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     setEditName,
     editSongs,
     isSaving,
-    searchQuery,
-    setSearchQuery,
-    searchResults,
-    isSearching,
-    searchError,
     startEditing,
     cancelEditing,
     handleSave,
     handleRemoveEditSong,
     handleMoveSong,
-    handleSearch,
     handleAddFromSearch,
     handleToggleCustomSong,
     handleToggleCustomAlbum,

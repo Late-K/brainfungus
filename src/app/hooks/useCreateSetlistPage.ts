@@ -4,7 +4,6 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSetlistAction } from "@/app/actions/setlists";
 import { DeezerResult, Song, BandCover } from "@/app/types";
-import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 
 export function useCreateSetlistPage(params: Promise<{ id: string }>) {
   const router = useRouter();
@@ -14,14 +13,6 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
   const [selectedSongs, setSelectedSongs] = useState<Song[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const {
-    searchQuery,
-    setSearchQuery,
-    searchResults,
-    isSearching,
-    searchError,
-    handleSearch,
-  } = useDeezerSearch();
 
   const handleAddSong = (result: DeezerResult) => {
     if (selectedSongs.some((s) => s.id === result.id)) {
@@ -164,15 +155,9 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
     bandId,
     setlistName,
     setSetlistName,
-    searchQuery,
-    setSearchQuery,
-    searchResults,
     selectedSongs,
-    isSearching,
     isSaving,
     error,
-    searchError,
-    handleSearch,
     handleAddSong,
     handleToggleCustomSong,
     handleCreateSetlist,

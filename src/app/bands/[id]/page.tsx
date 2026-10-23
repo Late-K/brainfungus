@@ -75,7 +75,7 @@ export default function BandDetailsPage({
   }
 
   return (
-    <div>
+    <div className="band-page">
       <div className="row-end">
         {session?.user?.email && (
           <BandManagement
@@ -90,13 +90,20 @@ export default function BandDetailsPage({
 
       {band.description && <p className="text-center">{band.description}</p>}
 
-      <BandChatComponent bandId={band._id} preview />
+      {/* chat comes first on mobile, desktop moves it to a side column */}
+      <div className="band-layout">
+        <aside className="band-layout-side">
+          <BandChatComponent bandId={band._id} preview />
+        </aside>
 
-      <SetlistComponent bandId={band._id} />
+        <div className="band-layout-main">
+          <SetlistComponent bandId={band._id} />
 
-      <CustomSongsComponent bandId={band._id} />
+          <CustomSongsComponent bandId={band._id} />
 
-      <BandCoversPreview bandId={band._id} />
+          <BandCoversPreview bandId={band._id} />
+        </div>
+      </div>
     </div>
   );
 }
