@@ -44,10 +44,12 @@ body {
       rgba(255, 77, 166, 0.2),
       transparent 38%
     );
+  /* sized to the viewport, not the page, so the glow looks the same on short and long pages */
   background-repeat: no-repeat, no-repeat;
+  background-position: top center;
   background-size:
-    100% 100%,
-    100% 100%;
+    100% 100vh,
+    100% 100vh;
   color: var(--fg);
   padding-bottom: 72px;
   overflow-x: hidden;
