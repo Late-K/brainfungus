@@ -206,3 +206,16 @@ export interface PublicUserProfile {
   // the current user's songs, for comparison
   mySongs: ProfileLearntSong[];
 }
+
+export type NotificationType = "rehearsals" | "chat" | "setlists";
+
+export type NotificationPrefs = Record<NotificationType, boolean>;
+
+// what the service worker receives and turns into a notification
+export interface PushPayload {
+  title: string;
+  body: string;
+  url: string;
+  // notifications with the same tag replace each other instead of stacking
+  tag?: string;
+}

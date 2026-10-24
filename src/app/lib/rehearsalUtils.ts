@@ -106,3 +106,22 @@ export function isRecurringRehearsal(rehearsal: Rehearsal): boolean {
     rehearsal.repeatType === "weekly" || rehearsal.repeatType === "biweekly"
   );
 }
+
+// "19:00-21:00", "19:00" or "" depending on which times were set
+export function formatRehearsalTimes(startTime?: string, endTime?: string) {
+  if (startTime && endTime) return `${startTime}-${endTime}`;
+  return startTime ?? "";
+}
+
+// today's date as YYYY-MM-DD in uk time, since the server itself runs in utc
+export function ukDateStr(date: Date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(
+    date,
+  );
+}
+
+export function addDaysToDateStr(dateStr: string, days: number) {
+  const d = new Date(dateStr + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}

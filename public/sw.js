@@ -41,3 +41,51 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+// push notifications - the server sends { title, body, url, tag }
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+
+  const url = new URL(data.url || "/", self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      // skip chat notifications when that chat is already open and on screen
+      const isViewingChat =
+        data.tag?.startsWith("chat-") &&
+        windows.some((w) => w.focused && w.visibilityState === "visible" && w.url === url);
+      if (isViewingChat) return;
+
+      return self.registration.showNotification(data.title || "Brain Fungus", {
+        body: data.body || "",
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-192.png",
+        tag: data.tag,
+        data: { url },
+      });
+    })
+  );
+});
+
+// open (or focus) the app on the notification's page when it's tapped
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || self.location.origin + "/";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      const exact = windows.find((w) => w.url === url);
+      if (exact) return exact.focus();
+
+      const existing = windows[0];
+      if (existing) return existing.focus().then((w) => (w || existing).navigate(url));
+
+      return self.clients.openWindow(url);
+    })
+  );
+});

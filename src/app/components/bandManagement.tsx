@@ -4,6 +4,7 @@ import { Band } from "@/app/types";
 import { useBandManagement } from "@/app/hooks/useBandManagement";
 import BandDetailsTab from "@/app/components/bandManagementDetailsTab";
 import BandMembersTab from "@/app/components/bandManagementMembersTab";
+import BandNotificationToggle from "@/app/components/bandNotificationToggle";
 
 interface BandManagementProps {
   band: Band;
@@ -73,6 +74,8 @@ export default function BandManagement({
                 ✕
               </button>
             </div>
+
+            <BandNotificationToggle bandId={band._id} />
 
             {isAdmin && (
               <div className="tab-group">

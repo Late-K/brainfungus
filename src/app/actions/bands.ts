@@ -2,6 +2,7 @@
 
 import { getAuthUser } from "@/app/lib/auth";
 import { requireBandMemberContext } from "@/app/lib/serverUtils";
+import { notifyBandMembers, truncate } from "@/app/lib/push";
 import { ObjectId, Db } from "mongodb";
 
 type BandRole = "creator" | "admin" | "member";
@@ -146,7 +147,8 @@ export async function sendChatMessageAction(bandId: string, message: string) {
       throw new Error("Message is too long (max 2000 characters)");
     }
 
-    const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
+    const { db, user, band, bandObjectId } =
+      await requireBandMemberContext(bandId);
 
     // insert message — store only userId, resolve user details at read time
     const newMessage = {
@@ -157,6 +159,13 @@ export async function sendChatMessageAction(bandId: string, message: string) {
     };
 
     const result = await db.collection("band_messages").insertOne(newMessage);
+
+    notifyBandMembers(db, band, user._id.toString(), "chat", {
+      title: band.name,
+      body: truncate(`${user.name || "Someone"}: ${message.trim()}`, 140),
+      url: `/bands/${bandId}/chat`,
+      tag: `chat-${bandId}`,
+    });
 
     return {
       success: true,

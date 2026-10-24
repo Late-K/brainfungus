@@ -2,7 +2,12 @@
 
 import { getAuthUser } from "@/app/lib/auth";
 import { AnyBulkWriteOperation, Db, Document, ObjectId } from "mongodb";
-import { doesRehearsalOccurOnDate, toDateStr } from "@/app/lib/rehearsalUtils";
+import {
+  doesRehearsalOccurOnDate,
+  formatRehearsalTimes,
+  toDateStr,
+} from "@/app/lib/rehearsalUtils";
+import { notifyBandMembers } from "@/app/lib/push";
 import { AvailUser } from "@/app/types";
 
 // verify rehearsal exists and user is a band member
@@ -124,6 +129,20 @@ export async function createRehearsalAction(
       updatedAt: new Date(),
     };
     const result = await db.collection("rehearsals").insertOne(newRehearsal);
+
+    const dayLabel = new Date(date + "T12:00:00").toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+    const times = formatRehearsalTimes(startTime, endTime);
+    const repeatLabel = repeatType === "once" ? "" : `, repeating ${repeatType}`;
+    notifyBandMembers(db, band, user._id.toString(), "rehearsals", {
+      title: band.name,
+      body: `${user.name || "Someone"} scheduled a rehearsal on ${dayLabel}${times ? ` at ${times}` : ""}${repeatLabel}`,
+      url: `/bands/${bandId}`,
+      tag: `rehearsal-${result.insertedId.toString()}`,
+    });
 
     //creator is auto available for the first rehearsal
     if (repeatType === "once") {

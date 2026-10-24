@@ -7,7 +7,12 @@ import { getToken } from "next-auth/jwt";
 export async function proxy(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith("/api/auth") || pathname === "/login") {
+  // cron routes have no user session - they check CRON_SECRET themselves
+  if (
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/cron") ||
+    pathname === "/login"
+  ) {
     return NextResponse.next();
   }
 

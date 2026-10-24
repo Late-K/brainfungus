@@ -16,6 +16,7 @@ Brain Fungus is a band management web app built for musicians. It gives bands a 
 | Rehearsals    | Schedule one-time, weekly, or biweekly rehearsals and see who is available for them                                 |
 | Calendar      | Visual calendar of all upcoming rehearsals across every band the user belongs to                                    |
 | Band Chat     | Perband simple messaging capabilities                                                                               |
+| Notifications | Push notifications for upcoming rehearsals, band chat messages and active setlist changes, toggled per device |
 | Profile       | "Always available" toggle that auto-marks availability for rehearsals and a place to see all songs marked as learnt |
 
 ---
@@ -32,7 +33,7 @@ Brain Fungus is a band management web app built for musicians. It gives bands a 
 
 ### MongoDB Collections
 
-`users`, `bands`, `custom_songs`, `covers`, `setlists`, `learnt_songs`, `rehearsals`, `rehearsal_availability`, `messages`
+`users`, `bands`, `custom_songs`, `covers`, `setlists`, `learnt_songs`, `rehearsals`, `rehearsal_availability`, `band_messages`, `push_subscriptions`, `rehearsal_reminders`
 
 ---
 
@@ -66,7 +67,13 @@ CLIENT_SECRET=your_google_client_secret
 BLOB_READ_WRITE_TOKEN=your_vercel_blob_read_write_token
 BLOB_STORE_ID=your_vercel_blob_store_id
 BLOB_WEBHOOK_PUBLIC_KEY=your_vercel_blob_webhook_public_key
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=your_vapid_public_key
+VAPID_PRIVATE_KEY=your_vapid_private_key
+VAPID_SUBJECT=mailto:you@example.com
+CRON_SECRET=a_long_random_string
 ```
+
+Generate the VAPID key pair with `npx web-push generate-vapid-keys`.
 
 ### 3. Install dependencies
 
@@ -109,3 +116,4 @@ src/app/
 - Deezer - Two Next.js route handlers (`/api/deezer/search` and `/api/deezer/track/[id]`) forward requests to the public Deezer API. Results are not cached; saving a result persists it as `BandCover` in MongoDB.
 - Modularity - UI is split into focused single-purpose components. Large page logic lives in dedicated hooks, keeping components thin. Shared utilities are reused across both components and server actions.
 - Audio storage - Custom song audio files are uploaded to private Vercel Blob storage
+- Push notifications - Devices opt in from the profile page and their Web Push subscriptions are stored in `push_subscriptions`. Chat messages and active setlist changes notify the rest of the band straight away (sent with `after()` so actions stay fast). Rehearsal reminders for today and tomorrow are sent by a daily Vercel cron (`vercel.json` → `/api/cron/rehearsal-reminders`, authorised with `CRON_SECRET`). Push only works in production builds, since the service worker isn't registered in dev, and on iOS only once the app is added to the Home Screen.
