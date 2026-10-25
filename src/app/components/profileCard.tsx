@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { Session } from "next-auth";
 import AlwaysAvailableToggle from "@/app/components/alwaysAvailableToggle";
 import LearntSongsPrivacyToggle from "@/app/components/learntSongsPrivacyToggle";
+import MusicAppSettings from "@/app/components/musicAppSettings";
 import NotificationSettings from "@/app/components/notificationSettings";
 
 export default function ProfileCard({ session }: { session: Session | null }) {
@@ -31,11 +32,13 @@ export default function ProfileCard({ session }: { session: Session | null }) {
           </p>
         </div>
       </div>
-      <div className="profile-toggles">
+      <h3 className="settings-title">Settings</h3>
+      <div className="settings-list">
         <AlwaysAvailableToggle />
         <LearntSongsPrivacyToggle />
+        <MusicAppSettings />
+        <NotificationSettings />
       </div>
-      <NotificationSettings />
     </div>
   );
 }

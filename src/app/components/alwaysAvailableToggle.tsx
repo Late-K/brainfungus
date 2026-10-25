@@ -5,6 +5,7 @@ import {
   getAlwaysAvailableAction,
   setAlwaysAvailableUserAction,
 } from "@/app/actions/users";
+import SettingToggle from "@/app/components/settingToggle";
 
 export default function AlwaysAvailableToggle() {
   const [alwaysAvailable, setAlwaysAvailable] = useState(false);
@@ -30,22 +31,15 @@ export default function AlwaysAvailableToggle() {
   if (loading) return null;
 
   return (
-    <div className="always-available-section">
-      <label
-        className={`availability-toggle ${alwaysAvailable ? "availability-toggle-available" : "availability-toggle-unavailable"}`}
-      >
-        <input
-          type="checkbox"
-          checked={alwaysAvailable}
-          onChange={handleToggle}
-        />
-        Always available for rehearsals
-      </label>
-      <p className="always-available-hint">
-        {alwaysAvailable
+    <SettingToggle
+      label="Always available for rehearsals"
+      hint={
+        alwaysAvailable
           ? "You are automatically marked available for all rehearsals in the next 7 days."
-          : "Toggle on to be automatically available for rehearsals in the coming week."}
-      </p>
-    </div>
+          : "Turn on to be automatically available for rehearsals in the coming week."
+      }
+      checked={alwaysAvailable}
+      onChange={handleToggle}
+    />
   );
 }

@@ -10,6 +10,7 @@ import { compareByDate, safeTimestamp } from "@/app/lib/sortUtils";
 import { useFetchData } from "@/app/hooks/useFetchData";
 import SongInfo from "@/app/components/songInfo";
 import SongAudioPlayer from "@/app/components/songAudioPlayer";
+import OpenInMusicAppLink from "@/app/components/openInMusicAppLink";
 import SortControls from "@/app/components/sortControls";
 import PageLoading from "@/app/components/pageLoading";
 import PageErrorCard from "@/app/components/pageErrorCard";
@@ -123,9 +124,10 @@ export default function UserProfileComponent({ userId }: { userId: string }) {
     onlyMe: `${firstName} knows every song you know!`,
   };
 
+  // desktop pins the profile and stats on the left with the song list on the right
   return (
-    <>
-      <div className="card">
+    <div className="detail-layout">
+      <div className="card detail-layout-side">
         <div className="row-end">
           <button
             className="button button-tertiary"
@@ -158,6 +160,23 @@ export default function UserProfileComponent({ userId }: { userId: string }) {
             )}
           </div>
         </div>
+
+        {!isPrivate && (
+          <div className="stat-grid profile-stats">
+            <div className="stat-card">
+              <span className="meta-text text-small">In common</span>
+              <span className="text-semibold">{commonSongs.length}</span>
+            </div>
+            <div className="stat-card">
+              <span className="meta-text text-small">Match</span>
+              <span className="text-semibold">{matchPercent}%</span>
+            </div>
+            <div className="stat-card">
+              <span className="meta-text text-small">You know</span>
+              <span className="text-semibold">{mySongIds.size}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {isPrivate ? (
@@ -173,21 +192,6 @@ export default function UserProfileComponent({ userId }: { userId: string }) {
         <section className="card">
           <div className="section-header">
             <h2>Compare Learnt Songs</h2>
-          </div>
-
-          <div className="stat-grid">
-            <div className="stat-card">
-              <span className="meta-text text-small">In common</span>
-              <span className="text-semibold">{commonSongs.length}</span>
-            </div>
-            <div className="stat-card">
-              <span className="meta-text text-small">Match</span>
-              <span className="text-semibold">{matchPercent}%</span>
-            </div>
-            <div className="stat-card">
-              <span className="meta-text text-small">You know</span>
-              <span className="text-semibold">{mySongIds.size}</span>
-            </div>
           </div>
 
           <div className="tab-group compare-tabs">
@@ -268,6 +272,11 @@ export default function UserProfileComponent({ userId }: { userId: string }) {
                       deezerTrackId={!song.isCustom ? song.songId : undefined}
                       unavailableLabel="Audio unavailable"
                     />
+                    <OpenInMusicAppLink
+                      deezerTrackId={!song.isCustom ? song.songId : undefined}
+                      title={song.title}
+                      artist={song.artist}
+                    />
                   </div>
                 );
               })}
@@ -275,6 +284,6 @@ export default function UserProfileComponent({ userId }: { userId: string }) {
           )}
         </section>
       )}
-    </>
+    </div>
   );
 }

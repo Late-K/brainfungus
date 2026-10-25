@@ -129,21 +129,20 @@ export default function SetlistsPage({
         title="Setlists"
         description="Manage your band's setlists, track song readiness, and plan your next performance."
         bandId={bandId}
+        action={
+          <Link
+            href={`/bands/${bandId}/setlists/create`}
+            className="button button-primary"
+          >
+            + Create Setlist
+          </Link>
+        }
       />
-
-      <div className="flex-center margin-bottom">
-        <Link
-          href={`/bands/${bandId}/setlists/create`}
-          className="button button-primary"
-        >
-          + Create Setlist
-        </Link>
-      </div>
 
       {error && <p className="alert alert-error">{error}</p>}
 
       {sortedSetlists.length === 0 ? (
-        <section className="margin-bottom">
+        <section className="card">
           <p className="empty-state">
             No setlists yet. Create one to get started!
           </p>

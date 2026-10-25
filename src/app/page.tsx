@@ -33,8 +33,8 @@ export default async function HomePage() {
       </div>
       <BandList />
       <div className="flex-center mobile-only">
-        <Link href="/bands/create" className="button-link">
-          Create Band
+        <Link href="/bands/create" className="button button-primary">
+          + Create Band
         </Link>
       </div>
     </>

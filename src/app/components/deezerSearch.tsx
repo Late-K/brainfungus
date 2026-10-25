@@ -9,6 +9,7 @@ import {
 import { formatDuration } from "@/app/lib/setlistUtils";
 import SongInfo from "@/app/components/songInfo";
 import SongAudioPlayer from "@/app/components/songAudioPlayer";
+import OpenInMusicAppLink from "@/app/components/openInMusicAppLink";
 import { useDeezerSearch } from "@/app/hooks/useDeezerSearch";
 import { useDeezerBrowse } from "@/app/hooks/useDeezerBrowse";
 
@@ -88,6 +89,11 @@ function TrackRow({ track, meta, isSelected, onAdd }: TrackRowProps) {
         src={track.preview}
         deezerTrackId={track.id}
         unavailableLabel="Preview unavailable"
+      />
+      <OpenInMusicAppLink
+        deezerTrackId={track.id}
+        title={track.title}
+        artist={track.artist}
       />
     </div>
   );

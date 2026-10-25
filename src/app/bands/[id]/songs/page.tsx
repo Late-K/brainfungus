@@ -50,157 +50,172 @@ export default function SongsPage({
         bandId={songsPage.bandId}
       />
 
-      <section className="card">
-        <div className="section-header">
-          <h2>Custom Songs</h2>
-          <button
-            onClick={() => songsPage.setShowForm(!songsPage.showForm)}
-            className="button button-primary"
-          >
-            {songsPage.showForm ? "Cancel" : "+ Add Song"}
-          </button>
-        </div>
-
-        <SortControls
-          id="custom-song-sort"
-          value={songsPage.sortBy}
-          onChange={songsPage.setSortBy}
-          options={knownSongSortOptions}
-        />
-
-        {!setlist.activeSetlist && (
-          <p className="meta-text meta-text-small margin-top">
-            Set a setlist as active to add songs to it from here.
-          </p>
-        )}
-
-        {songsPage.error && (
-          <p className="alert alert-error">{songsPage.error}</p>
-        )}
-
-        {songsPage.showForm && (
-          <CustomSongCreateForm
-            newTitle={songsPage.newTitle}
-            setNewTitle={songsPage.setNewTitle}
-            newAlbum={songsPage.newAlbum}
-            setNewAlbum={songsPage.setNewAlbum}
-            newAlbumIsCustom={songsPage.newAlbumIsCustom}
-            setNewAlbumIsCustom={songsPage.setNewAlbumIsCustom}
-            newNotes={songsPage.newNotes}
-            setNewNotes={songsPage.setNewNotes}
-            newAudioFile={songsPage.newAudioFile}
-            setNewAudioFile={songsPage.setNewAudioFile}
-            existingAlbums={songsPage.existingAlbums}
-            isSaving={songsPage.isSaving}
-            onSubmit={songsPage.handleAddSong}
-          />
-        )}
-
-        {songsPage.isLoading ? (
-          <p className="empty-state">Loading songs...</p>
-        ) : songsPage.songs.length === 0 ? (
-          <p className="empty-state">
-            No custom songs yet. Create one to get started!
-          </p>
-        ) : (
-          <div className="list">
-            {songsPage.albums.map(([albumName, albumSongs]) => (
-              <div key={albumName} className="accordion">
-                <button
-                  className="accordion-trigger"
-                  onClick={() => songsPage.toggleAlbum(albumName)}
-                >
-                  <span
-                    className={`accordion-icon ${songsPage.expandedAlbums.has(albumName) ? "accordion-icon-open" : ""}`}
-                  >
-                    &#9654;
-                  </span>
-                  <span className="accordion-title">{albumName}</span>
-                  <span className="accordion-count">
-                    {albumSongs.length} song
-                    {albumSongs.length !== 1 ? "s" : ""}
-                  </span>
-                </button>
-                {songsPage.expandedAlbums.has(albumName) && (
-                  <div className="accordion-content">
-                    {albumSongs.map((song, idx) => (
-                      <CustomSongRow
-                        key={song._id}
-                        song={song}
-                        albumName={albumName}
-                        albumSongs={albumSongs}
-                        indexInAlbum={idx}
-                        isEditing={songsPage.editingId === song._id}
-                        existingAlbums={songsPage.existingAlbums}
-                        editTitle={songsPage.editTitle}
-                        setEditTitle={songsPage.setEditTitle}
-                        editNotes={songsPage.editNotes}
-                        setEditNotes={songsPage.setEditNotes}
-                        editAlbum={songsPage.editAlbum}
-                        setEditAlbum={songsPage.setEditAlbum}
-                        editAlbumIsCustom={songsPage.editAlbumIsCustom}
-                        setEditAlbumIsCustom={songsPage.setEditAlbumIsCustom}
-                        learntMap={songsPage.learntMap}
-                        userEmail={session.user?.email}
-                        togglingIds={songsPage.togglingIds}
-                        isUploadingAudio={songsPage.uploadingAudioIds.has(
-                          song._id,
-                        )}
-                        onToggleLearnt={songsPage.handleToggleLearnt}
-                        onMoveSong={songsPage.handleMoveSong}
-                        onStartEditing={songsPage.startEditing}
-                        onSaveEdit={songsPage.handleSaveEdit}
-                        onDelete={songsPage.handleDelete}
-                        onCancelEditing={songsPage.cancelEditing}
-                        onUploadAudio={songsPage.handleUploadAudio}
-                        onDeleteAudio={songsPage.handleDeleteAudio}
-                        allowReorder
-                        isInActiveSetlist={setlist.isInActiveSetlist(song._id)}
-                        isTogglingSetlist={setlist.togglingSetlistIds.has(
-                          song._id,
-                        )}
-                        onToggleActiveSetlist={toggleActiveSetlist}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {songsPage.looseSongs.map((song) => (
-              <CustomSongRow
-                key={song._id}
-                song={song}
-                isEditing={songsPage.editingId === song._id}
-                existingAlbums={songsPage.existingAlbums}
-                editTitle={songsPage.editTitle}
-                setEditTitle={songsPage.setEditTitle}
-                editNotes={songsPage.editNotes}
-                setEditNotes={songsPage.setEditNotes}
-                editAlbum={songsPage.editAlbum}
-                setEditAlbum={songsPage.setEditAlbum}
-                editAlbumIsCustom={songsPage.editAlbumIsCustom}
-                setEditAlbumIsCustom={songsPage.setEditAlbumIsCustom}
-                learntMap={songsPage.learntMap}
-                userEmail={session.user?.email}
-                togglingIds={songsPage.togglingIds}
-                isUploadingAudio={songsPage.uploadingAudioIds.has(song._id)}
-                onToggleLearnt={songsPage.handleToggleLearnt}
-                onMoveSong={songsPage.handleMoveSong}
-                onStartEditing={songsPage.startEditing}
-                onSaveEdit={songsPage.handleSaveEdit}
-                onDelete={songsPage.handleDelete}
-                onCancelEditing={songsPage.cancelEditing}
-                onUploadAudio={songsPage.handleUploadAudio}
-                onDeleteAudio={songsPage.handleDeleteAudio}
-                isInActiveSetlist={setlist.isInActiveSetlist(song._id)}
-                isTogglingSetlist={setlist.togglingSetlistIds.has(song._id)}
-                onToggleActiveSetlist={toggleActiveSetlist}
-              />
-            ))}
+      {/* desktop pins the add form and sorting on the left, song list on the right */}
+      <div className="tools-layout">
+        <section className="card tools-layout-tools">
+          <div className="section-header">
+            <h2>Custom Songs</h2>
+            <button
+              onClick={() => songsPage.setShowForm(!songsPage.showForm)}
+              className="button button-primary"
+            >
+              {songsPage.showForm ? "Cancel" : "+ Add Song"}
+            </button>
           </div>
-        )}
-      </section>
+
+          <SortControls
+            id="custom-song-sort"
+            value={songsPage.sortBy}
+            onChange={songsPage.setSortBy}
+            options={knownSongSortOptions}
+          />
+
+          {!setlist.activeSetlist && (
+            <p className="meta-text meta-text-small margin-top">
+              Set a setlist as active to add songs to it from here.
+            </p>
+          )}
+
+          {songsPage.error && (
+            <p className="alert alert-error">{songsPage.error}</p>
+          )}
+
+          {songsPage.showForm && (
+            <CustomSongCreateForm
+              newTitle={songsPage.newTitle}
+              setNewTitle={songsPage.setNewTitle}
+              newAlbum={songsPage.newAlbum}
+              setNewAlbum={songsPage.setNewAlbum}
+              newAlbumIsCustom={songsPage.newAlbumIsCustom}
+              setNewAlbumIsCustom={songsPage.setNewAlbumIsCustom}
+              newNotes={songsPage.newNotes}
+              setNewNotes={songsPage.setNewNotes}
+              newAudioFile={songsPage.newAudioFile}
+              setNewAudioFile={songsPage.setNewAudioFile}
+              existingAlbums={songsPage.existingAlbums}
+              isSaving={songsPage.isSaving}
+              onSubmit={songsPage.handleAddSong}
+            />
+          )}
+        </section>
+
+        <section className="card tools-layout-list">
+          <div className="section-header">
+            <h2>Song List</h2>
+            {songsPage.songs.length > 0 && (
+              <span className="accordion-count">
+                {songsPage.songs.length} song
+                {songsPage.songs.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+
+          {songsPage.isLoading ? (
+            <p className="empty-state">Loading songs...</p>
+          ) : songsPage.songs.length === 0 ? (
+            <p className="empty-state">
+              No custom songs yet. Create one to get started!
+            </p>
+          ) : (
+            <div className="list">
+              {songsPage.albums.map(([albumName, albumSongs]) => (
+                <div key={albumName} className="accordion">
+                  <button
+                    className="accordion-trigger"
+                    onClick={() => songsPage.toggleAlbum(albumName)}
+                  >
+                    <span
+                      className={`accordion-icon ${songsPage.expandedAlbums.has(albumName) ? "accordion-icon-open" : ""}`}
+                    >
+                      &#9654;
+                    </span>
+                    <span className="accordion-title">{albumName}</span>
+                    <span className="accordion-count">
+                      {albumSongs.length} song
+                      {albumSongs.length !== 1 ? "s" : ""}
+                    </span>
+                  </button>
+                  {songsPage.expandedAlbums.has(albumName) && (
+                    <div className="accordion-content">
+                      {albumSongs.map((song, idx) => (
+                        <CustomSongRow
+                          key={song._id}
+                          song={song}
+                          albumName={albumName}
+                          albumSongs={albumSongs}
+                          indexInAlbum={idx}
+                          isEditing={songsPage.editingId === song._id}
+                          existingAlbums={songsPage.existingAlbums}
+                          editTitle={songsPage.editTitle}
+                          setEditTitle={songsPage.setEditTitle}
+                          editNotes={songsPage.editNotes}
+                          setEditNotes={songsPage.setEditNotes}
+                          editAlbum={songsPage.editAlbum}
+                          setEditAlbum={songsPage.setEditAlbum}
+                          editAlbumIsCustom={songsPage.editAlbumIsCustom}
+                          setEditAlbumIsCustom={songsPage.setEditAlbumIsCustom}
+                          learntMap={songsPage.learntMap}
+                          userEmail={session.user?.email}
+                          togglingIds={songsPage.togglingIds}
+                          isUploadingAudio={songsPage.uploadingAudioIds.has(
+                            song._id,
+                          )}
+                          onToggleLearnt={songsPage.handleToggleLearnt}
+                          onMoveSong={songsPage.handleMoveSong}
+                          onStartEditing={songsPage.startEditing}
+                          onSaveEdit={songsPage.handleSaveEdit}
+                          onDelete={songsPage.handleDelete}
+                          onCancelEditing={songsPage.cancelEditing}
+                          onUploadAudio={songsPage.handleUploadAudio}
+                          onDeleteAudio={songsPage.handleDeleteAudio}
+                          allowReorder
+                          isInActiveSetlist={setlist.isInActiveSetlist(song._id)}
+                          isTogglingSetlist={setlist.togglingSetlistIds.has(
+                            song._id,
+                          )}
+                          onToggleActiveSetlist={toggleActiveSetlist}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {songsPage.looseSongs.map((song) => (
+                <CustomSongRow
+                  key={song._id}
+                  song={song}
+                  isEditing={songsPage.editingId === song._id}
+                  existingAlbums={songsPage.existingAlbums}
+                  editTitle={songsPage.editTitle}
+                  setEditTitle={songsPage.setEditTitle}
+                  editNotes={songsPage.editNotes}
+                  setEditNotes={songsPage.setEditNotes}
+                  editAlbum={songsPage.editAlbum}
+                  setEditAlbum={songsPage.setEditAlbum}
+                  editAlbumIsCustom={songsPage.editAlbumIsCustom}
+                  setEditAlbumIsCustom={songsPage.setEditAlbumIsCustom}
+                  learntMap={songsPage.learntMap}
+                  userEmail={session.user?.email}
+                  togglingIds={songsPage.togglingIds}
+                  isUploadingAudio={songsPage.uploadingAudioIds.has(song._id)}
+                  onToggleLearnt={songsPage.handleToggleLearnt}
+                  onMoveSong={songsPage.handleMoveSong}
+                  onStartEditing={songsPage.startEditing}
+                  onSaveEdit={songsPage.handleSaveEdit}
+                  onDelete={songsPage.handleDelete}
+                  onCancelEditing={songsPage.cancelEditing}
+                  onUploadAudio={songsPage.handleUploadAudio}
+                  onDeleteAudio={songsPage.handleDeleteAudio}
+                  isInActiveSetlist={setlist.isInActiveSetlist(song._id)}
+                  isTogglingSetlist={setlist.togglingSetlistIds.has(song._id)}
+                  onToggleActiveSetlist={toggleActiveSetlist}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

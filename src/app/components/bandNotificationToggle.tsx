@@ -8,6 +8,7 @@ import {
   setBandNotificationsAction,
 } from "@/app/actions/notifications";
 import { getPushSubscription } from "@/app/lib/pushClient";
+import SettingToggle from "@/app/components/settingToggle";
 
 export default function BandNotificationToggle({ bandId }: { bandId: string }) {
   const [enabled, setEnabled] = useState(true);
@@ -44,14 +45,13 @@ export default function BandNotificationToggle({ bandId }: { bandId: string }) {
   }
 
   return (
-    <div className="always-available-section band-notification-toggle">
-      <label
-        className={`availability-toggle ${enabled ? "availability-toggle-available" : "availability-toggle-unavailable"}`}
-      >
-        <input type="checkbox" checked={enabled} onChange={handleToggle} />
-        Notifications from this band
-      </label>
-      <p className="always-available-hint">{hint}</p>
+    <div className="settings-list band-notification-toggle">
+      <SettingToggle
+        label="Notifications from this band"
+        hint={hint}
+        checked={enabled}
+        onChange={handleToggle}
+      />
     </div>
   );
 }

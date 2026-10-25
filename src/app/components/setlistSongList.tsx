@@ -4,6 +4,7 @@ import { Song, LearntMap } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import SongLearntStatus from "@/app/components/songLearntStatus";
 import SongAudioPlayer from "@/app/components/songAudioPlayer";
+import OpenInMusicAppLink from "@/app/components/openInMusicAppLink";
 import SongInfo from "@/app/components/songInfo";
 
 interface SetlistSongListProps {
@@ -74,6 +75,11 @@ export default function SetlistSongList({
             <SongAudioPlayer
               src={audioSrc}
               deezerTrackId={!song.isCustom ? song.id : undefined}
+            />
+            <OpenInMusicAppLink
+              deezerTrackId={!song.isCustom ? song.id : undefined}
+              title={song.title}
+              artist={song.artist}
             />
 
             <SongLearntStatus

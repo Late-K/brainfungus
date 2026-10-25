@@ -10,6 +10,7 @@ import { formatDuration } from "@/app/lib/setlistUtils";
 import DeezerSearch from "@/app/components/deezerSearch";
 import SongInfo from "@/app/components/songInfo";
 import SongAudioPlayer from "@/app/components/songAudioPlayer";
+import OpenInMusicAppLink from "@/app/components/openInMusicAppLink";
 import SortControls from "@/app/components/sortControls";
 import { compareByDate, safeTimestamp } from "@/app/lib/sortUtils";
 
@@ -132,13 +133,15 @@ export default function ProfileLearntSongsComponent() {
   };
 
   return (
-    <section>
-      <DeezerSearch
-        onAddFromSearch={handleAddSong}
-        isSongSelected={(songId) => allSongIds.has(songId)}
-      />
+    <section className="tools-layout">
+      <div className="tools-layout-tools">
+        <DeezerSearch
+          onAddFromSearch={handleAddSong}
+          isSongSelected={(songId) => allSongIds.has(songId)}
+        />
+      </div>
 
-      <div className="card">
+      <div className="card tools-layout-list">
         <div className="section-header">
           <h2>All Learnt Songs</h2>
         </div>
@@ -201,6 +204,11 @@ export default function ProfileLearntSongsComponent() {
                   src={song.preview}
                   deezerTrackId={!song.isCustom ? song.songId : undefined}
                   unavailableLabel="Audio unavailable"
+                />
+                <OpenInMusicAppLink
+                  deezerTrackId={!song.isCustom ? song.songId : undefined}
+                  title={song.title}
+                  artist={song.artist}
                 />
               </div>
             ))}

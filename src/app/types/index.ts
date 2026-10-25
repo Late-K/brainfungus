@@ -138,7 +138,11 @@ export interface User {
   image?: string;
   alwaysAvailable?: boolean;
   learntSongsPrivate?: boolean;
+  musicApp?: MusicApp | null;
 }
+
+// streaming app a user listens to full songs on
+export type MusicApp = "deezer" | "spotify" | "youtubeMusic";
 
 export type RehearsalRepeatType = "once" | "weekly" | "biweekly";
 

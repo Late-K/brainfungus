@@ -1,28 +1,26 @@
-import Link from "next/link";
+import type { ReactNode } from "react";
+import PageHeader from "@/app/components/pageHeader";
 
 interface BandSubpageHeaderProps {
   title: string;
   description: string;
   bandId: string | null;
+  action?: ReactNode;
 }
 
 export default function BandSubpageHeader({
   title,
   description,
   bandId,
+  action,
 }: BandSubpageHeaderProps) {
   return (
-    <div className="card margin-bottom">
-      <div className="section-header">
-        <h1 className="heading-small">{title}</h1>
-        <Link
-          href={bandId ? `/bands/${bandId}` : "#"}
-          className="button button-tertiary"
-        >
-          Back to Band
-        </Link>
-      </div>
-      <p className="meta-text meta-text-medium">{description}</p>
-    </div>
+    <PageHeader
+      title={title}
+      description={description}
+      backHref={bandId ? `/bands/${bandId}` : "#"}
+      backLabel="Back to Band"
+      action={action}
+    />
   );
 }

@@ -5,6 +5,7 @@ import {
   getLearntSongsPrivateAction,
   setLearntSongsPrivateAction,
 } from "@/app/actions/users";
+import SettingToggle from "@/app/components/settingToggle";
 
 export default function LearntSongsPrivacyToggle() {
   const [isPrivate, setIsPrivate] = useState(false);
@@ -30,18 +31,15 @@ export default function LearntSongsPrivacyToggle() {
   if (loading) return null;
 
   return (
-    <div className="always-available-section">
-      <label
-        className={`availability-toggle ${isPrivate ? "availability-toggle-available" : "availability-toggle-unavailable"}`}
-      >
-        <input type="checkbox" checked={isPrivate} onChange={handleToggle} />
-        Keep my learnt songs private
-      </label>
-      <p className="always-available-hint">
-        {isPrivate
+    <SettingToggle
+      label="Keep my learnt songs private"
+      hint={
+        isPrivate
           ? "Other users can see your profile, but not your learnt songs."
-          : "Other users can view and compare your learnt songs."}
-      </p>
-    </div>
+          : "Other users can view and compare your learnt songs."
+      }
+      checked={isPrivate}
+      onChange={handleToggle}
+    />
   );
 }

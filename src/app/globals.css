@@ -240,6 +240,12 @@ h4 {
   margin-top: 1rem;
   flex-wrap: wrap;
 }
+.page-header-action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
 .action-row-fill-tertiary .button-tertiary {
   flex: 1;
   min-width: 100px;
@@ -347,23 +353,6 @@ h4 {
   background: var(--error-bg);
 }
 
-.button-link {
-  text-decoration: none;
-  color: var(--fg);
-  border: 1px solid var(--border);
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 0.6rem 1.5rem;
-  font-size: 0.9rem;
-  margin: 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.button-link:hover {
-  background: var(--card-hover);
-}
-
 .button-small {
   padding: 0.4rem 0.85rem;
   font-size: 0.85rem;
@@ -380,8 +369,9 @@ h4 {
   background: #991b1b;
 }
 
+/* sits in the top right corner of the page and scrolls away with it */
 .floating-gear-button {
-  position: fixed;
+  position: absolute;
   top: 18px;
   right: 18px;
   z-index: 100;
@@ -544,6 +534,13 @@ h4 {
 }
 
 /* PAGE LAYOUTS */
+/* every page shares one centred column, so tablets don't stretch some pages
+   wider than others. relative so the band gear sits in its corner */
+.app-main {
+  position: relative;
+  max-width: 42rem;
+  margin: 0 auto;
+}
 .page-shell {
   min-height: 100vh;
   padding: 1.5rem;
@@ -620,22 +617,172 @@ h4 {
   background: var(--surface);
   border: 2px solid var(--border);
 }
+.avatar-large.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--primary);
+}
 .row-center {
   display: flex;
   justify-content: center;
   margin-top: 1.5rem;
 }
-.always-available-section {
-  margin-top: 1.25rem;
-  padding: 0.75rem;
-  background: var(--bg);
-  border-radius: var(--radius);
-  text-align: center;
-}
-.always-available-hint {
-  margin: 0.35rem 0 0;
-  font-size: 0.78rem;
+
+/* SETTINGS LIST */
+.settings-title {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--muted);
+}
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.settings-list > * + * {
+  border-top: 1px solid var(--border);
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.setting-row:hover {
+  background: var(--card-hover);
+}
+.setting-row-compact {
+  padding: 0.6rem 0.85rem;
+}
+.setting-row-disabled {
+  cursor: not-allowed;
+}
+.setting-row-disabled:hover {
+  background: none;
+}
+.setting-block {
+  padding: 0.85rem 1rem;
+}
+.setting-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.setting-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.setting-row-compact .setting-label {
+  font-size: 0.85rem;
+}
+.setting-hint {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.setting-subrows {
+  margin: 0 1rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  overflow: hidden;
+}
+.setting-subrows > * + * {
+  border-top: 1px solid var(--border);
+}
+
+/* on/off switch, a restyled checkbox so it stays keyboard and screen reader friendly */
+.switch {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 2.6rem;
+  height: 1.5rem;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--input-bg);
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.5rem - 6px);
+  height: calc(1.5rem - 6px);
+  border-radius: 50%;
+  background: var(--muted);
+  transition:
+    transform 0.2s,
+    background 0.2s;
+}
+.switch:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.switch:checked::after {
+  transform: translateX(1.1rem);
+  background: #fff;
+}
+.switch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 76, 220, 0.3);
+}
+.switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* pick-one pills, e.g. which music app */
+.choice-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+}
+.choice-chip {
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--input-bg);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.choice-chip:hover {
+  color: var(--fg);
+  border-color: #784179;
+}
+.choice-chip-active,
+.choice-chip-active:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
 }
 
 /* USER CARDS */
@@ -1185,6 +1332,17 @@ h4 {
   margin: 0.5rem 0;
   background: #1a1a1a;
   color-scheme: dark;
+}
+.music-app-link {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.music-app-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
 }
 .audio-hint {
   font-size: 0.75rem;
@@ -1798,6 +1956,9 @@ h4 {
   color: inherit;
   text-decoration: none;
 }
+.profile-stats {
+  margin: 1rem 0 0;
+}
 .compare-tabs {
   flex-wrap: wrap;
 }
@@ -1818,25 +1979,8 @@ h4 {
   font-weight: 500;
   white-space: nowrap;
 }
-.profile-toggles {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-}
-.profile-toggles .always-available-section {
-  flex: 1 1 0;
-  min-width: 0;
-  margin-top: 0;
-}
-.notification-prefs {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
 .notification-error {
-  margin: 0.75rem 0 0;
+  margin: 0 1rem 0.85rem;
 }
 .band-notification-toggle {
   margin: 0 0 1rem;
@@ -1924,9 +2068,10 @@ h4 {
     box-shadow: inset 0 -2px 0 var(--primary);
   }
 
-  /* page chrome */
+  /* page chrome: sub pages use the same full content width as the main tabs
+     so page edges line up with the navbar everywhere */
   .page-container {
-    max-width: 64rem;
+    max-width: none;
   }
   .page-shell {
     min-height: 0;
@@ -1952,15 +2097,14 @@ h4 {
     padding: 0;
   }
 
-  /* cards sit flush inside grid columns instead of insetting themselves */
-  .band-grid .card,
-  .band-layout .card,
-  .calendar-layout .card,
-  .profile-layout .card,
-  .detail-layout .card,
-  .editor-layout .card {
+  /* cards sit flush with the content edges instead of insetting themselves,
+     so header cards line up with the columns below them */
+  .app-main .card {
     width: 100%;
     margin: 0 0 1.25rem;
+  }
+  .page-shell .card.page-container {
+    margin: 0 auto;
   }
 
   /* home: bands as a grid of cards */
@@ -2099,7 +2243,8 @@ h4 {
     min-width: 6rem;
   }
 
-  /* setlist create / edit: current setlist pinned left, song pickers right */
+  /* setlist create / edit: song pickers left, current setlist pinned right
+     like the setlist view. mobile keeps the setlist first */
   .editor-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -2107,6 +2252,8 @@ h4 {
     align-items: start;
   }
   .editor-layout-main {
+    grid-column: 2;
+    grid-row: 1;
     position: sticky;
     top: calc(var(--topbar-height) + 1.5rem);
     max-height: calc(100dvh - var(--topbar-height) - 3rem);
@@ -2114,6 +2261,26 @@ h4 {
     border-radius: var(--radius);
   }
   .editor-layout-side {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  /* covers / learnt songs / band songs: search or add form pinned left, list right */
+  .tools-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .tools-layout-tools {
+    position: sticky;
+    top: calc(var(--topbar-height) + 1.5rem);
+    max-height: calc(100dvh - var(--topbar-height) - 3rem);
+    overflow-y: auto;
+    border-radius: var(--radius);
+  }
+  .tools-layout-list {
     min-width: 0;
   }
 }

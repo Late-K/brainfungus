@@ -17,6 +17,7 @@ import {
   unsubscribeFromPush,
 } from "@/app/lib/pushClient";
 import { NotificationPrefs, NotificationType } from "@/app/types";
+import SettingToggle from "@/app/components/settingToggle";
 
 const prefOptions: { type: NotificationType; label: string }[] = [
   { type: "rehearsals", label: "Rehearsals" },
@@ -97,34 +98,25 @@ export default function NotificationSettings() {
   }
 
   return (
-    <div className="always-available-section">
-      <label
-        className={`availability-toggle ${enabled ? "availability-toggle-available" : "availability-toggle-unavailable"}`}
-      >
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={handleToggle}
-          disabled={busy || !supported}
-        />
-        Push notifications on this device
-      </label>
-      <p className="always-available-hint">{hint}</p>
+    <div>
+      <SettingToggle
+        label="Push notifications on this device"
+        hint={hint}
+        checked={enabled}
+        onChange={handleToggle}
+        disabled={busy || !supported}
+      />
 
       {enabled && prefs && (
-        <div className="notification-prefs">
+        <div className="setting-subrows">
           {prefOptions.map(({ type, label }) => (
-            <label
+            <SettingToggle
               key={type}
-              className={`availability-toggle ${prefs[type] ? "availability-toggle-available" : "availability-toggle-unavailable"}`}
-            >
-              <input
-                type="checkbox"
-                checked={prefs[type]}
-                onChange={() => handlePrefToggle(type)}
-              />
-              {label}
-            </label>
+              label={label}
+              checked={prefs[type]}
+              onChange={() => handlePrefToggle(type)}
+              compact
+            />
           ))}
         </div>
       )}

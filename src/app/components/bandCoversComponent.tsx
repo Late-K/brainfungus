@@ -9,6 +9,7 @@ import { toggleLearntSongAction } from "@/app/actions/learntSongs";
 import { BandCover, LearntMap } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import SongAudioPlayer from "@/app/components/songAudioPlayer";
+import OpenInMusicAppLink from "@/app/components/openInMusicAppLink";
 import SongLearntStatus from "@/app/components/songLearntStatus";
 import DeezerSearch from "@/app/components/deezerSearch";
 import SongInfo from "@/app/components/songInfo";
@@ -216,12 +217,14 @@ export default function BandCoversComponent({
   };
 
   return (
-    <section>
-      <DeezerSearch
-        onAddFromSearch={handleAddCover}
-        isSongSelected={(songId) => coverSongIds.has(songId)}
-      />
-      <div className="card">
+    <section className="tools-layout">
+      <div className="tools-layout-tools">
+        <DeezerSearch
+          onAddFromSearch={handleAddCover}
+          isSongSelected={(songId) => coverSongIds.has(songId)}
+        />
+      </div>
+      <div className="card tools-layout-list">
         <div className="section-header">
           <h2>Band Covers</h2>
         </div>
@@ -296,6 +299,11 @@ export default function BandCoversComponent({
                 <SongAudioPlayer
                   src={cover.preview}
                   deezerTrackId={cover.songId}
+                />
+                <OpenInMusicAppLink
+                  deezerTrackId={cover.songId}
+                  title={cover.title}
+                  artist={cover.artist}
                 />
 
                 <SongLearntStatus

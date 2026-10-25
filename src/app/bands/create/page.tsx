@@ -17,7 +17,7 @@ export default function CreateBandPage() {
   return (
     <div className="page-shell">
       <section className="card page-container">
-        <h1>Create a band</h1>
+        <h1 className="heading">Create a Band</h1>
 
         <BandForm
           submitLabel="Create Band"

@@ -47,7 +47,7 @@ export default function SetlistViewMode({
       >
         <div className="stack margin-bottom">
           <div className="row">
-            <h1>{setlist.name}</h1>
+            <h1 className="heading-small">{setlist.name}</h1>
             <Link
               href={`/bands/${bandId}/setlists`}
               className="button button-tertiary ml-auto"
