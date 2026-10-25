@@ -60,6 +60,9 @@ export default function BandList({ refresh = 0 }: BandListProps) {
         <div key={band._id} className="card">
           <Link href={`/bands/${band._id}`}>
             <div className="listing-row">
+              {band.image && (
+                <img src={band.image} alt="" className="band-thumbnail" />
+              )}
               <div className="listing-main">
                 <h3 className="listing-title">{band.name}</h3>
                 {band.description && (

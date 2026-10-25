@@ -86,9 +86,19 @@ export default function BandDetailsPage({
           />
         )}
       </div>
-      <h2>{band.name}</h2>
-
-      {band.description && <p className="text-center">{band.description}</p>}
+      <div
+        className={`band-title${band.image ? " band-title-with-image" : ""}`}
+      >
+        {band.image && (
+          <img src={band.image} alt="" className="band-title-image" />
+        )}
+        <div className="band-title-text">
+          <h2>{band.name}</h2>
+          {band.description && (
+            <p className="band-title-description">{band.description}</p>
+          )}
+        </div>
+      </div>
 
       {/* chat comes first on mobile, desktop moves it to a side column */}
       <div className="band-layout">

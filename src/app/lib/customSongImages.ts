@@ -1,8 +1,9 @@
 import { Db, ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
-// custom song and album images live in private blob storage like song audio,
-// and are served through /api/songs/[id]/image and /api/albums/[id]/image.
+// custom song, album and band images live in private blob storage like song
+// audio, and are served through /api/songs/[id]/image, /api/albums/[id]/image
+// and /api/bands/[id]/image.
 // albums are just a name on each song, so album images are kept in their own
 // custom_albums collection keyed by band + album name
 
@@ -24,7 +25,7 @@ export function validateImageFile(file: unknown): File {
 }
 
 export function buildImageBlobPath(
-  kind: "songs" | "albums",
+  kind: "songs" | "albums" | "bands",
   bandId: unknown,
   ownerId: string,
   fileName: string,
@@ -40,6 +41,10 @@ export function songImageUrl(songId: string, version: number) {
 
 export function albumImageUrl(albumId: string, version: number) {
   return `/api/albums/${albumId}/image?v=${version}`;
+}
+
+export function bandImageUrl(bandId: string, version: number) {
+  return `/api/bands/${bandId}/image?v=${version}`;
 }
 
 export function albumImageKey(bandId: unknown, albumName: string) {

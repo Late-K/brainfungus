@@ -364,16 +364,15 @@ h4 {
   height: 2rem;
   padding: 0;
 }
+/* solid red, reserved for the final confirm of a destructive choice */
 .button-danger {
-  margin: 0.25rem;
   background: var(--error);
   color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+  border-color: transparent;
 }
 .button-danger:hover {
   background: #991b1b;
+  border-color: transparent;
 }
 
 /* sits in the top right corner of the page and scrolls away with it */
@@ -929,6 +928,51 @@ h4 {
   max-height: 2.8em; /* 2 lines Ã— 1.4 line-height fallback */
   word-break: break-word;
 }
+.band-thumbnail {
+  width: 56px;
+  height: 56px;
+  margin-right: 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+/* band page heading, with the optional band image sat beside the name and
+   description */
+.band-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 20px 0 10px;
+}
+.band-title-text {
+  min-width: 0;
+  text-align: center;
+}
+.band-title-with-image .band-title-text {
+  text-align: left;
+}
+.band-title h2 {
+  margin: 0;
+  text-align: inherit;
+}
+.band-title-description {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--muted);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.band-title-image {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  object-fit: cover;
+  flex-shrink: 0;
+}
 .listing-aside {
   flex: 0 0 auto;
   padding: 4px 10px;
@@ -1260,12 +1304,41 @@ h4 {
 }
 
 /* CUSTOM SONGS */
+/* packed from the left so the arrows and image never move,
+   the buttons drop to a full width line below rather than squashing the title */
 .song-main-row {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.75rem;
   width: 100%;
+}
+.song-main-row .song-info {
+  flex: 1 1 0;
+  min-width: 7rem;
+  overflow-wrap: anywhere;
+}
+.song-main-row .inline-actions-small {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
+  margin-left: auto;
+}
+/* phones: the nested cards leave little width, so tighten the row to give the title more room */
+@media (max-width: 480px) {
+  .accordion-content {
+    padding: 0.5rem;
+  }
+  .accordion-content .card-item-regular {
+    padding: 0.75rem;
+  }
+  .song-main-row {
+    gap: 0.5rem;
+  }
+  .song-main-row .song-thumbnail {
+    width: 48px;
+    height: 48px;
+  }
 }
 
 /* ALBUMS */
@@ -2941,9 +3014,15 @@ h4 {
   }
 
   /* band page: content left, chat pinned on the right */
-  .band-page > h2,
-  .band-page > p {
+  .band-page > .band-title {
+    justify-content: flex-start;
+  }
+  .band-page > .band-title .band-title-text {
     text-align: left;
+  }
+  .band-title-image {
+    width: 48px;
+    height: 48px;
   }
   .band-page > .row-end {
     float: right;

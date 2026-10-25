@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   deleteBandAction,
   updateBandAction,
+  uploadBandImageAction,
+  deleteBandImageAction,
   addMemberAction,
   removeMemberAction,
   toggleAdminAction,
@@ -34,6 +36,7 @@ export function useBandManagement({
   const [name, setName] = useState(band.name);
   const [description, setDescription] = useState(band.description || "");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [isFetchingUsers, setIsFetchingUsers] = useState(false);
@@ -115,6 +118,39 @@ export function useBandManagement({
       setError(err instanceof Error ? err.message : "Failed to update band");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // band image changes save straight away rather than with the details form
+  const handleImageSelect = async (file: File) => {
+    setError("");
+    setSuccess("");
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      await uploadBandImageAction(band._id, formData);
+      setSuccess("Band image updated");
+      onBandUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleImageRemove = async () => {
+    setError("");
+    setSuccess("");
+    setIsUploadingImage(true);
+    try {
+      await deleteBandImageAction(band._id);
+      setSuccess("Band image removed");
+      onBandUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove image");
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -204,6 +240,7 @@ export function useBandManagement({
     description,
     setDescription,
     isSaving,
+    isUploadingImage,
     // users
     availableUsers,
     isFetchingUsers,
@@ -225,6 +262,8 @@ export function useBandManagement({
     handleOpen,
     handleTabChange,
     handleSaveDetails,
+    handleImageSelect,
+    handleImageRemove,
     handleDelete,
     handleLeaveBand,
     handleAddMember,

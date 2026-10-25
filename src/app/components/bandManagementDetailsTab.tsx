@@ -1,12 +1,14 @@
 ﻿"use client";
 
 import { Band } from "@/app/types";
+import ImageUploadField from "@/app/components/imageUploadField";
 
 interface BandDetailsTabProps {
   band: Band;
   name: string;
   description: string;
   isSaving: boolean;
+  isUploadingImage: boolean;
   isCreator: boolean;
   showDeleteConfirm: boolean;
   showLeaveConfirm: boolean;
@@ -15,6 +17,8 @@ interface BandDetailsTabProps {
   onNameChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onSave: () => void;
+  onImageSelect: (file: File) => void;
+  onImageRemove: () => void;
   onDelete: () => void;
   onLeave: () => void;
   onShowDeleteConfirm: (show: boolean) => void;
@@ -22,9 +26,11 @@ interface BandDetailsTabProps {
 }
 
 export default function BandDetailsTab({
+  band,
   name,
   description,
   isSaving,
+  isUploadingImage,
   isCreator,
   showDeleteConfirm,
   showLeaveConfirm,
@@ -33,6 +39,8 @@ export default function BandDetailsTab({
   onNameChange,
   onDescriptionChange,
   onSave,
+  onImageSelect,
+  onImageRemove,
   onDelete,
   onLeave,
   onShowDeleteConfirm,
@@ -67,6 +75,16 @@ export default function BandDetailsTab({
           disabled={isSaving}
         />
       </div>
+
+      <ImageUploadField
+        id="edit-band-image"
+        label="Band Image"
+        currentImage={band.image}
+        isBusy={isUploadingImage}
+        disabled={isSaving}
+        onSelect={onImageSelect}
+        onRemove={onImageRemove}
+      />
 
       <div className="form-actions">
         <button

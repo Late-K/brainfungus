@@ -35,7 +35,7 @@ export default function CalendarModalDialog({
         </p>
         <div className="choice-dialog-actions">
           <button
-            className={`button ${action === "delete" ? "button-tertiary-danger" : "button-tertiary"}`}
+            className={`button ${action === "delete" ? "button-tertiary button-tertiary-danger" : "button-tertiary"}`}
             onClick={onChooseThis}
           >
             Just this date

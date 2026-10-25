@@ -28,6 +28,7 @@ export default function BandManagement({
     description,
     setDescription,
     isSaving,
+    isUploadingImage,
     availableUsers,
     isFetchingUsers,
     actionLoading,
@@ -44,6 +45,8 @@ export default function BandManagement({
     handleOpen,
     handleTabChange,
     handleSaveDetails,
+    handleImageSelect,
+    handleImageRemove,
     handleDelete,
     handleLeaveBand,
     handleAddMember,
@@ -122,6 +125,7 @@ export default function BandManagement({
                 name={name}
                 description={description}
                 isSaving={isSaving}
+                isUploadingImage={isUploadingImage}
                 isCreator={isCreator}
                 showDeleteConfirm={showDeleteConfirm}
                 showLeaveConfirm={showLeaveConfirm}
@@ -130,6 +134,8 @@ export default function BandManagement({
                 onNameChange={setName}
                 onDescriptionChange={setDescription}
                 onSave={handleSaveDetails}
+                onImageSelect={handleImageSelect}
+                onImageRemove={handleImageRemove}
                 onDelete={handleDelete}
                 onLeave={handleLeaveBand}
                 onShowDeleteConfirm={setShowDeleteConfirm}

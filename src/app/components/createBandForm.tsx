@@ -1,8 +1,9 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { createBandAction } from "@/app/actions/bands";
+import { createBandAction, uploadBandImageAction } from "@/app/actions/bands";
 import UserCard from "@/app/components/usercard";
+import ImageUploadField from "@/app/components/imageUploadField";
 import { User } from "@/app/types";
 
 interface BandFormProps {
@@ -18,6 +19,7 @@ export default function BandForm({
 }: BandFormProps) {
   const [bandName, setBandName] = useState("");
   const [description, setDescription] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +60,7 @@ export default function BandForm({
   const resetForm = () => {
     setBandName("");
     setDescription("");
+    setImageFile(null);
     setSelectedUsers([]);
   };
 
@@ -73,11 +76,26 @@ export default function BandForm({
     }
 
     try {
-      await createBandAction(
+      const { bandId } = await createBandAction(
         bandName.trim(),
         description.trim(),
         selectedUsers,
       );
+
+      if (imageFile) {
+        try {
+          const formData = new FormData();
+          formData.append("image", imageFile);
+          await uploadBandImageAction(bandId, formData);
+        } catch (uploadErr) {
+          // the band still exists, so let them know and carry on
+          alert(
+            uploadErr instanceof Error
+              ? `${uploadErr.message}. Band was created without its image.`
+              : "Band created, but image upload failed.",
+          );
+        }
+      }
 
       resetForm();
       onSuccess?.();
@@ -121,6 +139,16 @@ export default function BandForm({
           disabled={isSubmitting}
         />
       </div>
+
+      <ImageUploadField
+        id="band-image"
+        label="Band Image"
+        note="Optional - you can change this later in band settings"
+        pendingFile={imageFile}
+        disabled={isSubmitting}
+        onSelect={setImageFile}
+        onRemove={() => setImageFile(null)}
+      />
 
       <div className="form-group">
         <label className="label">Add Members ({selectedUsers.length})</label>

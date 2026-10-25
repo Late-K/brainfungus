@@ -95,7 +95,7 @@ export default function BandMembersTab({
                   {member.isAdmin ? "Remove Admin" : "Make Admin"}
                 </button>
                 <button
-                  className="button button-tertiary-danger button-tertiary button-small"
+                  className="button button-small button-tertiary button-tertiary-danger"
                   onClick={() => onRemoveMember(member.id)}
                   disabled={actionLoading === member.id}
                 >

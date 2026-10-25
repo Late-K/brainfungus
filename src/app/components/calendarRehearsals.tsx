@@ -102,7 +102,7 @@ export default function CalendarRehearsals({
                   Edit
                 </button>
                 <button
-                  className="button button-small button-tertiary-danger"
+                  className="button button-small button-tertiary button-tertiary-danger"
                   onClick={() => onDeleteRehearsal(rehearsal)}
                 >
                   Delete

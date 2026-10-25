@@ -7,6 +7,7 @@ export interface Band {
   name: string;
   description: string;
   createdAt: string;
+  image?: string;
   members?: BandMember[];
 }
 

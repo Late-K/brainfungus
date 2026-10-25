@@ -193,7 +193,7 @@ export default function CustomSongRow({
             </button>
             <button
               onClick={() => onDelete(song._id)}
-              className="button button-small button-danger"
+              className="button button-small button-tertiary button-tertiary-danger"
             >
               Delete
             </button>

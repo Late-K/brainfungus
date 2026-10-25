@@ -2,7 +2,12 @@
 
 import { getAuthUser } from "@/app/lib/auth";
 import { ObjectId, Db } from "mongodb";
-import { del } from "@vercel/blob";
+import { del, put } from "@vercel/blob";
+import {
+  bandImageUrl,
+  buildImageBlobPath,
+  validateImageFile,
+} from "@/app/lib/customSongImages";
 
 type BandRole = "creator" | "admin" | "member";
 type BandMemberEntry = { userId: string; role: BandRole };
@@ -13,7 +18,19 @@ type BandDocument = {
   description: string;
   members: BandMemberEntry[];
   createdAt: Date;
+  image?: string;
+  imageBlobUrl?: string;
+  imageMimeType?: string;
 };
+
+async function deleteBandImageBlob(blobUrl: string | undefined) {
+  if (!blobUrl) return;
+  try {
+    await del(blobUrl);
+  } catch (blobErr) {
+    console.error("Failed to delete band image blob:", blobErr);
+  }
+}
 
 function getBandsCollection(db: Db) {
   return db.collection<BandDocument>("bands");
@@ -69,6 +86,13 @@ async function setMemberBandDataActiveState(
 // delete a band and all its related data
 async function deleteBandCascade(db: Db, bandId: string) {
   const oid = new ObjectId(bandId);
+
+  const band = await getBandsCollection(db).findOne(
+    { _id: oid },
+    { projection: { imageBlobUrl: 1 } },
+  );
+  await deleteBandImageBlob(band?.imageBlobUrl);
+
   const rehearsalIds = (
     await db
       .collection("rehearsals")
@@ -211,6 +235,48 @@ export async function updateBandAction(
     console.error("Error updating band:", error);
     throw error instanceof Error ? error : new Error("Failed to update band");
   }
+}
+
+// band images are optional, uploaded after the band is created or from settings
+export async function uploadBandImageAction(
+  bandId: string,
+  formData: FormData,
+): Promise<{ image: string }> {
+  const { db, band } = await verifyAdmin(bandId);
+  const file = validateImageFile(formData.get("image"));
+
+  await deleteBandImageBlob(band.imageBlobUrl);
+
+  const blob = await put(
+    buildImageBlobPath("bands", bandId, bandId, file.name || "image"),
+    file,
+    { access: "private", addRandomSuffix: false, contentType: file.type },
+  );
+
+  const image = bandImageUrl(bandId, Date.now());
+  await getBandsCollection(db).updateOne(
+    { _id: new ObjectId(bandId) },
+    {
+      $set: {
+        imageBlobUrl: blob.url,
+        imageMimeType: file.type,
+        image,
+      },
+    },
+  );
+
+  return { image };
+}
+
+export async function deleteBandImageAction(bandId: string): Promise<void> {
+  const { db, band } = await verifyAdmin(bandId);
+
+  await deleteBandImageBlob(band.imageBlobUrl);
+
+  await getBandsCollection(db).updateOne(
+    { _id: new ObjectId(bandId) },
+    { $unset: { imageBlobUrl: "", imageMimeType: "", image: "" } },
+  );
 }
 
 export async function addMemberAction(bandId: string, userId: string) {
