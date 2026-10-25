@@ -22,10 +22,16 @@ interface SetlistEditModeProps {
     songId: string,
     title: string,
     duration?: number,
+    image?: string,
   ) => void;
   onToggleCustomAlbum?: (
     albumName: string,
-    songs: Array<{ id: string; title: string; duration?: number }>,
+    songs: Array<{
+      id: string;
+      title: string;
+      duration?: number;
+      image?: string;
+    }>,
   ) => void;
   onToggleCoverSong: (cover: BandCover) => void;
   isEditSongSelected: (songId: string) => boolean;
@@ -119,6 +125,13 @@ export default function SetlistEditMode({
                       </button>
                     </div>
                     <span className="song-index">{index + 1}</span>
+                    {song.image && (
+                      <img
+                        src={song.image}
+                        alt=""
+                        className="song-thumbnail song-thumbnail-small"
+                      />
+                    )}
                     <div className="song-body">
                       <span className="item-title">{song.title}</span>
                       {song.artist && (
@@ -133,11 +146,14 @@ export default function SetlistEditMode({
                         {formatDuration(song.duration)}
                       </span>
                     )}
+                    {/* icon button so the title keeps room next to the image */}
                     <button
                       onClick={() => onRemoveSong(song.id)}
-                      className="button button-small button-tertiary button-tertiary-danger"
+                      className="button button-small button-tertiary button-tertiary-danger button-icon"
+                      title="Remove"
+                      aria-label={`Remove ${song.title}`}
                     >
-                      Remove
+                      ✕
                     </button>
                   </div>
                 </div>

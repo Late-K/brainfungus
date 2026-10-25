@@ -36,6 +36,7 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
     songId: string,
     title: string,
     duration?: number,
+    image?: string,
   ) => {
     setSelectedSongs((prev) => {
       if (prev.some((s) => s.id === songId)) {
@@ -46,6 +47,7 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
         id: songId,
         title,
         duration: duration ?? 0,
+        image,
         isCustom: true,
       };
 
@@ -102,7 +104,12 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
 
   const handleToggleCustomAlbum = (
     albumName: string,
-    songs: Array<{ id: string; title: string; duration?: number }>,
+    songs: Array<{
+      id: string;
+      title: string;
+      duration?: number;
+      image?: string;
+    }>,
   ) => {
     setSelectedSongs((prev) => {
       const albumSongIds = songs.map((song) => song.id);
@@ -123,6 +130,7 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
           title: song.title,
           album: albumName,
           duration: song.duration ?? 0,
+          image: song.image,
           isCustom: true,
         }));
 

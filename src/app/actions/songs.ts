@@ -6,8 +6,36 @@ import {
   requireBandMember,
   requireBandMemberContext,
 } from "@/app/lib/serverUtils";
+import {
+  albumImageUrl,
+  buildImageBlobPath,
+  songImageUrl,
+  validateImageFile,
+} from "@/app/lib/customSongImages";
 import { del, put } from "@vercel/blob";
 import { ObjectId } from "mongodb";
+
+async function deleteBlobQuietly(blobUrl: unknown, label: string) {
+  if (typeof blobUrl !== "string" || !blobUrl) return;
+  try {
+    await del(blobUrl);
+  } catch (blobErr) {
+    console.error(`Failed to delete ${label} blob:`, blobErr);
+  }
+}
+
+async function requireSongForMember(songId: string) {
+  if (!ObjectId.isValid(songId)) throw new Error("Song not found");
+  const { db, user } = await getAuthUser();
+
+  const song = await db
+    .collection("custom_songs")
+    .findOne({ _id: new ObjectId(songId) });
+  if (!song) throw new Error("Song not found");
+
+  await requireBandMember(db, user._id.toString(), song.bandId);
+  return { db, song };
+}
 
 function buildAudioBlobPath(
   bandId: unknown,
@@ -87,6 +115,7 @@ export async function deleteSongAction(songId: string) {
         console.error("Failed to delete audio blob for song:", blobErr);
       }
     }
+    await deleteBlobQuietly(song.imageBlobUrl, "song image");
 
     const normalisedSongId = normaliseSongId(songId);
 
@@ -303,4 +332,111 @@ export async function deleteAudioAction(songId: string): Promise<void> {
       $set: { updatedAt: new Date() },
     },
   );
+}
+
+export async function uploadSongImageAction(
+  songId: string,
+  formData: FormData,
+): Promise<{ image: string }> {
+  const { db, song } = await requireSongForMember(songId);
+  const file = validateImageFile(formData.get("image"));
+
+  await deleteBlobQuietly(song.imageBlobUrl, "song image");
+
+  const blob = await put(
+    buildImageBlobPath("songs", song.bandId, songId, file.name || "image"),
+    file,
+    { access: "private", addRandomSuffix: false, contentType: file.type },
+  );
+
+  const image = songImageUrl(songId, Date.now());
+  await db.collection("custom_songs").updateOne(
+    { _id: new ObjectId(songId) },
+    {
+      $set: {
+        imageBlobUrl: blob.url,
+        imageMimeType: file.type,
+        image,
+        updatedAt: new Date(),
+      },
+    },
+  );
+
+  return { image };
+}
+
+export async function deleteSongImageAction(songId: string): Promise<void> {
+  const { db, song } = await requireSongForMember(songId);
+
+  await deleteBlobQuietly(song.imageBlobUrl, "song image");
+
+  await db.collection("custom_songs").updateOne(
+    { _id: new ObjectId(songId) },
+    {
+      $unset: { imageBlobUrl: "", imageMimeType: "", image: "" },
+      $set: { updatedAt: new Date() },
+    },
+  );
+}
+
+// album images are keyed by band + the album name stored on its songs
+export async function uploadAlbumImageAction(
+  bandId: string,
+  albumName: string,
+  formData: FormData,
+): Promise<{ image: string }> {
+  if (!albumName.trim()) throw new Error("Album name is required");
+  const { db, bandObjectId } = await requireBandMemberContext(bandId);
+  const file = validateImageFile(formData.get("image"));
+
+  const existing = await db
+    .collection("custom_albums")
+    .findOne({ bandId: bandObjectId, name: albumName });
+  await deleteBlobQuietly(existing?.imageBlobUrl, "album image");
+
+  const albumId = (existing?._id as ObjectId | undefined) ?? new ObjectId();
+  const blob = await put(
+    buildImageBlobPath(
+      "albums",
+      bandObjectId,
+      albumId.toString(),
+      file.name || "image",
+    ),
+    file,
+    { access: "private", addRandomSuffix: false, contentType: file.type },
+  );
+
+  const image = albumImageUrl(albumId.toString(), Date.now());
+  await db.collection("custom_albums").updateOne(
+    { _id: albumId },
+    {
+      $set: {
+        bandId: bandObjectId,
+        name: albumName,
+        imageBlobUrl: blob.url,
+        imageMimeType: file.type,
+        image,
+        updatedAt: new Date(),
+      },
+      $setOnInsert: { createdAt: new Date() },
+    },
+    { upsert: true },
+  );
+
+  return { image };
+}
+
+export async function deleteAlbumImageAction(
+  bandId: string,
+  albumName: string,
+): Promise<void> {
+  const { db, bandObjectId } = await requireBandMemberContext(bandId);
+
+  const album = await db
+    .collection("custom_albums")
+    .findOne({ bandId: bandObjectId, name: albumName });
+  if (!album) return;
+
+  await deleteBlobQuietly(album.imageBlobUrl, "album image");
+  await db.collection("custom_albums").deleteOne({ _id: album._id });
 }

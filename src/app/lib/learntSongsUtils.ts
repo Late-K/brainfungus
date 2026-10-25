@@ -1,5 +1,6 @@
 import { Db, ObjectId } from "mongodb";
 import { normaliseSongId } from "@/app/lib/serverUtils";
+import { albumImageKey, getAlbumImages } from "@/app/lib/customSongImages";
 import { ProfileLearntSong } from "@/app/types";
 
 // fetch all learnt songs for a user from the unified learnt_songs collection
@@ -38,6 +39,7 @@ export async function getUserLearntSongs(
               image: 1,
               hasAudio: 1,
               updatedAt: 1,
+              bandId: 1,
             },
           },
         )
@@ -47,6 +49,23 @@ export async function getUserLearntSongs(
   const customSongsById = new Map(
     customSongs.map((song) => [song._id.toString(), song]),
   );
+
+  // custom songs without their own image fall back to their album's
+  const albumImages = await getAlbumImages(
+    db,
+    Array.from(
+      new Map(
+        customSongs
+          .filter((song) => song.album && song.bandId)
+          .map((song) => [song.bandId.toString(), song.bandId as ObjectId]),
+      ).values(),
+    ),
+  );
+  const getCustomSongImage = (song: (typeof customSongs)[number]) =>
+    (song.image as string | undefined) ??
+    (song.album
+      ? albumImages.get(albumImageKey(song.bandId, song.album as string))
+      : undefined);
 
   const bandIds = Array.from(
     new Set(
@@ -111,7 +130,7 @@ export async function getUserLearntSongs(
       duration: resolvedDuration,
       preview: resolvedPreview,
       image:
-        (liveCustomSong?.image as string | undefined) ??
+        (liveCustomSong ? getCustomSongImage(liveCustomSong) : undefined) ??
         (entry.image as string | undefined),
       notes:
         (liveCustomSong?.notes as string | undefined) ??

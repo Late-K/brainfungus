@@ -28,12 +28,17 @@ export default function CustomSongsComponent({ bandId }: { bandId: string }) {
 
   // build a flat preview list - albums first (shown as one row each), then loose songs
   const allItems: Array<
-    | { type: "album"; name: string; count: number }
+    | { type: "album"; name: string; count: number; image?: string }
     | { type: "song"; song: CustomSong }
   > = [];
 
   for (const [albumName, albumSongs] of albums) {
-    allItems.push({ type: "album", name: albumName, count: albumSongs.length });
+    allItems.push({
+      type: "album",
+      name: albumName,
+      count: albumSongs.length,
+      image: albumSongs.find((song) => song.albumImage)?.albumImage,
+    });
   }
   for (const song of looseSongs) {
     allItems.push({ type: "song", song });
@@ -72,6 +77,13 @@ export default function CustomSongsComponent({ bandId }: { bandId: string }) {
             if (item.type === "album") {
               return (
                 <div key={`album-${item.name}`} className="preview-row">
+                  {item.image && (
+                    <img
+                      src={item.image}
+                      alt=""
+                      className="song-thumbnail song-thumbnail-small"
+                    />
+                  )}
                   <span className="preview-title">{item.name}</span>
                   <span className="accordion-count">
                     {item.count} song{item.count !== 1 ? "s" : ""}
@@ -82,8 +94,15 @@ export default function CustomSongsComponent({ bandId }: { bandId: string }) {
             return (
               <div
                 key={item.song._id}
-                className="card-item card-item-stack card-item-regular"
+                className="card-item card-item-regular song-row"
               >
+                {item.song.image && (
+                  <img
+                    src={item.song.image}
+                    alt=""
+                    className="song-thumbnail song-thumbnail-small"
+                  />
+                )}
                 <div className="song-info">
                   <h3 className="item-title">{item.song.title}</h3>
                   {item.song.notes && (

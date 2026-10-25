@@ -1,71 +1,78 @@
-﻿import { ObjectId } from "mongodb";
+﻿import { Document, Filter } from "mongodb";
 import {
   getServerErrorStatus,
   requireBandMemberContext,
 } from "@/app/lib/serverUtils";
+import { getTypingUsers, serializeMessages } from "@/app/lib/chatServer";
+import { CHAT_PAGE_SIZE } from "@/app/lib/chatConfig";
+import { ChatMessagesResponse } from "@/app/types";
 
+// how far back each poll reaches past the last one, so a message written
+// while the previous poll was running is never missed
+const SYNC_OVERLAP_MS = 5000;
+
+function parseDate(value: string | null) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+// GET                  latest page of messages
+// GET ?before=<iso>    the page of messages older than that
+// GET ?since=<iso>     every message created or changed since then (polling)
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: bandId } = await params;
+  const searchParams = new URL(request.url).searchParams;
+  const before = parseDate(searchParams.get("before"));
+  const since = parseDate(searchParams.get("since"));
 
   try {
-    const { db, bandObjectId } = await requireBandMemberContext(bandId);
+    const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
+    const syncedAt = new Date(Date.now() - SYNC_OVERLAP_MS).toISOString();
+    const messagesCollection = db.collection("band_messages");
 
-    // fetch messages for the band
-    const rawMessages = await db
-      .collection("band_messages")
-      .find({ bandId: bandObjectId })
-      .sort({ createdAt: 1 })
-      .limit(100)
-      .toArray();
+    let rawMessages: Document[];
+    let hasMore: boolean | undefined;
 
-    // resolve user details for messages that don't have them embedded
-    const userIds = [
-      ...new Set(
-        rawMessages
-          .filter((m) => !m.userEmail)
-          .map((m) => m.userId)
-          .filter((id) => id && ObjectId.isValid(id.toString()))
-          .map((id) => new ObjectId(id.toString())),
-      ),
-    ];
-
-    const userMap: Record<
-      string,
-      { email: string; name: string; image?: string | null }
-    > = {};
-    if (userIds.length > 0) {
-      const users = await db
-        .collection("users")
-        .find({ _id: { $in: userIds } })
-        .project({ email: 1, name: 1, image: 1 })
+    if (since) {
+      rawMessages = await messagesCollection
+        .find({
+          bandId: bandObjectId,
+          $or: [{ updatedAt: { $gte: since } }, { createdAt: { $gte: since } }],
+        })
+        .sort({ createdAt: 1 })
+        .limit(500)
         .toArray();
-      for (const u of users) {
-        userMap[u._id.toString()] = {
-          email: u.email,
-          name: u.name,
-          image: u.image,
-        };
-      }
+    } else {
+      const filter: Filter<Document> = { bandId: bandObjectId };
+      if (before) filter.createdAt = { $lt: before };
+
+      // newest first so the limit keeps the latest, then flip back
+      const page = await messagesCollection
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .limit(CHAT_PAGE_SIZE + 1)
+        .toArray();
+      hasMore = page.length > CHAT_PAGE_SIZE;
+      rawMessages = page.slice(0, CHAT_PAGE_SIZE).reverse();
     }
 
-    const messages = rawMessages.map((m) => {
-      const uid = m.userId?.toString();
-      const resolved = uid ? userMap[uid] : undefined;
-      return {
-        ...m,
-        _id: m._id.toString(),
-        bandId: m.bandId?.toString(),
-        userId: uid,
-        userEmail: m.userEmail ?? resolved?.email ?? "",
-        userName: m.userName ?? resolved?.name ?? "Unknown",
-        userImage: m.userImage ?? resolved?.image ?? null,
-      };
-    });
+    const [messages, typing] = await Promise.all([
+      serializeMessages(db, rawMessages),
+      before ? Promise.resolve(undefined) : getTypingUsers(db, bandObjectId, user._id),
+    ]);
 
-    return Response.json({ messages });
+    const body: ChatMessagesResponse = {
+      messages,
+      currentUserId: user._id.toString(),
+      syncedAt,
+      hasMore,
+      typing,
+    };
+    return Response.json(body);
   } catch (error) {
     console.error("Failed to fetch messages:", error);
     const status = getServerErrorStatus(error);

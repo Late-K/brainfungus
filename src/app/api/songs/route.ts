@@ -2,6 +2,7 @@
   getServerErrorStatus,
   requireBandMemberContext,
 } from "@/app/lib/serverUtils";
+import { albumImageKey, getAlbumImages } from "@/app/lib/customSongImages";
 import { NextRequest, NextResponse } from "next/server";
 
 // fetch all custom songs for a band
@@ -21,15 +22,21 @@ export async function GET(request: NextRequest) {
       .collection("custom_songs")
       .find(
         { bandId: bandObjectId },
-        { projection: { audioData: 0, audioUrl: 0 } }, // exclude large binary/base64 fields
+        // exclude large binary/base64 fields and the private image blob url
+        { projection: { audioData: 0, audioUrl: 0, imageBlobUrl: 0 } },
       )
       .sort({ createdAt: 1 })
       .toArray();
+
+    const albumImages = await getAlbumImages(db, [bandObjectId]);
 
     const songs = bandSongs.map((song) => ({
       ...song,
       audioUrl: song.hasAudio
         ? `/api/songs/${(song._id as { toString(): string }).toString()}/audio`
+        : undefined,
+      albumImage: song.album
+        ? albumImages.get(albumImageKey(bandObjectId, song.album as string))
         : undefined,
     }));
 

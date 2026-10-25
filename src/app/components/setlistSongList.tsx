@@ -52,9 +52,11 @@ export default function SetlistSongList({
                   </>
                 }
               />
-              <span className="song-duration">
-                {formatDuration(song.duration)}
-              </span>
+              {song.duration > 0 && (
+                <span className="song-duration">
+                  {formatDuration(song.duration)}
+                </span>
+              )}
               {onAddToCovers &&
                 !song.isCustom &&
                 (coverSongIds?.has(song.id) ? (

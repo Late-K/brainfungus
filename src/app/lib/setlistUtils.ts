@@ -20,9 +20,14 @@ export function toSetlistSong(song: Song): Partial<Song> {
 }
 
 // format seconds into mm:ss
-export function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+// custom songs without audio have no duration, so treat missing values as 0
+export function formatDuration(seconds: number | undefined): string {
+  const whole =
+    typeof seconds === "number" && Number.isFinite(seconds)
+      ? Math.max(0, Math.round(seconds))
+      : 0;
+  const mins = Math.floor(whole / 60);
+  const secs = whole % 60;
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 

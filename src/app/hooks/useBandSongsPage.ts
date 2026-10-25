@@ -3,11 +3,15 @@
 import { FormEvent, use, useCallback, useEffect, useState } from "react";
 import {
   createSongAction,
+  deleteAlbumImageAction,
   deleteSongAction,
   deleteAudioAction,
+  deleteSongImageAction,
   reorderAlbumSongsAction,
   updateSongAction,
+  uploadAlbumImageAction,
   uploadAudioAction,
+  uploadSongImageAction,
 } from "@/app/actions/songs";
 import { toggleLearntSongAction } from "@/app/actions/learntSongs";
 import {
@@ -37,6 +41,18 @@ async function getAudioDurationSeconds(
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+function imageFormData(file: File) {
+  const formData = new FormData();
+  formData.append("image", file);
+  return formData;
+}
+
+function withoutId(ids: Set<string>, id: string) {
+  const next = new Set(ids);
+  next.delete(id);
+  return next;
 }
 
 async function parseApiResponse<T = Record<string, unknown>>(
@@ -73,6 +89,10 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const [newTitle, setNewTitle] = useState("");
   const [newNotes, setNewNotes] = useState("");
   const [newAudioFile, setNewAudioFile] = useState<File | null>(null);
+  const [newImageFile, setNewImageFile] = useState<File | null>(null);
+  const [newAlbumImageFile, setNewAlbumImageFile] = useState<File | null>(
+    null,
+  );
   const [newAlbum, setNewAlbum] = useState("");
   const [newAlbumIsCustom, setNewAlbumIsCustom] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,6 +107,17 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const [uploadingAudioIds, setUploadingAudioIds] = useState<Set<string>>(
     new Set(),
   );
+  const [uploadingImageIds, setUploadingImageIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [uploadingAlbumImages, setUploadingAlbumImages] = useState<
+    Set<string>
+  >(new Set());
+  // album images changed since the songs were loaded, null when removed.
+  // covers albums no song is in yet, e.g. one just typed in the edit form
+  const [albumImageOverrides, setAlbumImageOverrides] = useState<
+    Record<string, string | null>
+  >({});
   const [sortBy, setSortBy] = useState<KnownSongSort>("newest");
 
   useEffect(() => {
@@ -157,6 +188,26 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     }
   };
 
+  // every song in an album carries the album image, so any of them will do
+  const getAlbumImage = (albumName?: string) => {
+    if (!albumName) return undefined;
+    if (albumName in albumImageOverrides) {
+      return albumImageOverrides[albumName] ?? undefined;
+    }
+    return songs.find((s) => s.album === albumName && s.albumImage)
+      ?.albumImage;
+  };
+
+  const setAlbumImage = (albumName: string, albumImage?: string) => {
+    setAlbumImageOverrides((prev) => ({
+      ...prev,
+      [albumName]: albumImage ?? null,
+    }));
+    setSongs((prev) =>
+      prev.map((s) => (s.album === albumName ? { ...s, albumImage } : s)),
+    );
+  };
+
   const handleAddSong = async (e: FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !bandId) return;
@@ -200,10 +251,53 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
         }
       }
 
-      setSongs((prev) => [createdSong, ...prev]);
+      if (newImageFile) {
+        try {
+          const { image } = await uploadSongImageAction(
+            result.song._id,
+            imageFormData(newImageFile),
+          );
+          createdSong = { ...createdSong, image };
+        } catch (uploadErr) {
+          setError(
+            uploadErr instanceof Error
+              ? `${uploadErr.message}. Song was created without its image.`
+              : "Song created, but image upload failed.",
+          );
+        }
+      }
+
+      const album = result.song.album;
+      let albumImage = getAlbumImage(album);
+      if (newAlbumImageFile && album) {
+        try {
+          ({ image: albumImage } = await uploadAlbumImageAction(
+            bandId,
+            album,
+            imageFormData(newAlbumImageFile),
+          ));
+          setAlbumImage(album, albumImage);
+        } catch (uploadErr) {
+          setError(
+            uploadErr instanceof Error
+              ? `${uploadErr.message}. Song was created without the album image.`
+              : "Song created, but album image upload failed.",
+          );
+        }
+      }
+      createdSong = { ...createdSong, albumImage };
+
+      setSongs((prev) => [
+        createdSong,
+        ...prev.map((s) =>
+          album && s.album === album ? { ...s, albumImage } : s,
+        ),
+      ]);
       setNewTitle("");
       setNewNotes("");
       setNewAudioFile(null);
+      setNewImageFile(null);
+      setNewAlbumImageFile(null);
       setNewAlbum("");
       setNewAlbumIsCustom(false);
       setShowForm(false);
@@ -247,16 +341,86 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
         notes: editNotes,
         album: editAlbum,
       });
+      // moving to another album picks up that album's image
+      const albumImage = getAlbumImage(editAlbum);
       setSongs(
         songs.map((s) =>
           s._id === editingId
-            ? { ...s, title: editTitle, notes: editNotes, album: editAlbum }
+            ? {
+                ...s,
+                title: editTitle,
+                notes: editNotes,
+                album: editAlbum,
+                albumImage,
+              }
             : s,
         ),
       );
       setEditingId(null);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to update song");
+    }
+  };
+
+  const handleUploadImage = async (songId: string, file: File) => {
+    setUploadingImageIds((prev) => new Set(prev).add(songId));
+    try {
+      const { image } = await uploadSongImageAction(
+        songId,
+        imageFormData(file),
+      );
+      setSongs((prev) =>
+        prev.map((s) => (s._id === songId ? { ...s, image } : s)),
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setUploadingImageIds((prev) => withoutId(prev, songId));
+    }
+  };
+
+  const handleDeleteImage = async (songId: string) => {
+    setUploadingImageIds((prev) => new Set(prev).add(songId));
+    try {
+      await deleteSongImageAction(songId);
+      setSongs((prev) =>
+        prev.map((s) => (s._id === songId ? { ...s, image: undefined } : s)),
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to remove image");
+    } finally {
+      setUploadingImageIds((prev) => withoutId(prev, songId));
+    }
+  };
+
+  // album images are edited from a song's edit form and apply to the whole album
+  const handleUploadAlbumImage = async (albumName: string, file: File) => {
+    if (!bandId || !albumName) return;
+    setUploadingAlbumImages((prev) => new Set(prev).add(albumName));
+    try {
+      const { image } = await uploadAlbumImageAction(
+        bandId,
+        albumName,
+        imageFormData(file),
+      );
+      setAlbumImage(albumName, image);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setUploadingAlbumImages((prev) => withoutId(prev, albumName));
+    }
+  };
+
+  const handleDeleteAlbumImage = async (albumName: string) => {
+    if (!bandId || !albumName) return;
+    setUploadingAlbumImages((prev) => new Set(prev).add(albumName));
+    try {
+      await deleteAlbumImageAction(bandId, albumName);
+      setAlbumImage(albumName, undefined);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to remove image");
+    } finally {
+      setUploadingAlbumImages((prev) => withoutId(prev, albumName));
     }
   };
 
@@ -459,6 +623,10 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     setNewNotes,
     newAudioFile,
     setNewAudioFile,
+    newImageFile,
+    setNewImageFile,
+    newAlbumImageFile,
+    setNewAlbumImageFile,
     newAlbum,
     setNewAlbum,
     newAlbumIsCustom,
@@ -478,10 +646,17 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     looseSongs,
     existingAlbums,
     uploadingAudioIds,
+    uploadingImageIds,
+    uploadingAlbumImages,
+    getAlbumImage,
     sortBy,
     setSortBy,
     handleUploadAudio,
     handleDeleteAudio,
+    handleUploadImage,
+    handleDeleteImage,
+    handleUploadAlbumImage,
+    handleDeleteAlbumImage,
     handleToggleLearnt,
     handleAddSong,
     handleDelete,

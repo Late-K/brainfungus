@@ -1,9 +1,8 @@
 ﻿"use server";
 
 import { getAuthUser } from "@/app/lib/auth";
-import { requireBandMemberContext } from "@/app/lib/serverUtils";
-import { notifyBandMembers, truncate } from "@/app/lib/push";
 import { ObjectId, Db } from "mongodb";
+import { del } from "@vercel/blob";
 
 type BandRole = "creator" | "admin" | "member";
 type BandMemberEntry = { userId: string; role: BandRole };
@@ -78,8 +77,27 @@ async function deleteBandCascade(db: Db, bandId: string) {
       .toArray()
   ).map((rehearsal) => rehearsal._id);
 
+  // chat attachments live in blob storage, so remove those files too
+  const chatBlobUrls = (
+    await db
+      .collection("band_messages")
+      .find({ bandId: oid, "attachments.0": { $exists: true } })
+      .project({ attachments: 1 })
+      .toArray()
+  ).flatMap((m) =>
+    (m.attachments as { blobUrl: string }[]).map((a) => a.blobUrl),
+  );
+  if (chatBlobUrls.length > 0) {
+    try {
+      await del(chatBlobUrls);
+    } catch (blobErr) {
+      console.error("Failed to delete chat attachment blobs:", blobErr);
+    }
+  }
+
   await getBandsCollection(db).deleteOne({ _id: oid });
   await db.collection("band_messages").deleteMany({ bandId: oid });
+  await db.collection("band_chat_typing").deleteMany({ bandId: oid });
   await db.collection("setlists").deleteMany({ bandId: oid });
   await db.collection("custom_songs").deleteMany({ bandId: oid });
   await db.collection("covers").deleteMany({ bandId: oid });
@@ -135,54 +153,6 @@ export async function createBandAction(
   } catch (error) {
     console.error("Error creating band:", error);
     throw error instanceof Error ? error : new Error("Failed to create band");
-  }
-}
-
-export async function sendChatMessageAction(bandId: string, message: string) {
-  try {
-    if (!message || typeof message !== "string" || !message.trim()) {
-      throw new Error("Message is required");
-    }
-    if (message.trim().length > 2000) {
-      throw new Error("Message is too long (max 2000 characters)");
-    }
-
-    const { db, user, band, bandObjectId } =
-      await requireBandMemberContext(bandId);
-
-    // insert message — store only userId, resolve user details at read time
-    const newMessage = {
-      bandId: bandObjectId,
-      userId: user._id,
-      message: message.trim(),
-      createdAt: new Date(),
-    };
-
-    const result = await db.collection("band_messages").insertOne(newMessage);
-
-    notifyBandMembers(db, band, user._id.toString(), "chat", {
-      title: band.name,
-      body: truncate(`${user.name || "Someone"}: ${message.trim()}`, 140),
-      url: `/bands/${bandId}/chat`,
-      tag: `chat-${bandId}`,
-    });
-
-    return {
-      success: true,
-      message: {
-        _id: result.insertedId.toString(),
-        bandId: bandId,
-        userId: user._id.toString(),
-        userEmail: user.email as string,
-        userName: (user.name as string) || "Anonymous",
-        userImage: user.image as string | null | undefined,
-        message: message.trim(),
-        createdAt: new Date().toISOString(),
-      },
-    };
-  } catch (error) {
-    console.error("Error sending chat message:", error);
-    throw error instanceof Error ? error : new Error("Failed to send message");
   }
 }
 

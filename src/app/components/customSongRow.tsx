@@ -5,6 +5,7 @@ import { CustomSong, LearntMap } from "@/app/types";
 import SongLearntStatus from "@/app/components/songLearntStatus";
 import SongAlbumPicker from "@/app/components/songAlbumPicker";
 import ActiveSetlistButton from "@/app/components/activeSetlistButton";
+import ImageUploadField from "@/app/components/imageUploadField";
 
 interface CustomSongRowProps {
   song: CustomSong;
@@ -25,6 +26,10 @@ interface CustomSongRowProps {
   userEmail: string | null | undefined;
   togglingIds: Set<string>;
   isUploadingAudio: boolean;
+  isUploadingImage: boolean;
+  // image of the album picked in the edit form
+  editAlbumImage?: string;
+  isUploadingAlbumImage: boolean;
   onToggleLearnt: (songId: string) => void;
   onMoveSong: (
     album: string,
@@ -38,6 +43,10 @@ interface CustomSongRowProps {
   onCancelEditing: () => void;
   onUploadAudio: (songId: string, file: File) => void;
   onDeleteAudio: (songId: string) => void;
+  onUploadImage: (songId: string, file: File) => void;
+  onDeleteImage: (songId: string) => void;
+  onUploadAlbumImage: (albumName: string, file: File) => void;
+  onDeleteAlbumImage: (albumName: string) => void;
   allowReorder?: boolean;
   isInActiveSetlist?: boolean;
   isTogglingSetlist?: boolean;
@@ -63,6 +72,9 @@ export default function CustomSongRow({
   userEmail,
   togglingIds,
   isUploadingAudio,
+  isUploadingImage,
+  editAlbumImage,
+  isUploadingAlbumImage,
   onToggleLearnt,
   onMoveSong,
   onStartEditing,
@@ -71,6 +83,10 @@ export default function CustomSongRow({
   onCancelEditing,
   onUploadAudio,
   onDeleteAudio,
+  onUploadImage,
+  onDeleteImage,
+  onUploadAlbumImage,
+  onDeleteAlbumImage,
   allowReorder = false,
   isInActiveSetlist = false,
   isTogglingSetlist = false,
@@ -102,6 +118,25 @@ export default function CustomSongRow({
               onCustomToggle={setEditAlbumIsCustom}
             />
           </div>
+          {editAlbum.trim() && (
+            <ImageUploadField
+              id={`editAlbumImage-${song._id}`}
+              label="Album Image"
+              note={`Shared by every song in ${editAlbum}`}
+              currentImage={editAlbumImage}
+              isBusy={isUploadingAlbumImage}
+              onSelect={(file) => onUploadAlbumImage(editAlbum, file)}
+              onRemove={() => onDeleteAlbumImage(editAlbum)}
+            />
+          )}
+          <ImageUploadField
+            id={`editSongImage-${song._id}`}
+            label="Song Image"
+            currentImage={song.image}
+            isBusy={isUploadingImage}
+            onSelect={(file) => onUploadImage(song._id, file)}
+            onRemove={() => onDeleteImage(song._id)}
+          />
           <div className="form-group">
             <label>Notes</label>
             <textarea
@@ -126,9 +161,7 @@ export default function CustomSongRow({
               </div>
             )}
             <div className="form-group">
-              <label htmlFor={`editSongAudio-${song._id}`}>
-                Audio File (optional)
-              </label>
+              <label htmlFor={`editSongAudio-${song._id}`}>Audio File</label>
               <input
                 id={`editSongAudio-${song._id}`}
                 type="file"
@@ -206,6 +239,14 @@ export default function CustomSongRow({
               </button>
             </div>
           )}
+
+        {(song.image || song.albumImage) && (
+          <img
+            src={song.image || song.albumImage}
+            alt=""
+            className="song-thumbnail"
+          />
+        )}
 
         <div className="song-info">
           <h3 className="item-title">{song.title}</h3>

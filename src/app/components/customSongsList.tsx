@@ -14,12 +14,25 @@ interface CustomSongsListProps {
     title: string;
     isCustom?: boolean;
   }>;
-  onToggleSong: (songId: string, title: string, duration?: number) => void;
+  onToggleSong: (
+    songId: string,
+    title: string,
+    duration?: number,
+    image?: string,
+  ) => void;
   onToggleAlbum?: (
     albumName: string,
-    songs: Array<{ id: string; title: string; duration?: number }>,
+    songs: Array<{
+      id: string;
+      title: string;
+      duration?: number;
+      image?: string;
+    }>,
   ) => void;
 }
+
+// the song's own image, or its album's when it has none
+const songImage = (song: CustomSong) => song.image || song.albumImage;
 
 export default function CustomSongsList({
   bandId,
@@ -83,8 +96,17 @@ export default function CustomSongsList({
         <input
           type="checkbox"
           checked={selectedCustomSongIds.includes(song._id)}
-          onChange={() => onToggleSong(song._id, song.title, song.duration)}
+          onChange={() =>
+            onToggleSong(song._id, song.title, song.duration, songImage(song))
+          }
         />
+        {songImage(song) && (
+          <img
+            src={songImage(song)}
+            alt=""
+            className="song-thumbnail song-thumbnail-small"
+          />
+        )}
         <div className="song-details">
           <span className="item-title">{song.title}</span>
           {song.notes && (
@@ -125,6 +147,9 @@ export default function CustomSongsList({
         <div className="songs-grid">
           {albums.map(([albumName, albumSongs]) => {
             const allSelected = isAlbumSelected(albumSongs);
+            const albumImage = albumSongs.find(
+              (song) => song.albumImage,
+            )?.albumImage;
 
             return (
               <div key={albumName} className="accordion">
@@ -139,6 +164,9 @@ export default function CustomSongsList({
                     >
                       &#9654;
                     </span>
+                    {albumImage && (
+                      <img src={albumImage} alt="" className="accordion-thumb" />
+                    )}
                     <span className="accordion-title">{albumName}</span>
                     <span className="accordion-count">
                       {albumSongs.length} song
@@ -155,6 +183,7 @@ export default function CustomSongsList({
                             id: song._id,
                             title: song.title,
                             duration: song.duration,
+                            image: songImage(song),
                           })),
                         )
                       }

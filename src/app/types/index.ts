@@ -117,7 +117,39 @@ export interface CustomSong {
   order?: number;
   duration?: number;
   audioUrl?: string;
+  // the song's own image, and its album's image which shows when it has none
+  image?: string;
+  albumImage?: string;
   createdAt?: string;
+}
+
+export type ChatAttachmentKind = "image" | "video" | "audio" | "file";
+
+export interface MessageAttachment {
+  kind: ChatAttachmentKind;
+  url: string;
+  name: string;
+  size: number;
+  mimeType: string;
+  // voice notes and audio files
+  duration?: number;
+  // images and videos, so the chat doesn't jump about while they load
+  width?: number;
+  height?: number;
+}
+
+export interface MessageReaction {
+  emoji: string;
+  userIds: string[];
+  userNames: string[];
+}
+
+export interface MessageReplyPreview {
+  _id: string;
+  userName: string;
+  message: string;
+  attachmentKind?: ChatAttachmentKind;
+  deleted?: boolean;
 }
 
 export interface Message {
@@ -129,6 +161,25 @@ export interface Message {
   userImage?: string | null;
   message: string;
   createdAt: string;
+  editedAt?: string | null;
+  deleted?: boolean;
+  replyTo?: MessageReplyPreview | null;
+  attachments?: MessageAttachment[];
+  reactions?: MessageReaction[];
+}
+
+export interface ChatTypingUser {
+  userId: string;
+  userName: string;
+}
+
+export interface ChatMessagesResponse {
+  messages: Message[];
+  currentUserId: string;
+  // server time the next poll should ask for changes since
+  syncedAt: string;
+  hasMore?: boolean;
+  typing?: ChatTypingUser[];
 }
 
 export interface User {

@@ -92,6 +92,11 @@ export default function SongsPage({
               setNewNotes={songsPage.setNewNotes}
               newAudioFile={songsPage.newAudioFile}
               setNewAudioFile={songsPage.setNewAudioFile}
+              newImageFile={songsPage.newImageFile}
+              setNewImageFile={songsPage.setNewImageFile}
+              newAlbumImageFile={songsPage.newAlbumImageFile}
+              setNewAlbumImageFile={songsPage.setNewAlbumImageFile}
+              selectedAlbumImage={songsPage.getAlbumImage(songsPage.newAlbum)}
               existingAlbums={songsPage.existingAlbums}
               isSaving={songsPage.isSaving}
               onSubmit={songsPage.handleAddSong}
@@ -118,68 +123,85 @@ export default function SongsPage({
             </p>
           ) : (
             <div className="list">
-              {songsPage.albums.map(([albumName, albumSongs]) => (
-                <div key={albumName} className="accordion">
-                  <button
-                    className="accordion-trigger"
-                    onClick={() => songsPage.toggleAlbum(albumName)}
-                  >
-                    <span
-                      className={`accordion-icon ${songsPage.expandedAlbums.has(albumName) ? "accordion-icon-open" : ""}`}
+              {songsPage.albums.map(([albumName, albumSongs]) => {
+                const albumImage = songsPage.getAlbumImage(albumName);
+                return (
+                  <div key={albumName} className="accordion">
+                    <button
+                      className="accordion-trigger"
+                      onClick={() => songsPage.toggleAlbum(albumName)}
                     >
-                      &#9654;
-                    </span>
-                    <span className="accordion-title">{albumName}</span>
-                    <span className="accordion-count">
-                      {albumSongs.length} song
-                      {albumSongs.length !== 1 ? "s" : ""}
-                    </span>
-                  </button>
-                  {songsPage.expandedAlbums.has(albumName) && (
-                    <div className="accordion-content">
-                      {albumSongs.map((song, idx) => (
-                        <CustomSongRow
-                          key={song._id}
-                          song={song}
-                          albumName={albumName}
-                          albumSongs={albumSongs}
-                          indexInAlbum={idx}
-                          isEditing={songsPage.editingId === song._id}
-                          existingAlbums={songsPage.existingAlbums}
-                          editTitle={songsPage.editTitle}
-                          setEditTitle={songsPage.setEditTitle}
-                          editNotes={songsPage.editNotes}
-                          setEditNotes={songsPage.setEditNotes}
-                          editAlbum={songsPage.editAlbum}
-                          setEditAlbum={songsPage.setEditAlbum}
-                          editAlbumIsCustom={songsPage.editAlbumIsCustom}
-                          setEditAlbumIsCustom={songsPage.setEditAlbumIsCustom}
-                          learntMap={songsPage.learntMap}
-                          userEmail={session.user?.email}
-                          togglingIds={songsPage.togglingIds}
-                          isUploadingAudio={songsPage.uploadingAudioIds.has(
-                            song._id,
-                          )}
-                          onToggleLearnt={songsPage.handleToggleLearnt}
-                          onMoveSong={songsPage.handleMoveSong}
-                          onStartEditing={songsPage.startEditing}
-                          onSaveEdit={songsPage.handleSaveEdit}
-                          onDelete={songsPage.handleDelete}
-                          onCancelEditing={songsPage.cancelEditing}
-                          onUploadAudio={songsPage.handleUploadAudio}
-                          onDeleteAudio={songsPage.handleDeleteAudio}
-                          allowReorder
-                          isInActiveSetlist={setlist.isInActiveSetlist(song._id)}
-                          isTogglingSetlist={setlist.togglingSetlistIds.has(
-                            song._id,
-                          )}
-                          onToggleActiveSetlist={toggleActiveSetlist}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                      <span
+                        className={`accordion-icon ${songsPage.expandedAlbums.has(albumName) ? "accordion-icon-open" : ""}`}
+                      >
+                        &#9654;
+                      </span>
+                      {albumImage && (
+                        <img src={albumImage} alt="" className="accordion-thumb" />
+                      )}
+                      <span className="accordion-title">{albumName}</span>
+                      <span className="accordion-count">
+                        {albumSongs.length} song
+                        {albumSongs.length !== 1 ? "s" : ""}
+                      </span>
+                    </button>
+                    {songsPage.expandedAlbums.has(albumName) && (
+                      <div className="accordion-content">
+                        {albumSongs.map((song, idx) => (
+                          <CustomSongRow
+                            key={song._id}
+                            song={song}
+                            albumName={albumName}
+                            albumSongs={albumSongs}
+                            indexInAlbum={idx}
+                            isEditing={songsPage.editingId === song._id}
+                            existingAlbums={songsPage.existingAlbums}
+                            editTitle={songsPage.editTitle}
+                            setEditTitle={songsPage.setEditTitle}
+                            editNotes={songsPage.editNotes}
+                            setEditNotes={songsPage.setEditNotes}
+                            editAlbum={songsPage.editAlbum}
+                            setEditAlbum={songsPage.setEditAlbum}
+                            editAlbumIsCustom={songsPage.editAlbumIsCustom}
+                            setEditAlbumIsCustom={songsPage.setEditAlbumIsCustom}
+                            learntMap={songsPage.learntMap}
+                            userEmail={session.user?.email}
+                            togglingIds={songsPage.togglingIds}
+                            isUploadingAudio={songsPage.uploadingAudioIds.has(
+                              song._id,
+                            )}
+                            isUploadingImage={songsPage.uploadingImageIds.has(
+                              song._id,
+                            )}
+                            onToggleLearnt={songsPage.handleToggleLearnt}
+                            onMoveSong={songsPage.handleMoveSong}
+                            onStartEditing={songsPage.startEditing}
+                            onSaveEdit={songsPage.handleSaveEdit}
+                            onDelete={songsPage.handleDelete}
+                            onCancelEditing={songsPage.cancelEditing}
+                            onUploadAudio={songsPage.handleUploadAudio}
+                            onDeleteAudio={songsPage.handleDeleteAudio}
+                            onUploadImage={songsPage.handleUploadImage}
+                            onDeleteImage={songsPage.handleDeleteImage}
+                            editAlbumImage={songsPage.getAlbumImage(songsPage.editAlbum)}
+                            isUploadingAlbumImage={songsPage.uploadingAlbumImages.has(
+                              songsPage.editAlbum,
+                            )}
+                            onUploadAlbumImage={songsPage.handleUploadAlbumImage}
+                            onDeleteAlbumImage={songsPage.handleDeleteAlbumImage}
+                            allowReorder
+                            isInActiveSetlist={setlist.isInActiveSetlist(song._id)}
+                            isTogglingSetlist={setlist.togglingSetlistIds.has(
+                              song._id,
+                            )}
+                            onToggleActiveSetlist={toggleActiveSetlist}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               {songsPage.looseSongs.map((song) => (
                 <CustomSongRow
@@ -199,6 +221,7 @@ export default function SongsPage({
                   userEmail={session.user?.email}
                   togglingIds={songsPage.togglingIds}
                   isUploadingAudio={songsPage.uploadingAudioIds.has(song._id)}
+                  isUploadingImage={songsPage.uploadingImageIds.has(song._id)}
                   onToggleLearnt={songsPage.handleToggleLearnt}
                   onMoveSong={songsPage.handleMoveSong}
                   onStartEditing={songsPage.startEditing}
@@ -207,6 +230,14 @@ export default function SongsPage({
                   onCancelEditing={songsPage.cancelEditing}
                   onUploadAudio={songsPage.handleUploadAudio}
                   onDeleteAudio={songsPage.handleDeleteAudio}
+                  onUploadImage={songsPage.handleUploadImage}
+                  onDeleteImage={songsPage.handleDeleteImage}
+                  editAlbumImage={songsPage.getAlbumImage(songsPage.editAlbum)}
+                  isUploadingAlbumImage={songsPage.uploadingAlbumImages.has(
+                    songsPage.editAlbum,
+                  )}
+                  onUploadAlbumImage={songsPage.handleUploadAlbumImage}
+                  onDeleteAlbumImage={songsPage.handleDeleteAlbumImage}
                   isInActiveSetlist={setlist.isInActiveSetlist(song._id)}
                   isTogglingSetlist={setlist.togglingSetlistIds.has(song._id)}
                   onToggleActiveSetlist={toggleActiveSetlist}

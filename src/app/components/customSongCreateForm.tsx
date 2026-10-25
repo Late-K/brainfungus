@@ -2,6 +2,7 @@
 
 import { Dispatch, FormEvent, SetStateAction } from "react";
 import SongAlbumPicker from "@/app/components/songAlbumPicker";
+import ImageUploadField from "@/app/components/imageUploadField";
 
 interface CustomSongCreateFormProps {
   newTitle: string;
@@ -14,6 +15,12 @@ interface CustomSongCreateFormProps {
   setNewNotes: Dispatch<SetStateAction<string>>;
   newAudioFile: File | null;
   setNewAudioFile: Dispatch<SetStateAction<File | null>>;
+  newImageFile: File | null;
+  setNewImageFile: Dispatch<SetStateAction<File | null>>;
+  newAlbumImageFile: File | null;
+  setNewAlbumImageFile: Dispatch<SetStateAction<File | null>>;
+  // image the picked album already has, if any
+  selectedAlbumImage?: string;
   existingAlbums: string[];
   isSaving: boolean;
   onSubmit: (e: FormEvent) => void;
@@ -30,6 +37,11 @@ export default function CustomSongCreateForm({
   setNewNotes,
   newAudioFile,
   setNewAudioFile,
+  newImageFile,
+  setNewImageFile,
+  newAlbumImageFile,
+  setNewAlbumImageFile,
+  selectedAlbumImage,
   existingAlbums,
   isSaving,
   onSubmit,
@@ -59,6 +71,27 @@ export default function CustomSongCreateForm({
           disabled={isSaving}
         />
       </div>
+      {newAlbum.trim() && (
+        <ImageUploadField
+          id="albumImage"
+          label="Album Image"
+          currentImage={selectedAlbumImage}
+          pendingFile={newAlbumImageFile}
+          disabled={isSaving}
+          onSelect={setNewAlbumImageFile}
+          onRemove={
+            newAlbumImageFile ? () => setNewAlbumImageFile(null) : undefined
+          }
+        />
+      )}
+      <ImageUploadField
+        id="songImage"
+        label="Song Image"
+        pendingFile={newImageFile}
+        disabled={isSaving}
+        onSelect={setNewImageFile}
+        onRemove={() => setNewImageFile(null)}
+      />
       <div className="form-group">
         <label htmlFor="songNotes">Notes</label>
         <textarea
@@ -72,7 +105,7 @@ export default function CustomSongCreateForm({
         />
       </div>
       <div className="form-group">
-        <label htmlFor="songAudio">Audio File (optional)</label>
+        <label htmlFor="songAudio">Audio File</label>
         <input
           id="songAudio"
           type="file"
@@ -86,7 +119,11 @@ export default function CustomSongCreateForm({
         )}
         <p className="audio-hint">MP3, WAV, OGG, FLAC - max 8 MB</p>
       </div>
-      <button type="submit" disabled={isSaving} className="button button-primary">
+      <button
+        type="submit"
+        disabled={isSaving}
+        className="button button-primary"
+      >
         {isSaving ? "Creating..." : "Create Song"}
       </button>
     </form>

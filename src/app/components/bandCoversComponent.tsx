@@ -269,6 +269,10 @@ export default function BandCoversComponent({
                   <span className="song-duration">
                     {formatDuration(cover.duration)}
                   </span>
+                </div>
+
+                {/* own row so the title keeps its width in narrow columns */}
+                <div className="inline-actions song-actions">
                   {activeSetlist && (
                     <ActiveSetlistButton
                       isInSetlist={isInActiveSetlist(cover.songId)}

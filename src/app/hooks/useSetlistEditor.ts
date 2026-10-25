@@ -86,18 +86,25 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     songId: string,
     title: string,
     duration?: number,
+    image?: string,
   ) => {
     toggleSong({
       id: songId,
       title,
       duration: duration ?? 0,
+      image,
       isCustom: true,
     });
   };
 
   const handleToggleCustomAlbum = (
     albumName: string,
-    songs: Array<{ id: string; title: string; duration?: number }>,
+    songs: Array<{
+      id: string;
+      title: string;
+      duration?: number;
+      image?: string;
+    }>,
   ) => {
     setEditSongs((prev) => {
       const albumSongIds = songs.map((song) => song.id);
@@ -118,6 +125,7 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
           title: song.title,
           album: albumName,
           duration: song.duration ?? 0,
+          image: song.image,
           isCustom: true,
         }));
 

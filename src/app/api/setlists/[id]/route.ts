@@ -4,6 +4,7 @@ import {
   normaliseSongId,
   requireBandMember,
 } from "@/app/lib/serverUtils";
+import { albumImageKey, getAlbumImages } from "@/app/lib/customSongImages";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
@@ -47,9 +48,16 @@ export async function GET(
 
     const customMeta: Record<
       string,
-      { title?: string; album?: string; audioUrl?: string; duration?: number }
+      {
+        title?: string;
+        album?: string;
+        audioUrl?: string;
+        duration?: number;
+        image?: string;
+      }
     > = {};
     if (customIds.length > 0) {
+      const albumImages = await getAlbumImages(db, [setlist.bandId]);
       const customDocs = await db
         .collection("custom_songs")
         .find(
@@ -61,6 +69,7 @@ export async function GET(
               album: 1,
               hasAudio: 1,
               duration: 1,
+              image: 1,
             },
           },
         )
@@ -75,6 +84,12 @@ export async function GET(
             typeof doc.duration === "number" && Number.isFinite(doc.duration)
               ? doc.duration
               : undefined,
+          // own image first, then the album's
+          image:
+            (doc.image as string | undefined) ??
+            (doc.album
+              ? albumImages.get(albumImageKey(setlist.bandId, doc.album))
+              : undefined),
         };
       }
     }
@@ -90,6 +105,7 @@ export async function GET(
         title: meta.title ?? song.title,
         album: meta.album ?? song.album,
         audioUrl: meta.audioUrl,
+        image: meta.image,
         duration:
           typeof meta.duration === "number" ? meta.duration : song.duration,
       };
