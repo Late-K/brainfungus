@@ -9,6 +9,7 @@ import { NotificationPrefs, NotificationType } from "@/app/types";
 const notificationTypes: NotificationType[] = [
   "rehearsals",
   "chat",
+  "mentions",
   "setlists",
   "invites",
 ];
@@ -70,6 +71,7 @@ export async function getNotificationPrefsAction() {
       return {
         rehearsals: prefs.rehearsals ?? true,
         chat: prefs.chat ?? true,
+        mentions: prefs.mentions ?? true,
         setlists: prefs.setlists ?? true,
         invites: prefs.invites ?? true,
       };

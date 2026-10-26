@@ -1,8 +1,10 @@
 "use client";
 
-// the band chat's message box: text with emoji, attachments (picked, pasted
-// or dropped onto the chat), voice notes, and the replying / editing banners
+// the band chat's message box: text with emoji and @mentions, attachments
+// (picked, pasted or dropped onto the chat), voice notes, and the replying /
+// editing banners
 
+import Image from "next/image";
 import {
   Ref,
   useEffect,
@@ -11,7 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Message } from "@/app/types";
+import { ChatMember, ChatMention, Message } from "@/app/types";
 import { DraftAttachment, SendInput } from "@/app/hooks/useBandChat";
 import { useVoiceRecorder } from "@/app/hooks/useVoiceRecorder";
 import {
@@ -22,6 +24,11 @@ import {
   attachmentLabel,
   formatFileSize,
 } from "@/app/lib/chatConfig";
+import {
+  MENTION_EVERYONE,
+  activeMentionQuery,
+  mentionSuggestions,
+} from "@/app/lib/chatMentions";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import ChatEmojiPicker from "@/app/components/chat/chatEmojiPicker";
 import {
@@ -93,6 +100,8 @@ function isTouchDevice() {
 
 export default function ChatComposer({
   ref,
+  members,
+  currentUserId,
   replyTo,
   editing,
   onCancelReply,
@@ -104,6 +113,8 @@ export default function ChatComposer({
   onError,
 }: {
   ref?: Ref<ChatComposerHandle>;
+  members: ChatMember[];
+  currentUserId: string;
   replyTo: Message | null;
   editing: Message | null;
   onCancelReply: () => void;
@@ -118,6 +129,11 @@ export default function ChatComposer({
   const [drafts, setDrafts] = useState<DraftAttachment[]>([]);
   const [showEmoji, setShowEmoji] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [caret, setCaret] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  // the @ that escape closed the suggestions for, so they stay closed for it
+  const [dismissedAt, setDismissedAt] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftsRef = useRef(drafts);
@@ -150,7 +166,19 @@ export default function ChatComposer({
   if ((editing?._id ?? null) !== editingId) {
     setEditingId(editing?._id ?? null);
     setText(editing ? editing.message : "");
+    setCaret(editing ? editing.message.length : 0);
   }
+
+  // suggestions for the @name being typed, never including yourself
+  const mentionQuery = isFocused ? activeMentionQuery(text, caret) : null;
+  const suggestions =
+    mentionQuery && mentionQuery.start !== dismissedAt
+      ? mentionSuggestions(
+          mentionQuery.query,
+          members.filter((m) => m.userId !== currentUserId),
+        )
+      : [];
+  const selectedMention = Math.min(mentionIndex, suggestions.length - 1);
 
   useEffect(() => {
     if (editing || replyTo) textareaRef.current?.focus();
@@ -204,9 +232,26 @@ export default function ChatComposer({
     const end = el?.selectionEnd ?? text.length;
     const next = text.slice(0, start) + emoji + text.slice(end);
     setText(next);
+    setCaret(start + emoji.length);
     requestAnimationFrame(() => {
       el?.focus();
       el?.setSelectionRange(start + emoji.length, start + emoji.length);
+    });
+  };
+
+  // swaps the half typed "@sa" for the full "@Sam Lee "
+  const pickMention = (mention: ChatMention) => {
+    if (!mentionQuery) return;
+    const el = textareaRef.current;
+    const insert = `@${mention.name} `;
+    const next = text.slice(0, mentionQuery.start) + insert + text.slice(caret);
+    const position = mentionQuery.start + insert.length;
+    setText(next);
+    setCaret(position);
+    setMentionIndex(0);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(position, position);
     });
   };
 
@@ -263,6 +308,27 @@ export default function ChatComposer({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // while suggestions are open the arrows, enter, tab and escape drive them
+    if (suggestions.length > 0 && mentionQuery) {
+      const count = suggestions.length;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const step = e.key === "ArrowDown" ? 1 : count - 1;
+        setMentionIndex((selectedMention + step) % count);
+        return;
+      }
+      if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
+        e.preventDefault();
+        pickMention(suggestions[selectedMention]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setDismissedAt(mentionQuery.start);
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey && !isTouchDevice()) {
       e.preventDefault();
       submit();
@@ -356,6 +422,56 @@ export default function ChatComposer({
         </div>
       )}
 
+      {suggestions.length > 0 && !recorder.isRecording && (
+        <div
+          id="chat-mention-suggestions"
+          className="chat-mention-suggestions"
+          role="listbox"
+          aria-label="Mention someone"
+        >
+          {suggestions.map((mention, i) => {
+            const member = members.find((m) => m.userId === mention.userId);
+            const everyone = mention.userId === MENTION_EVERYONE;
+            return (
+              <button
+                key={mention.userId}
+                id={`chat-mention-option-${i}`}
+                type="button"
+                role="option"
+                aria-selected={i === selectedMention}
+                className={`chat-mention-option${i === selectedMention ? " chat-mention-option-active" : ""}`}
+                // keep focus in the message box so the caret stays put
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={() => setMentionIndex(i)}
+                onClick={() => pickMention(mention)}
+              >
+                {member?.image ? (
+                  <Image
+                    src={member.image}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="chat-mention-avatar"
+                  />
+                ) : (
+                  <span className="chat-mention-avatar chat-mention-avatar-placeholder">
+                    {everyone ? "@" : mention.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="chat-mention-option-name">
+                  {everyone ? "@everyone" : mention.name}
+                </span>
+                {everyone && (
+                  <span className="chat-mention-option-hint">
+                    Notify the whole band
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {recorder.isRecording ? (
         <div className="chat-composer-row chat-recording">
           <button
@@ -411,10 +527,31 @@ export default function ChatComposer({
             rows={1}
             value={text}
             placeholder={editing ? "Edit your message" : "Message"}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={suggestions.length > 0}
+            aria-controls="chat-mention-suggestions"
+            aria-activedescendant={
+              suggestions.length > 0
+                ? `chat-mention-option-${selectedMention}`
+                : undefined
+            }
             onChange={(e) => {
               setText(e.target.value);
+              setCaret(e.target.selectionStart);
+              setMentionIndex(0);
+              // a new @ (or none) brings suggestions back after escape
+              if (
+                activeMentionQuery(e.target.value, e.target.selectionStart)
+                  ?.start !== dismissedAt
+              ) {
+                setDismissedAt(null);
+              }
               if (e.target.value.trim() && !editing) onTyping();
             }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             onKeyDown={onKeyDown}
             onPaste={(e) => {
               const files = Array.from(e.clipboardData.files);

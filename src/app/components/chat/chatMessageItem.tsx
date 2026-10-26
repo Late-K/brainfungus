@@ -4,14 +4,25 @@
 // and the hover/long-press toolbar for replying, reacting, editing and deleting
 
 import Image from "next/image";
+import Link from "next/link";
 import { Fragment, ReactNode, useEffect, useRef } from "react";
-import { Message, MessageAttachment, MessageReplyPreview } from "@/app/types";
+import {
+  ChatMention,
+  Message,
+  MessageAttachment,
+  MessageReplyPreview,
+} from "@/app/types";
 import { PendingMessage } from "@/app/hooks/useBandChat";
 import {
   QUICK_REACTIONS,
   attachmentLabel,
   formatFileSize,
 } from "@/app/lib/chatConfig";
+import {
+  MENTION_EVERYONE,
+  mentionsUser,
+  splitMentions,
+} from "@/app/lib/chatMentions";
 import ChatAttachment from "@/app/components/chat/chatAttachment";
 import {
   CopyIcon,
@@ -66,7 +77,7 @@ function isEmojiOnly(text: string) {
   return segments.length <= 3;
 }
 
-function renderText(text: string): ReactNode {
+function renderLinks(text: string): ReactNode {
   return text.split(URL_PATTERN).map((part, i) =>
     i % 2 === 1 ? (
       <a key={i} href={part} target="_blank" rel="noopener noreferrer">
@@ -76,6 +87,29 @@ function renderText(text: string): ReactNode {
       <Fragment key={i}>{part}</Fragment>
     ),
   );
+}
+
+// @mentions link to that person's profile, and stand out more when they're you
+function renderText(
+  text: string,
+  mentions?: ChatMention[],
+  currentUserId?: string,
+): ReactNode {
+  return splitMentions(text, mentions).map(({ text: part, mention }, i) => {
+    if (!mention) return <Fragment key={i}>{renderLinks(part)}</Fragment>;
+    const isMe =
+      mention.userId === currentUserId || mention.userId === MENTION_EVERYONE;
+    const className = `chat-mention${isMe ? " chat-mention-me" : ""}`;
+    return mention.userId === MENTION_EVERYONE ? (
+      <span key={i} className={className}>
+        {part}
+      </span>
+    ) : (
+      <Link key={i} href={`/users/${mention.userId}`} className={className}>
+        {part}
+      </Link>
+    );
+  });
 }
 
 function Avatar({ name, image }: { name: string; image?: string | null }) {
@@ -193,6 +227,8 @@ export default function ChatMessageItem({
 }) {
   const attachments = message.attachments ?? [];
   const reactions = message.reactions ?? [];
+  const mentionsMe =
+    !isOwn && !message.deleted && mentionsUser(message.mentions, currentUserId);
   const bigEmoji = attachments.length === 0 && isEmojiOnly(message.message);
   const mediaOnly =
     !message.message &&
@@ -265,6 +301,7 @@ export default function ChatMessageItem({
     showHeader && "chat-row-first",
     isActive && "chat-row-active",
     isHighlighted && "chat-row-highlight",
+    mentionsMe && "chat-row-mentioned",
   ]
     .filter(Boolean)
     .join(" ");
@@ -323,7 +360,11 @@ export default function ChatMessageItem({
                 )}
                 {message.message && (
                   <p className="chat-bubble-text">
-                    {renderText(message.message)}
+                    {renderText(
+                      message.message,
+                      message.mentions,
+                      currentUserId,
+                    )}
                   </p>
                 )}
               </>
@@ -486,7 +527,9 @@ export function PendingMessageItem({
               </div>
             )}
             {item.text && (
-              <p className="chat-bubble-text">{renderText(item.text)}</p>
+              <p className="chat-bubble-text">
+                {renderText(item.text, item.mentions)}
+              </p>
             )}
             <span className="chat-bubble-meta">
               {failed

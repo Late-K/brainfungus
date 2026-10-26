@@ -471,6 +471,8 @@ export default function BandChat({
         )}
         <ChatComposer
           ref={composerRef}
+          members={chat.members}
+          currentUserId={currentUserId}
           replyTo={replyTo}
           editing={editing}
           onCancelReply={() => setReplyTo(null)}

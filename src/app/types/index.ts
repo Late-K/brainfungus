@@ -188,6 +188,21 @@ export interface Message {
   replyTo?: MessageReplyPreview | null;
   attachments?: MessageAttachment[];
   reactions?: MessageReaction[];
+  mentions?: ChatMention[];
+}
+
+// someone @mentioned in a message. userId is "everyone" for @everyone, and
+// name is how it was written in the message
+export interface ChatMention {
+  userId: string;
+  name: string;
+}
+
+// a band member who can be @mentioned
+export interface ChatMember {
+  userId: string;
+  name: string;
+  image?: string | null;
 }
 
 export interface ChatTypingUser {
@@ -202,6 +217,8 @@ export interface ChatMessagesResponse {
   syncedAt: string;
   hasMore?: boolean;
   typing?: ChatTypingUser[];
+  // only on the first page, for @mention suggestions
+  members?: ChatMember[];
 }
 
 // another user as listed in pickers and search - never includes their email
@@ -283,7 +300,12 @@ export interface ProfileInviteBand {
   status: "member" | "invited" | "none";
 }
 
-export type NotificationType = "rehearsals" | "chat" | "setlists" | "invites";
+export type NotificationType =
+  | "rehearsals"
+  | "chat"
+  | "mentions"
+  | "setlists"
+  | "invites";
 
 export type NotificationPrefs = Record<NotificationType, boolean>;
 

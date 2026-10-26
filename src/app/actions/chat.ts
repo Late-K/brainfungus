@@ -6,8 +6,13 @@ import { requireBandMemberContext, toObjectId } from "@/app/lib/server/utils";
 import { deleteBlobsQuietly } from "@/app/lib/server/blobStorage";
 import { runAction, UserError } from "@/app/lib/actionResult";
 import { readOptionalString, readStringArray } from "@/app/lib/validate";
-import { notifyBandMembers, truncate } from "@/app/lib/server/push";
-import { serializeMessages, StoredAttachment } from "@/app/lib/server/chat";
+import { notifyUsers, truncate } from "@/app/lib/server/push";
+import {
+  getChatMembers,
+  serializeMessages,
+  StoredAttachment,
+} from "@/app/lib/server/chat";
+import { MENTION_EVERYONE, findMentions } from "@/app/lib/chatMentions";
 import {
   MAX_ATTACHMENTS,
   MAX_ATTACHMENT_BYTES,
@@ -17,7 +22,7 @@ import {
   baseMimeType,
   chatUploadPrefix,
 } from "@/app/lib/chatConfig";
-import { Message } from "@/app/types";
+import { ChatMention, Message } from "@/app/types";
 
 // what the browser sends for each file it has already uploaded to blob storage
 export type ChatAttachmentInput = {
@@ -120,6 +125,39 @@ async function requireMessage(
   return { ...context, message };
 }
 
+// the user ids a message's mentions point at, with @everyone meaning every
+// member. the sender never counts
+function mentionedUserIds(
+  mentions: ChatMention[],
+  memberIds: string[],
+  senderId: string,
+) {
+  const everyone = mentions.some((m) => m.userId === MENTION_EVERYONE);
+  return memberIds.filter(
+    (id) =>
+      id !== senderId &&
+      (everyone || mentions.some((m) => m.userId === id)),
+  );
+}
+
+// people mentioned by name hear about it even if they've muted the band,
+// @everyone respects the mute like any other message
+function notifyMentioned(
+  db: Awaited<ReturnType<typeof requireBandMemberContext>>["db"],
+  bandId: string,
+  mentions: ChatMention[],
+  userIds: string[],
+  payload: { title: string; body: string; url: string; tag: string },
+) {
+  if (userIds.length === 0) return;
+  const named = userIds.filter((id) => mentions.some((m) => m.userId === id));
+  const rest = userIds.filter((id) => !named.includes(id));
+  notifyUsers(db, named, "mentions", bandId, payload, {
+    ignoreBandMute: true,
+  });
+  notifyUsers(db, rest, "mentions", bandId, payload);
+}
+
 async function loadSerialized(
   db: Awaited<ReturnType<typeof requireBandMemberContext>>["db"],
   messageId: ObjectId,
@@ -190,6 +228,8 @@ export async function sendChatMessageAction(
       };
       if (replyTo) doc.replyTo = replyTo;
       if (attachments.length > 0) doc.attachments = attachments;
+      const mentions = findMentions(text, await getChatMembers(db, band));
+      if (mentions.length > 0) doc.mentions = mentions;
 
       const result = await db.collection("band_messages").insertOne(doc);
 
@@ -205,11 +245,30 @@ export async function sendChatMessageAction(
           : attachments[0]?.kind === "file"
             ? `📎 ${attachments[0].name}`
             : attachmentLabel(attachments[0]?.kind));
-      notifyBandMembers(db, band, user._id.toString(), "chat", {
-        title: band.name,
-        body: truncate(`${user.name || "Someone"}: ${preview}`, 140),
+      // mentioned members get a mention notification instead of the usual one
+      const senderId = user._id.toString();
+      const memberIds = ((band.members as { userId: string }[]) ?? []).map(
+        (m) => m.userId,
+      );
+      const mentioned = mentionedUserIds(mentions, memberIds, senderId);
+      const body = truncate(`${user.name || "Someone"}: ${preview}`, 140);
+      notifyUsers(
+        db,
+        memberIds.filter((id) => id !== senderId && !mentioned.includes(id)),
+        "chat",
+        bandId,
+        {
+          title: band.name,
+          body,
+          url: `/bands/${bandId}/chat`,
+          tag: `chat-${bandId}`,
+        },
+      );
+      notifyMentioned(db, bandId, mentions, mentioned, {
+        title: `${user.name || "Someone"} mentioned you in ${band.name}`,
+        body: truncate(preview, 140),
         url: `/bands/${bandId}/chat`,
-        tag: `chat-${bandId}`,
+        tag: `mention-${result.insertedId.toString()}`,
       });
 
       return { message: await loadSerialized(db, result.insertedId) };
@@ -224,9 +283,12 @@ export async function editChatMessageAction(
 ) {
   return runAction("Failed to edit message", async () => {
     const text = cleanText(message);
-    const { db, message: existing } = await requireMessage(bandId, messageId, {
-      ownOnly: true,
-    });
+    const {
+      db,
+      user,
+      band,
+      message: existing,
+    } = await requireMessage(bandId, messageId, { ownOnly: true });
 
     const hasAttachments =
       ((existing.attachments as unknown[] | undefined) ?? []).length > 0;
@@ -234,12 +296,36 @@ export async function editChatMessageAction(
 
     if (text !== existing.message) {
       const now = new Date();
-      await db
-        .collection("band_messages")
-        .updateOne(
-          { _id: existing._id },
-          { $set: { message: text, editedAt: now, updatedAt: now } },
-        );
+      const mentions = findMentions(text, await getChatMembers(db, band));
+      await db.collection("band_messages").updateOne(
+        { _id: existing._id },
+        mentions.length > 0
+          ? { $set: { message: text, mentions, editedAt: now, updatedAt: now } }
+          : {
+              $set: { message: text, editedAt: now, updatedAt: now },
+              $unset: { mentions: "" },
+            },
+      );
+
+      // only people the edit newly mentions are told about it
+      const senderId = user._id.toString();
+      const memberIds = ((band.members as { userId: string }[]) ?? []).map(
+        (m) => m.userId,
+      );
+      const before = mentionedUserIds(
+        (existing.mentions as ChatMention[] | undefined) ?? [],
+        memberIds,
+        senderId,
+      );
+      const added = mentionedUserIds(mentions, memberIds, senderId).filter(
+        (id) => !before.includes(id),
+      );
+      notifyMentioned(db, bandId, mentions, added, {
+        title: `${user.name || "Someone"} mentioned you in ${band.name}`,
+        body: truncate(text, 140),
+        url: `/bands/${bandId}/chat`,
+        tag: `mention-${existing._id.toString()}`,
+      });
     }
 
     return { message: await loadSerialized(db, existing._id) };
@@ -262,7 +348,12 @@ export async function deleteChatMessageAction(
       { _id: existing._id },
       {
         $set: { message: "", deletedAt: now, updatedAt: now },
-        $unset: { attachments: "", reactions: "", editedAt: "" },
+        $unset: {
+          attachments: "",
+          reactions: "",
+          editedAt: "",
+          mentions: "",
+        },
       },
     );
     await deleteBlobsQuietly(

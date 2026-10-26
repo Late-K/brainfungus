@@ -3,7 +3,11 @@ import {
   serverErrorResponse,
   requireBandMemberContext,
 } from "@/app/lib/server/utils";
-import { getTypingUsers, serializeMessages } from "@/app/lib/server/chat";
+import {
+  getChatMembers,
+  getTypingUsers,
+  serializeMessages,
+} from "@/app/lib/server/chat";
 import { CHAT_PAGE_SIZE } from "@/app/lib/chatConfig";
 import { ChatMessagesResponse } from "@/app/types";
 
@@ -30,7 +34,8 @@ export async function GET(
   const since = parseDate(searchParams.get("since"));
 
   try {
-    const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
+    const { db, user, band, bandObjectId } =
+      await requireBandMemberContext(bandId);
     const syncedAt = new Date(Date.now() - SYNC_OVERLAP_MS).toISOString();
     const messagesCollection = db.collection("band_messages");
 
@@ -60,11 +65,13 @@ export async function GET(
       rawMessages = page.slice(0, CHAT_PAGE_SIZE).reverse();
     }
 
-    const [messages, typing] = await Promise.all([
+    const firstPage = !since && !before;
+    const [messages, typing, members] = await Promise.all([
       serializeMessages(db, rawMessages),
       before
         ? Promise.resolve(undefined)
         : getTypingUsers(db, bandObjectId, user._id),
+      firstPage ? getChatMembers(db, band) : Promise.resolve(undefined),
     ]);
 
     const body: ChatMessagesResponse = {
@@ -73,6 +80,7 @@ export async function GET(
       syncedAt,
       hasMore,
       typing,
+      members,
     };
     return Response.json(body);
   } catch (error) {

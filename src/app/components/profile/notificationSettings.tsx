@@ -23,6 +23,7 @@ import { unwrapAction } from "@/app/lib/actionResult";
 const prefOptions: { type: NotificationType; label: string }[] = [
   { type: "rehearsals", label: "Rehearsals" },
   { type: "chat", label: "Band chat" },
+  { type: "mentions", label: "@Mentions" },
   { type: "setlists", label: "Active setlist" },
   { type: "invites", label: "Band invites" },
 ];

@@ -14,8 +14,11 @@ import {
   toggleChatReactionAction,
 } from "@/app/actions/chat";
 import { chatUploadPrefix } from "@/app/lib/chatConfig";
+import { findMentions } from "@/app/lib/chatMentions";
 import {
   ChatAttachmentKind,
+  ChatMember,
+  ChatMention,
   ChatMessagesResponse,
   ChatTypingUser,
   Message,
@@ -41,6 +44,7 @@ export interface DraftAttachment {
 export interface PendingMessage {
   tempId: string;
   text: string;
+  mentions: ChatMention[];
   replyTo: MessageReplyPreview | null;
   attachments: DraftAttachment[];
   progress: number;
@@ -93,6 +97,7 @@ export function useBandChat(bandId: string) {
   const [pending, setPending] = useState<PendingMessage[]>([]);
   const [currentUserId, setCurrentUserId] = useState("");
   const [typing, setTyping] = useState<ChatTypingUser[]>([]);
+  const [members, setMembers] = useState<ChatMember[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
@@ -109,6 +114,7 @@ export function useBandChat(bandId: string) {
   const applyResponse = useCallback((data: ChatMessagesResponse) => {
     setCurrentUserId(data.currentUserId);
     if (data.typing) setTyping(data.typing);
+    if (data.members) setMembers(data.members);
     setMessages((prev) => mergeMessages(prev, data.messages));
   }, []);
 
@@ -276,9 +282,11 @@ export function useBandChat(bandId: string) {
 
   const send = useCallback(
     (input: SendInput) => {
+      const text = input.text.trim();
       const item: PendingMessage = {
         tempId: `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        text: input.text.trim(),
+        text,
+        mentions: findMentions(text, members),
         replyTo: input.replyTo ? toReplyPreview(input.replyTo) : null,
         attachments: input.attachments,
         progress: 0,
@@ -289,7 +297,7 @@ export function useBandChat(bandId: string) {
       setPending((prev) => [...prev, item]);
       deliver(item);
     },
-    [deliver],
+    [deliver, members],
   );
 
   const retry = useCallback(
@@ -389,6 +397,7 @@ export function useBandChat(bandId: string) {
     pending,
     currentUserId,
     typing,
+    members,
     hasMore,
     isLoading,
     isLoadingOlder,

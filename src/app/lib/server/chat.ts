@@ -4,6 +4,8 @@ import { Db, Document, ObjectId } from "mongodb";
 import { streamPrivateBlob } from "@/app/lib/server/blobStorage";
 import {
   ChatAttachmentKind,
+  ChatMember,
+  ChatMention,
   ChatTypingUser,
   Message,
   MessageAttachment,
@@ -173,8 +175,31 @@ export async function serializeMessages(
       replyTo,
       attachments,
       reactions,
+      mentions: deleted
+        ? []
+        : ((m.mentions as ChatMention[] | undefined) ?? []).map((x) => ({
+            userId: x.userId,
+            name: x.name,
+          })),
     };
   });
+}
+
+// the band's members, for @mentions
+export async function getChatMembers(
+  db: Db,
+  band: Document,
+): Promise<ChatMember[]> {
+  const memberIds = ((band.members as { userId: string }[]) ?? []).map(
+    (m) => m.userId,
+  );
+  const users = await getUserMap(db, memberIds);
+  return memberIds
+    .filter((id) => users.has(id))
+    .map((id) => {
+      const user = users.get(id)!;
+      return { userId: id, name: user.name || "", image: user.image ?? null };
+    });
 }
 
 export async function getTypingUsers(

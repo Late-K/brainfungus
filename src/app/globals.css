@@ -1724,6 +1724,79 @@ h4 {
   color: #f0b8f1;
   text-decoration: underline;
 }
+.chat-bubble-text .chat-mention {
+  padding: 0 0.15rem;
+  border-radius: 4px;
+  background: rgba(183, 90, 185, 0.22);
+  color: #f0b8f1;
+  font-weight: 600;
+  text-decoration: none;
+}
+.chat-bubble-text a.chat-mention:hover {
+  text-decoration: underline;
+}
+.chat-bubble-text .chat-mention-me {
+  background: rgba(240, 184, 241, 0.32);
+  color: #fff;
+}
+.chat-row-mentioned .chat-bubble {
+  border-color: var(--primary);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.chat-mention-suggestions {
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.chat-mention-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+.chat-mention-option-active {
+  background: rgba(183, 90, 185, 0.22);
+}
+.chat-mention-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.chat-mention-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.chat-mention-option-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-mention-option-hint {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
 .chat-bubble-meta {
   display: block;
   margin-top: 0.15rem;

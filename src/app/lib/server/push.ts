@@ -10,6 +10,12 @@ import { NotificationType, PushPayload } from "@/app/types";
 
 let vapidConfigured = false;
 
+type PushOptions = {
+  // for things aimed at one person, like an @mention, that should still
+  // reach them when they've muted the band
+  ignoreBandMute?: boolean;
+};
+
 function configureVapid() {
   if (vapidConfigured) return true;
 
@@ -33,6 +39,7 @@ export async function sendPushToUsers(
   type: NotificationType,
   bandId: string,
   payload: PushPayload,
+  { ignoreBandMute = false }: PushOptions = {},
 ) {
   if (userIds.length === 0 || !configureVapid()) return;
 
@@ -42,7 +49,7 @@ export async function sendPushToUsers(
     .find({
       _id: { $in: userIds },
       [`notificationPrefs.${type}`]: { $ne: false },
-      mutedBands: { $ne: bandId },
+      ...(ignoreBandMute ? {} : { mutedBands: { $ne: bandId } }),
     })
     .project({ _id: 1 })
     .toArray();
@@ -105,6 +112,7 @@ export function notifyUsers(
   type: NotificationType,
   bandId: string,
   payload: PushPayload,
+  options?: PushOptions,
 ) {
   const objectIds = userIds
     .filter((id) => ObjectId.isValid(id))
@@ -112,7 +120,7 @@ export function notifyUsers(
 
   after(async () => {
     try {
-      await sendPushToUsers(db, objectIds, type, bandId, payload);
+      await sendPushToUsers(db, objectIds, type, bandId, payload, options);
     } catch (error) {
       console.error("Failed to send notifications:", error);
     }
