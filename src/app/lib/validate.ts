@@ -109,3 +109,22 @@ export function readSongInput(value: unknown) {
     isCover: song.isCover === true ? true : undefined,
   };
 }
+
+export const MAX_DISPLAY_NAME_LENGTH = 40;
+
+// a name a user picks for themselves. runs of whitespace are squashed so
+// names line up with how @mentions are matched, and "everyone" is taken by
+// @everyone
+export function readDisplayName(value: unknown) {
+  const name = readString(value, "name", 200).replace(/\s+/g, " ").trim();
+  if (!name) throw new UserError("Name can't be empty");
+  if (name.length > MAX_DISPLAY_NAME_LENGTH) {
+    throw new UserError(
+      `Name must be ${MAX_DISPLAY_NAME_LENGTH} characters or fewer`,
+    );
+  }
+  if (name.toLowerCase() === "everyone") {
+    throw new UserError("That name is reserved");
+  }
+  return name;
+}

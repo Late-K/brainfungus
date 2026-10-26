@@ -640,6 +640,24 @@ h4 {
   justify-content: center;
   margin-top: 1.5rem;
 }
+.profile-identity-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.profile-edit-button {
+  margin-top: 0.5rem;
+}
+.profile-editor {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.profile-editor .form-actions {
+  margin-top: 0;
+}
+.profile-reset-button {
+  margin-top: 0.5rem;
+}
 
 /* SETTINGS LIST */
 .settings-title {

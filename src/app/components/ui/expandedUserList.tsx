@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import Image from "next/image";
+import AvatarImage from "@/app/components/ui/avatarImage";
 
 export type UserInfo = { userId: string; userName: string; userImage?: string };
 
@@ -40,7 +40,7 @@ export default function ExpandedUserList({
             <div key={u.userId} className="expanded-user-item">
               <div className={avatarClass}>
                 {u.userImage ? (
-                  <Image
+                  <AvatarImage
                     src={u.userImage}
                     alt={u.userName}
                     width={24}

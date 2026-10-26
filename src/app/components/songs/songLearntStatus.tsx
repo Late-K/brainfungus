@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import AvatarImage from "@/app/components/ui/avatarImage";
 import { AvailUser, LearntMap } from "@/app/types";
 import { currentUserLearnt } from "@/app/lib/setlistUtils";
 import ExpandedUserList from "@/app/components/ui/expandedUserList";
@@ -52,7 +52,7 @@ export default function SongLearntStatus({
                 title={learner.userName}
               >
                 {learner.userImage ? (
-                  <Image
+                  <AvatarImage
                     src={learner.userImage}
                     alt={learner.userName}
                     width={24}

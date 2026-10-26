@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { UserError } from "@/app/lib/actionResult";
 import {
   readDateStr,
+  readDisplayName,
   readOneOf,
   readOptionalTime,
   readSongInput,
@@ -105,5 +106,27 @@ describe("readSongInput", () => {
   it("rejects a missing id", () => {
     expect(() => readSongInput({ title: "Song" })).toThrow(UserError);
     expect(() => readSongInput(null)).toThrow(UserError);
+  });
+});
+
+describe("readDisplayName", () => {
+  it("trims and squashes whitespace", () => {
+    expect(readDisplayName("  Sam   Lee \n")).toBe("Sam Lee");
+  });
+
+  it("rejects empty names", () => {
+    expect(() => readDisplayName("   ")).toThrow("Name can't be empty");
+  });
+
+  it("rejects names over the limit", () => {
+    expect(() => readDisplayName("a".repeat(41))).toThrow(UserError);
+  });
+
+  it("rejects the @everyone name", () => {
+    expect(() => readDisplayName("Everyone")).toThrow("That name is reserved");
+  });
+
+  it("rejects non-strings", () => {
+    expect(() => readDisplayName({ $ne: null })).toThrow(UserError);
   });
 });

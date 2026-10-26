@@ -7,9 +7,9 @@ import { UserError } from "@/app/lib/actionResult";
 import { serverErrorResponse } from "@/app/lib/server/utils";
 import { streamPrivateBlob } from "@/app/lib/server/blobStorage";
 
-// custom song, album and band images live in private blob storage like song
-// audio, and are served through /api/songs/[id]/image, /api/albums/[id]/image
-// and /api/bands/[id]/image.
+// custom song, album, band and profile images live in private blob storage
+// like song audio, and are served through /api/songs/[id]/image,
+// /api/albums/[id]/image, /api/bands/[id]/image and /api/users/[id]/image.
 // albums are just a name on each song, so album images are kept in their own
 // custom_albums collection keyed by band + album name
 
@@ -31,7 +31,7 @@ export function validateImageFile(file: unknown): File {
 }
 
 export function buildImageBlobPath(
-  kind: "songs" | "albums" | "bands",
+  kind: "songs" | "albums" | "bands" | "users",
   bandId: unknown,
   ownerId: string,
   fileName: string,
@@ -51,6 +51,10 @@ export function albumImageUrl(albumId: string, version: number) {
 
 export function bandImageUrl(bandId: string, version: number) {
   return `/api/bands/${bandId}/image?v=${version}`;
+}
+
+export function userImageUrl(userId: string, version: number) {
+  return `/api/users/${userId}/image?v=${version}`;
 }
 
 export function albumImageKey(bandId: unknown, albumName: string) {

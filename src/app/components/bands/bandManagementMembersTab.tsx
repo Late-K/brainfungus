@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import AvatarImage from "@/app/components/ui/avatarImage";
 import Link from "next/link";
 import { Band, User } from "@/app/types";
 
@@ -60,7 +60,7 @@ export default function BandMembersTab({
             <div className="member-info">
               <div className="member-avatar">
                 {member.image ? (
-                  <Image
+                  <AvatarImage
                     src={member.image}
                     alt={member.name}
                     width={36}
@@ -132,7 +132,7 @@ export default function BandMembersTab({
                 <div className="member-info">
                   <div className="member-avatar">
                     {invitee.image ? (
-                      <Image
+                      <AvatarImage
                         src={invitee.image}
                         alt={invitee.name}
                         width={36}
@@ -202,7 +202,7 @@ export default function BandMembersTab({
                     <div className="member-info">
                       <div className="member-avatar">
                         {user.image ? (
-                          <Image
+                          <AvatarImage
                             src={user.image}
                             alt={user.name}
                             width={36}

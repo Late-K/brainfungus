@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import AvatarImage from "@/app/components/ui/avatarImage";
 import { User } from "@/app/types";
 import { useFetchData } from "@/app/hooks/useFetchData";
 
@@ -55,7 +55,7 @@ export default function FindPeople() {
                 <div className="member-info">
                   <div className="member-avatar">
                     {user.image ? (
-                      <Image
+                      <AvatarImage
                         src={user.image}
                         alt={user.name}
                         width={36}

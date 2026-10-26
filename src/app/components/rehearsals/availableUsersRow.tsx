@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import AvatarImage from "@/app/components/ui/avatarImage";
 import { AvailUser } from "@/app/types";
 
 interface AvailableUsersRowProps {
@@ -26,7 +26,7 @@ export default function AvailableUsersRow({
         {visible.map((u) => (
           <div key={u.userId} className="available-avatar" title={u.userName}>
             {u.userImage ? (
-              <Image
+              <AvatarImage
                 src={u.userImage}
                 alt={u.userName}
                 width={24}

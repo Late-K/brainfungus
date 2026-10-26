@@ -30,15 +30,25 @@ export const authOptions: NextAuthOptions = {
         const db = await getDb();
         const users = db.collection("users");
 
+        // the google name and picture are always kept, but only shown when
+        // the user hasn't set their own
+        const existing = await users.findOne(
+          { email: user.email },
+          { projection: { customName: 1, imageBlobUrl: 1 } },
+        );
+        const $set: Record<string, unknown> = {
+          email: user.email,
+          googleName: user.name ?? null,
+          googleImage: user.image ?? null,
+          updatedAt: new Date(),
+        };
+        if (!existing?.customName) $set.name = user.name ?? null;
+        if (!existing?.imageBlobUrl) $set.image = user.image ?? null;
+
         await users.updateOne(
           { email: user.email },
           {
-            $set: {
-              name: user.name ?? null,
-              email: user.email,
-              image: user.image ?? null,
-              updatedAt: new Date(),
-            },
+            $set,
             $setOnInsert: {
               createdAt: new Date(),
             },

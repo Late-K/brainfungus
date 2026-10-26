@@ -4,7 +4,7 @@
 // (picked, pasted or dropped onto the chat), gifs, voice notes, and the
 // replying / editing banners
 
-import Image from "next/image";
+import AvatarImage from "@/app/components/ui/avatarImage";
 import {
   Ref,
   useEffect,
@@ -468,7 +468,7 @@ export default function ChatComposer({
                 onClick={() => pickMention(mention)}
               >
                 {member?.image ? (
-                  <Image
+                  <AvatarImage
                     src={member.image}
                     alt=""
                     width={24}

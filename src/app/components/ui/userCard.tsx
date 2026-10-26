@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { ChangeEvent } from "react";
-import Image from "next/image";
+import AvatarImage from "@/app/components/ui/avatarImage";
 
 interface UserCardProps {
   user: {
@@ -30,7 +30,7 @@ export default function UserCard({
     <div className="user-card-inner">
       <div className="user-card-avatar-wrap">
         {user.avatar ? (
-          <Image
+          <AvatarImage
             src={user.avatar}
             alt={user.name}
             width={48}

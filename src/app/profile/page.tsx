@@ -1,13 +1,14 @@
 // profile page
 
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/lib/server/auth";
+import { authOptions, getAuthUser } from "@/app/lib/server/auth";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import SignOutButton from "@/app/components/auth/signOutButton";
 import ProfileCard from "@/app/components/profile/profileCard";
 import LearntSongsPreview from "@/app/components/profile/learntSongsPreview";
 import FindPeople from "@/app/components/profile/findPeople";
+import { OwnProfile } from "@/app/types";
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions);
@@ -15,6 +16,18 @@ export default async function ProfilePage() {
   if (!session) {
     redirect("/login");
   }
+
+  // read from the db rather than the session, which only has the name and
+  // picture google gave at sign in
+  const { user } = await getAuthUser();
+  const profile: OwnProfile = {
+    name: (user.name as string | null) ?? "",
+    email: (user.email as string | null) ?? "",
+    image: (user.image as string | null) ?? undefined,
+    googleName: (user.googleName as string | null) ?? undefined,
+    hasCustomName: user.customName === true,
+    hasCustomImage: !!user.imageBlobUrl,
+  };
 
   return (
     <>
@@ -34,7 +47,7 @@ export default async function ProfilePage() {
 
       <div className="profile-layout">
         <div className="profile-layout-card">
-          <ProfileCard session={session} />
+          <ProfileCard profile={profile} />
         </div>
 
         <div className="profile-layout-songs">

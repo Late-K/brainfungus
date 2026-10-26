@@ -3,7 +3,7 @@
 // a single chat message bubble, with its reply quote, attachments, reactions
 // and the hover/long-press toolbar for replying, reacting, editing and deleting
 
-import Image from "next/image";
+import AvatarImage from "@/app/components/ui/avatarImage";
 import Link from "next/link";
 import { Fragment, ReactNode, useEffect, useRef } from "react";
 import {
@@ -116,7 +116,7 @@ function renderText(
 
 function Avatar({ name, image }: { name: string; image?: string | null }) {
   return image ? (
-    <Image
+    <AvatarImage
       src={image}
       alt={name}
       width={32}

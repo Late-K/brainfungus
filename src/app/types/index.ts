@@ -249,6 +249,17 @@ export interface User {
   musicApp?: MusicApp | null;
 }
 
+// the current user's own name and picture, as shown and edited on their profile
+export interface OwnProfile {
+  name: string;
+  email: string;
+  image?: string;
+  // what google calls them, to switch back to
+  googleName?: string;
+  hasCustomName: boolean;
+  hasCustomImage: boolean;
+}
+
 // streaming app a user listens to full songs on
 export type MusicApp = "deezer" | "spotify" | "youtubeMusic";
 

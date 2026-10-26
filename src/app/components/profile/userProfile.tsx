@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
+import AvatarImage from "@/app/components/ui/avatarImage";
 import { useRouter } from "next/navigation";
 import { addPersonalLearntSongAction } from "@/app/actions/learntSongs";
 import { ProfileLearntSong, PublicUserProfile } from "@/app/types";
@@ -150,7 +150,7 @@ export default function UserProfile({ userId }: { userId: string }) {
         </div>
         <div className="media-row">
           {user.image ? (
-            <Image
+            <AvatarImage
               src={user.image}
               alt={user.name}
               width={90}
