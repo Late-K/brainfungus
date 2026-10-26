@@ -2973,6 +2973,13 @@ h4 {
   padding-top: 0.75rem;
   border-top: 1px solid var(--border);
 }
+/* only shown in the desktop band grid, where it fills out equal-height cards */
+.rehearsal-summary-empty {
+  display: none;
+  margin-bottom: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
 .rehearsal-summary-title {
   font-size: 0.8rem;
   font-weight: 600;
@@ -3227,12 +3234,14 @@ h4 {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1.25rem;
-    align-items: start;
     margin-bottom: 1.5rem;
   }
+  /* cards in a row share a height; the rehearsal area takes up the slack so
+     bands without a rehearsal show a placeholder instead of blank space */
   .band-grid .card {
     margin: 0;
-    height: 100%;
+    display: flex;
+    flex-direction: column;
     transition:
       border-color 0.15s,
       transform 0.15s;
@@ -3240,6 +3249,14 @@ h4 {
   .band-grid .card:hover {
     border-color: #784179;
     transform: translateY(-2px);
+  }
+  .band-grid .rehearsal-summary {
+    flex: 1;
+  }
+  .band-grid .rehearsal-summary-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* band page: content left, chat pinned on the right */

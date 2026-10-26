@@ -154,7 +154,15 @@ export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
     }
   };
 
-  if (loading || upcoming.length === 0) return null;
+  if (loading) return null;
+
+  if (upcoming.length === 0) {
+    return (
+      <p className="rehearsal-summary rehearsal-summary-empty">
+        No upcoming rehearsals
+      </p>
+    );
+  }
 
   return (
     <div className="rehearsal-summary" onClick={(e) => e.preventDefault()}>
