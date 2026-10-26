@@ -1,129 +1,40 @@
-﻿import { getAuthUser } from "@/app/lib/auth";
-import {
-  getServerErrorStatus,
-  normaliseSongId,
-  requireBandMember,
-} from "@/app/lib/serverUtils";
-import { albumImageKey, getAlbumImages } from "@/app/lib/customSongImages";
+import { getAuthUser } from "@/app/lib/server/auth";
+import { requireBandMember, serverErrorResponse } from "@/app/lib/server/utils";
+import { getSetlistSongEnricher } from "@/app/lib/server/setlists";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
 // fetch a single setlist
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Setlist not found" }, { status: 404 });
-    }
-    const { db, user } = await getAuthUser();
+    const notFound = () =>
+      NextResponse.json({ error: "Setlist not found" }, { status: 404 });
+    if (!ObjectId.isValid(id)) return notFound();
 
+    const { db, user } = await getAuthUser();
     const setlist = await db
       .collection("setlists")
       .findOne({ _id: new ObjectId(id) });
-    if (!setlist) {
-      return NextResponse.json({ error: "Setlist not found" }, { status: 404 });
-    }
+    if (!setlist) return notFound();
 
-    await requireBandMember(db, user._id.toString(), setlist.bandId);
+    const { bandObjectId } = await requireBandMember(
+      db,
+      user._id.toString(),
+      setlist.bandId,
+    );
 
-    // Enrich custom songs with their current audio metadata from customSongs collection
-    const songs: Array<{
-      id: string;
-      isCustom?: boolean;
-      [key: string]: unknown;
-    }> = setlist.songs || [];
-    const customIds = songs
-      .filter((s) => s.isCustom)
-      .map((s) => {
-        try {
-          return new ObjectId(s.id);
-        } catch {
-          return null;
-        }
-      })
-      .filter((id): id is ObjectId => id !== null);
-
-    const customMeta: Record<
-      string,
-      {
-        title?: string;
-        album?: string;
-        audioUrl?: string;
-        duration?: number;
-        image?: string;
-      }
-    > = {};
-    if (customIds.length > 0) {
-      const albumImages = await getAlbumImages(db, [setlist.bandId]);
-      const customDocs = await db
-        .collection("custom_songs")
-        .find(
-          { _id: { $in: customIds } },
-          {
-            projection: {
-              _id: 1,
-              title: 1,
-              album: 1,
-              hasAudio: 1,
-              duration: 1,
-              image: 1,
-            },
-          },
-        )
-        .toArray();
-      for (const doc of customDocs) {
-        const songId = doc._id.toString();
-        customMeta[songId] = {
-          title: doc.title,
-          album: doc.album,
-          audioUrl: doc.hasAudio ? `/api/songs/${songId}/audio` : undefined,
-          duration:
-            typeof doc.duration === "number" && Number.isFinite(doc.duration)
-              ? doc.duration
-              : undefined,
-          // own image first, then the album's
-          image:
-            (doc.image as string | undefined) ??
-            (doc.album
-              ? albumImages.get(albumImageKey(setlist.bandId, doc.album))
-              : undefined),
-        };
-      }
-    }
-
-    const enrichedSongs = songs.map((song) => {
-      const songId = normaliseSongId(song.id);
-      if (!song.isCustom) return { ...song, id: songId };
-      const meta = customMeta[songId];
-      if (!meta) return { ...song, id: songId };
-      return {
-        ...song,
-        id: songId,
-        title: meta.title ?? song.title,
-        album: meta.album ?? song.album,
-        audioUrl: meta.audioUrl,
-        image: meta.image,
-        duration:
-          typeof meta.duration === "number" ? meta.duration : song.duration,
-      };
-    });
+    const songs = setlist.songs || [];
+    const enrich = await getSetlistSongEnricher(db, bandObjectId, songs);
 
     return NextResponse.json(
-      { setlist: { ...setlist, songs: enrichedSongs } },
+      { setlist: { ...setlist, songs: songs.map(enrich) } },
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error fetching setlist:", error);
-    const status = getServerErrorStatus(error);
-    return NextResponse.json(
-      {
-        error:
-          status === 500 ? "Failed to fetch setlist" : (error as Error).message,
-      },
-      { status },
-    );
+    return serverErrorResponse(error, "Failed to fetch setlist");
   }
 }

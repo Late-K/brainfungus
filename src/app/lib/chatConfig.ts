@@ -54,12 +54,6 @@ export function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function formatDuration(seconds: number | undefined) {
-  if (seconds === undefined || !Number.isFinite(seconds)) return "0:00";
-  const whole = Math.max(0, Math.round(seconds));
-  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
-}
-
 export function attachmentLabel(kind: ChatAttachmentKind | undefined) {
   switch (kind) {
     case "image":

@@ -1,6 +1,6 @@
-import { getAuthUser } from "@/app/lib/auth";
-import { getServerErrorStatus } from "@/app/lib/serverUtils";
-import { getUserLearntSongs } from "@/app/lib/learntSongsUtils";
+import { getAuthUser } from "@/app/lib/server/auth";
+import { serverErrorResponse } from "@/app/lib/server/utils";
+import { getUserLearntSongs } from "@/app/lib/server/learntSongs";
 import { PublicUserProfile } from "@/app/types";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
@@ -63,16 +63,6 @@ export async function GET(
 
     return NextResponse.json(profile, { status: 200 });
   } catch (error) {
-    console.error("Error fetching user profile:", error);
-    const status = getServerErrorStatus(error);
-    return NextResponse.json(
-      {
-        error:
-          status === 500
-            ? "Failed to fetch user profile"
-            : (error as Error).message,
-      },
-      { status },
-    );
+    return serverErrorResponse(error, "Failed to fetch user profile");
   }
 }

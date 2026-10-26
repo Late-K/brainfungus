@@ -9,6 +9,8 @@ export interface Band {
   createdAt: string;
   image?: string;
   members?: BandMember[];
+  // people invited who haven't accepted yet
+  invites?: BandInvitee[];
 }
 
 export interface BandMember {
@@ -19,6 +21,25 @@ export interface BandMember {
   role: BandRole;
   isAdmin?: boolean;
   isCreator?: boolean;
+}
+
+export interface BandInvitee {
+  id: string;
+  name: string;
+  image?: string;
+  invitedAt: string;
+}
+
+// an invite the current user has been sent, shown on the home page
+export interface PendingInvite {
+  _id: string;
+  bandId: string;
+  bandName: string;
+  bandDescription: string;
+  bandImage?: string;
+  memberCount: number;
+  invitedByName: string;
+  createdAt: string;
 }
 
 export interface Song {
@@ -183,10 +204,10 @@ export interface ChatMessagesResponse {
   typing?: ChatTypingUser[];
 }
 
+// another user as listed in pickers and search - never includes their email
 export interface User {
   _id: string;
   name: string;
-  email: string;
   image?: string;
   alwaysAvailable?: boolean;
   learntSongsPrivate?: boolean;
@@ -211,15 +232,6 @@ export interface Rehearsal {
   endDate?: string;
   createdAt?: string;
   updatedAt?: string;
-}
-
-export interface RehearsalAvailability {
-  _id: string;
-  rehearsalId: string;
-  userId: string;
-  available: boolean;
-  alwaysAvailable?: boolean;
-  occurrenceDate?: string;
 }
 
 export interface CalendarRehearsal extends Rehearsal {
@@ -263,7 +275,7 @@ export interface PublicUserProfile {
   mySongs: ProfileLearntSong[];
 }
 
-export type NotificationType = "rehearsals" | "chat" | "setlists";
+export type NotificationType = "rehearsals" | "chat" | "setlists" | "invites";
 
 export type NotificationPrefs = Record<NotificationType, boolean>;
 

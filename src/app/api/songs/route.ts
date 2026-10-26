@@ -1,8 +1,8 @@
 ﻿import {
-  getServerErrorStatus,
+  serverErrorResponse,
   requireBandMemberContext,
-} from "@/app/lib/serverUtils";
-import { albumImageKey, getAlbumImages } from "@/app/lib/customSongImages";
+} from "@/app/lib/server/utils";
+import { albumImageKey, getAlbumImages } from "@/app/lib/server/customSongImages";
 import { NextRequest, NextResponse } from "next/server";
 
 // fetch all custom songs for a band
@@ -42,14 +42,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ songs }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching songs:", error);
-    const status = getServerErrorStatus(error);
-    return NextResponse.json(
-      {
-        error:
-          status === 500 ? "Failed to fetch songs" : (error as Error).message,
-      },
-      { status },
-    );
+    return serverErrorResponse(error, "Failed to fetch songs");
   }
 }

@@ -20,6 +20,7 @@ import {
   safeTimestamp,
 } from "@/app/lib/sortUtils";
 import { Band, CustomSong, LearntMap } from "@/app/types";
+import { unwrapAction } from "@/app/lib/actionResult";
 
 type KnownSongSort = "newest" | "oldest" | "mostKnown" | "leastKnown";
 
@@ -55,27 +56,6 @@ function withoutId(ids: Set<string>, id: string) {
   return next;
 }
 
-async function parseApiResponse<T = Record<string, unknown>>(
-  response: Response,
-): Promise<{ data?: T; errorMessage?: string }> {
-  const contentType = response.headers.get("content-type") || "";
-
-  if (contentType.includes("application/json")) {
-    const json = (await response.json()) as T & { error?: string };
-    return { data: json, errorMessage: json.error };
-  }
-
-  const text = (await response.text()).trim();
-  const normalized = text.toLowerCase();
-  if (normalized.includes("request entity too large")) {
-    return {
-      errorMessage:
-        "Audio file is too large. Try a smaller file and upload again.",
-    };
-  }
-  return { errorMessage: text || undefined };
-}
-
 export function useBandSongsPage(params: Promise<{ id: string }>) {
   const { id: bandId } = use(params);
   const [band, setBand] = useState<Band | null>(null);
@@ -90,9 +70,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const [newNotes, setNewNotes] = useState("");
   const [newAudioFile, setNewAudioFile] = useState<File | null>(null);
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
-  const [newAlbumImageFile, setNewAlbumImageFile] = useState<File | null>(
-    null,
-  );
+  const [newAlbumImageFile, setNewAlbumImageFile] = useState<File | null>(null);
   const [newAlbum, setNewAlbum] = useState("");
   const [newAlbumIsCustom, setNewAlbumIsCustom] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -110,9 +88,9 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const [uploadingImageIds, setUploadingImageIds] = useState<Set<string>>(
     new Set(),
   );
-  const [uploadingAlbumImages, setUploadingAlbumImages] = useState<
-    Set<string>
-  >(new Set());
+  const [uploadingAlbumImages, setUploadingAlbumImages] = useState<Set<string>>(
+    new Set(),
+  );
   // album images changed since the songs were loaded, null when removed.
   // covers albums no song is in yet, e.g. one just typed in the edit form
   const [albumImageOverrides, setAlbumImageOverrides] = useState<
@@ -173,7 +151,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     if (!bandId) return;
     setTogglingIds((prev) => new Set(prev).add(songId));
     try {
-      await toggleLearntSongAction(bandId, songId);
+      unwrapAction(await toggleLearntSongAction(bandId, songId));
       await fetchLearntMap();
     } catch (err) {
       alert(
@@ -194,8 +172,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     if (albumName in albumImageOverrides) {
       return albumImageOverrides[albumName] ?? undefined;
     }
-    return songs.find((s) => s.album === albumName && s.albumImage)
-      ?.albumImage;
+    return songs.find((s) => s.album === albumName && s.albumImage)?.albumImage;
   };
 
   const setAlbumImage = (albumName: string, albumImage?: string) => {
@@ -215,11 +192,8 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     try {
       setIsSaving(true);
       setError("");
-      const result = await createSongAction(
-        bandId,
-        newTitle,
-        newNotes,
-        newAlbum,
+      const result = unwrapAction(
+        await createSongAction(bandId, newTitle, newNotes, newAlbum),
       );
       let createdSong: CustomSong = result.song;
 
@@ -232,7 +206,9 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
             formData.append("durationSeconds", String(durationSeconds));
           }
 
-          const uploadData = await uploadAudioAction(result.song._id, formData);
+          const uploadData = unwrapAction(
+            await uploadAudioAction(result.song._id, formData),
+          );
 
           createdSong = {
             ...createdSong,
@@ -253,9 +229,11 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
 
       if (newImageFile) {
         try {
-          const { image } = await uploadSongImageAction(
-            result.song._id,
-            imageFormData(newImageFile),
+          const { image } = unwrapAction(
+            await uploadSongImageAction(
+              result.song._id,
+              imageFormData(newImageFile),
+            ),
           );
           createdSong = { ...createdSong, image };
         } catch (uploadErr) {
@@ -271,10 +249,12 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
       let albumImage = getAlbumImage(album);
       if (newAlbumImageFile && album) {
         try {
-          ({ image: albumImage } = await uploadAlbumImageAction(
-            bandId,
-            album,
-            imageFormData(newAlbumImageFile),
+          ({ image: albumImage } = unwrapAction(
+            await uploadAlbumImageAction(
+              bandId,
+              album,
+              imageFormData(newAlbumImageFile),
+            ),
           ));
           setAlbumImage(album, albumImage);
         } catch (uploadErr) {
@@ -314,7 +294,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const handleDelete = async (songId: string) => {
     if (!confirm("Are you sure you want to delete this song?")) return;
     try {
-      await deleteSongAction(songId);
+      unwrapAction(await deleteSongAction(songId));
       setSongs(songs.filter((s) => s._id !== songId));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete song");
@@ -336,11 +316,13 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const handleSaveEdit = async () => {
     if (!editingId || !editTitle.trim()) return;
     try {
-      await updateSongAction(editingId, {
-        title: editTitle,
-        notes: editNotes,
-        album: editAlbum,
-      });
+      unwrapAction(
+        await updateSongAction(editingId, {
+          title: editTitle,
+          notes: editNotes,
+          album: editAlbum,
+        }),
+      );
       // moving to another album picks up that album's image
       const albumImage = getAlbumImage(editAlbum);
       setSongs(
@@ -365,9 +347,8 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const handleUploadImage = async (songId: string, file: File) => {
     setUploadingImageIds((prev) => new Set(prev).add(songId));
     try {
-      const { image } = await uploadSongImageAction(
-        songId,
-        imageFormData(file),
+      const { image } = unwrapAction(
+        await uploadSongImageAction(songId, imageFormData(file)),
       );
       setSongs((prev) =>
         prev.map((s) => (s._id === songId ? { ...s, image } : s)),
@@ -382,7 +363,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const handleDeleteImage = async (songId: string) => {
     setUploadingImageIds((prev) => new Set(prev).add(songId));
     try {
-      await deleteSongImageAction(songId);
+      unwrapAction(await deleteSongImageAction(songId));
       setSongs((prev) =>
         prev.map((s) => (s._id === songId ? { ...s, image: undefined } : s)),
       );
@@ -398,10 +379,8 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     if (!bandId || !albumName) return;
     setUploadingAlbumImages((prev) => new Set(prev).add(albumName));
     try {
-      const { image } = await uploadAlbumImageAction(
-        bandId,
-        albumName,
-        imageFormData(file),
+      const { image } = unwrapAction(
+        await uploadAlbumImageAction(bandId, albumName, imageFormData(file)),
       );
       setAlbumImage(albumName, image);
     } catch (err) {
@@ -415,7 +394,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     if (!bandId || !albumName) return;
     setUploadingAlbumImages((prev) => new Set(prev).add(albumName));
     try {
-      await deleteAlbumImageAction(bandId, albumName);
+      unwrapAction(await deleteAlbumImageAction(bandId, albumName));
       setAlbumImage(albumName, undefined);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to remove image");
@@ -433,7 +412,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
       if (durationSeconds !== undefined) {
         formData.append("durationSeconds", String(durationSeconds));
       }
-      const data = await uploadAudioAction(songId, formData);
+      const data = unwrapAction(await uploadAudioAction(songId, formData));
       setSongs((prev) =>
         prev.map((s) =>
           s._id === songId
@@ -462,7 +441,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const handleDeleteAudio = async (songId: string) => {
     setUploadingAudioIds((prev) => new Set(prev).add(songId));
     try {
-      await deleteAudioAction(songId);
+      unwrapAction(await deleteAudioAction(songId));
       setSongs((prev) =>
         prev.map((s) => (s._id === songId ? { ...s, audioUrl: undefined } : s)),
       );
@@ -507,10 +486,11 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     setSongs([...otherSongs, ...updatedReordered]);
 
     try {
-      await reorderAlbumSongsAction(
-        bandId!,
-        album,
-        reordered.map((s) => s._id),
+      unwrapAction(
+        await reorderAlbumSongsAction(
+          bandId!,
+          reordered.map((s) => s._id),
+        ),
       );
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to reorder");

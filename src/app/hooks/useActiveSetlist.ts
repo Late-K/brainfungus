@@ -6,6 +6,7 @@ import {
   removeSongFromActiveSetlistAction,
 } from "@/app/actions/setlists";
 import { Setlist, Song } from "@/app/types";
+import { unwrapAction } from "@/app/lib/actionResult";
 
 // tracks the band's active setlist so songs can be added to it from other lists
 export function useActiveSetlist(bandId: string | undefined) {
@@ -54,14 +55,14 @@ export function useActiveSetlist(bandId: string | undefined) {
     setTogglingSetlistIds((prev) => new Set(prev).add(songId));
     try {
       if (isInSetlist) {
-        await removeSongFromActiveSetlistAction(bandId, songId);
+        unwrapAction(await removeSongFromActiveSetlistAction(bandId, songId));
         setSetlistSongIds((prev) => {
           const next = new Set(prev);
           next.delete(songId);
           return next;
         });
       } else {
-        await addSongToActiveSetlistAction(bandId, song);
+        unwrapAction(await addSongToActiveSetlistAction(bandId, song));
         setSetlistSongIds((prev) => new Set(prev).add(songId));
       }
     } catch (err) {

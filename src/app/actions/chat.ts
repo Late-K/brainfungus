@@ -2,9 +2,12 @@
 
 import { del, head } from "@vercel/blob";
 import { ObjectId } from "mongodb";
-import { requireBandMemberContext } from "@/app/lib/serverUtils";
-import { notifyBandMembers, truncate } from "@/app/lib/push";
-import { serializeMessages, StoredAttachment } from "@/app/lib/chatServer";
+import { requireBandMemberContext, toObjectId } from "@/app/lib/server/utils";
+import { deleteBlobsQuietly } from "@/app/lib/server/blobStorage";
+import { runAction, UserError } from "@/app/lib/actionResult";
+import { readOptionalString, readStringArray } from "@/app/lib/validate";
+import { notifyBandMembers, truncate } from "@/app/lib/server/push";
+import { serializeMessages, StoredAttachment } from "@/app/lib/server/chat";
 import {
   MAX_ATTACHMENTS,
   MAX_ATTACHMENT_BYTES,
@@ -34,7 +37,7 @@ function positiveNumber(value: unknown, max: number) {
 function cleanText(message: unknown) {
   const text = typeof message === "string" ? message.trim() : "";
   if (text.length > MAX_MESSAGE_LENGTH) {
-    throw new Error(
+    throw new UserError(
       `Message is too long (max ${MAX_MESSAGE_LENGTH} characters)`,
     );
   }
@@ -48,21 +51,21 @@ async function verifyAttachment(
   input: ChatAttachmentInput,
 ): Promise<StoredAttachment> {
   if (!input || typeof input.url !== "string") {
-    throw new Error("Invalid attachment");
+    throw new UserError("Invalid attachment");
   }
 
   let blob;
   try {
     blob = await head(input.url);
   } catch {
-    throw new Error("Attachment upload not found - try sending it again");
+    throw new UserError("Attachment upload not found - try sending it again");
   }
 
   if (!blob.pathname.startsWith(chatUploadPrefix(bandId))) {
-    throw new Error("Invalid attachment");
+    throw new UserError("Invalid attachment");
   }
   if (blob.size > MAX_ATTACHMENT_BYTES) {
-    throw new Error("Attachment is too large");
+    throw new UserError("Attachment is too large");
   }
 
   const mimeType = baseMimeType(blob.contentType) || "application/octet-stream";
@@ -95,35 +98,23 @@ async function verifyAttachment(
   return attachment;
 }
 
-async function deleteAttachmentBlobs(attachments: unknown) {
-  const urls = ((attachments as StoredAttachment[] | undefined) ?? [])
-    .map((a) => a.blobUrl)
-    .filter(Boolean);
-  if (urls.length === 0) return;
-  try {
-    await del(urls);
-  } catch (blobErr) {
-    console.error("Failed to delete chat attachment blobs:", blobErr);
-  }
-}
-
 // loads a message for a band member, optionally only if they sent it
 async function requireMessage(
   bandId: string,
   messageId: string,
   { ownOnly = false } = {},
 ) {
-  if (!ObjectId.isValid(messageId)) throw new Error("Message not found");
+  const messageObjectId = toObjectId(messageId, "message ID");
   const context = await requireBandMemberContext(bandId);
 
   const message = await context.db.collection("band_messages").findOne({
-    _id: new ObjectId(messageId),
+    _id: messageObjectId,
     bandId: context.bandObjectId,
   });
-  if (!message || message.deletedAt) throw new Error("Message not found");
+  if (!message || message.deletedAt) throw new UserError("Message not found");
 
   if (ownOnly && message.userId?.toString() !== context.user._id.toString()) {
-    throw new Error("You can only change your own messages");
+    throw new UserError("You can only change your own messages");
   }
 
   return { ...context, message };
@@ -134,7 +125,7 @@ async function loadSerialized(
   messageId: ObjectId,
 ): Promise<Message> {
   const doc = await db.collection("band_messages").findOne({ _id: messageId });
-  if (!doc) throw new Error("Message not found");
+  if (!doc) throw new UserError("Message not found");
   const [message] = await serializeMessages(db, [doc]);
   return message;
 }
@@ -146,91 +137,92 @@ export async function sendChatMessageAction(
     replyToId?: string | null;
     attachments?: ChatAttachmentInput[];
   },
-): Promise<{ success: true; message: Message }> {
-  try {
-    const text = cleanText(input.message);
-    const attachmentInputs = Array.isArray(input.attachments)
-      ? input.attachments
-      : [];
+) {
+  return runAction(
+    "Failed to send message",
+    async (): Promise<{ message: Message }> => {
+      const text = cleanText(input?.message);
+      const attachmentInputs = Array.isArray(input?.attachments)
+        ? input.attachments
+        : [];
+      const replyToId = readOptionalString(input?.replyToId, "reply", 24);
 
-    if (!text && attachmentInputs.length === 0) {
-      throw new Error("Message is required");
-    }
-    if (attachmentInputs.length > MAX_ATTACHMENTS) {
-      throw new Error(`You can send up to ${MAX_ATTACHMENTS} files at once`);
-    }
-
-    const { db, user, band, bandObjectId } =
-      await requireBandMemberContext(bandId);
-
-    const attachments = await Promise.all(
-      attachmentInputs.map((a) => verifyAttachment(bandId, a)),
-    );
-
-    let replyTo: ObjectId | undefined;
-    if (input.replyToId) {
-      if (!ObjectId.isValid(input.replyToId)) {
-        throw new Error("Message being replied to was not found");
+      if (!text && attachmentInputs.length === 0) {
+        throw new UserError("Message is required");
       }
-      const original = await db
-        .collection("band_messages")
-        .findOne(
-          { _id: new ObjectId(input.replyToId), bandId: bandObjectId },
-          { projection: { _id: 1 } },
+      if (attachmentInputs.length > MAX_ATTACHMENTS) {
+        throw new UserError(
+          `You can send up to ${MAX_ATTACHMENTS} files at once`,
         );
-      if (!original) throw new Error("Message being replied to was not found");
-      replyTo = original._id;
-    }
+      }
 
-    // store only the userId, sender details are resolved when read
-    const now = new Date();
-    const doc: Record<string, unknown> = {
-      bandId: bandObjectId,
-      userId: user._id,
-      message: text,
-      createdAt: now,
-      updatedAt: now,
-    };
-    if (replyTo) doc.replyTo = replyTo;
-    if (attachments.length > 0) doc.attachments = attachments;
+      const { db, user, band, bandObjectId } =
+        await requireBandMemberContext(bandId);
 
-    const result = await db.collection("band_messages").insertOne(doc);
+      const attachments = await Promise.all(
+        attachmentInputs.map((a) => verifyAttachment(bandId, a)),
+      );
 
-    // whoever sends a message has stopped typing
-    await db
-      .collection("band_chat_typing")
-      .deleteOne({ bandId: bandObjectId, userId: user._id });
+      let replyTo: ObjectId | undefined;
+      if (replyToId) {
+        if (!ObjectId.isValid(replyToId)) {
+          throw new UserError("Message being replied to was not found");
+        }
+        const original = await db
+          .collection("band_messages")
+          .findOne(
+            { _id: new ObjectId(replyToId), bandId: bandObjectId },
+            { projection: { _id: 1 } },
+          );
+        if (!original)
+          throw new UserError("Message being replied to was not found");
+        replyTo = original._id;
+      }
 
-    const preview =
-      text ||
-      (attachments.length > 1
-        ? `📎 ${attachments.length} files`
-        : attachments[0]?.kind === "file"
-          ? `📎 ${attachments[0].name}`
-          : attachmentLabel(attachments[0]?.kind));
-    notifyBandMembers(db, band, user._id.toString(), "chat", {
-      title: band.name,
-      body: truncate(`${user.name || "Someone"}: ${preview}`, 140),
-      url: `/bands/${bandId}/chat`,
-      tag: `chat-${bandId}`,
-    });
+      // store only the userId, sender details are resolved when read
+      const now = new Date();
+      const doc: Record<string, unknown> = {
+        bandId: bandObjectId,
+        userId: user._id,
+        message: text,
+        createdAt: now,
+        updatedAt: now,
+      };
+      if (replyTo) doc.replyTo = replyTo;
+      if (attachments.length > 0) doc.attachments = attachments;
 
-    return {
-      success: true,
-      message: await loadSerialized(db, result.insertedId),
-    };
-  } catch (error) {
-    console.error("Error sending chat message:", error);
-    throw error instanceof Error ? error : new Error("Failed to send message");
-  }
+      const result = await db.collection("band_messages").insertOne(doc);
+
+      // whoever sends a message has stopped typing
+      await db
+        .collection("band_chat_typing")
+        .deleteOne({ bandId: bandObjectId, userId: user._id });
+
+      const preview =
+        text ||
+        (attachments.length > 1
+          ? `📎 ${attachments.length} files`
+          : attachments[0]?.kind === "file"
+            ? `📎 ${attachments[0].name}`
+            : attachmentLabel(attachments[0]?.kind));
+      notifyBandMembers(db, band, user._id.toString(), "chat", {
+        title: band.name,
+        body: truncate(`${user.name || "Someone"}: ${preview}`, 140),
+        url: `/bands/${bandId}/chat`,
+        tag: `chat-${bandId}`,
+      });
+
+      return { message: await loadSerialized(db, result.insertedId) };
+    },
+  );
 }
 
 export async function editChatMessageAction(
   bandId: string,
   messageId: string,
   message: string,
-): Promise<{ success: true; message: Message }> {
-  try {
+) {
+  return runAction("Failed to edit message", async () => {
     const text = cleanText(message);
     const { db, message: existing } = await requireMessage(bandId, messageId, {
       ownOnly: true,
@@ -238,7 +230,7 @@ export async function editChatMessageAction(
 
     const hasAttachments =
       ((existing.attachments as unknown[] | undefined) ?? []).length > 0;
-    if (!text && !hasAttachments) throw new Error("Message is required");
+    if (!text && !hasAttachments) throw new UserError("Message is required");
 
     if (text !== existing.message) {
       const now = new Date();
@@ -250,11 +242,8 @@ export async function editChatMessageAction(
         );
     }
 
-    return { success: true, message: await loadSerialized(db, existing._id) };
-  } catch (error) {
-    console.error("Error editing chat message:", error);
-    throw error instanceof Error ? error : new Error("Failed to edit message");
-  }
+    return { message: await loadSerialized(db, existing._id) };
+  });
 }
 
 // deleted messages stay as a "message deleted" placeholder so replies to them
@@ -262,8 +251,8 @@ export async function editChatMessageAction(
 export async function deleteChatMessageAction(
   bandId: string,
   messageId: string,
-): Promise<{ success: true; message: Message }> {
-  try {
+) {
+  return runAction("Failed to delete message", async () => {
     const { db, message: existing } = await requireMessage(bandId, messageId, {
       ownOnly: true,
     });
@@ -276,15 +265,15 @@ export async function deleteChatMessageAction(
         $unset: { attachments: "", reactions: "", editedAt: "" },
       },
     );
-    await deleteAttachmentBlobs(existing.attachments);
+    await deleteBlobsQuietly(
+      ((existing.attachments as StoredAttachment[] | undefined) ?? []).map(
+        (a) => a.blobUrl,
+      ),
+      "chat attachment",
+    );
 
-    return { success: true, message: await loadSerialized(db, existing._id) };
-  } catch (error) {
-    console.error("Error deleting chat message:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to delete message");
-  }
+    return { message: await loadSerialized(db, existing._id) };
+  });
 }
 
 // adds the reaction, or takes it away if this user already reacted with it
@@ -292,8 +281,8 @@ export async function toggleChatReactionAction(
   bandId: string,
   messageId: string,
   emoji: string,
-): Promise<{ success: true; message: Message }> {
-  try {
+) {
+  return runAction("Failed to react", async () => {
     // one emoji (which can be several code points, e.g. flags or skin tones)
     if (
       typeof emoji !== "string" ||
@@ -301,13 +290,14 @@ export async function toggleChatReactionAction(
       emoji.length > 16 ||
       /[\s<>]/.test(emoji)
     ) {
-      throw new Error("Invalid reaction");
+      throw new UserError("Invalid reaction");
     }
 
-    const { db, user, message: existing } = await requireMessage(
-      bandId,
-      messageId,
-    );
+    const {
+      db,
+      user,
+      message: existing,
+    } = await requireMessage(bandId, messageId);
     const userId = user._id.toString();
     const reactions =
       (existing.reactions as { emoji: string; userId: string }[] | undefined) ??
@@ -329,32 +319,31 @@ export async function toggleChatReactionAction(
         : { $push: { reactions: reaction }, $set },
     );
 
-    return { success: true, message: await loadSerialized(db, existing._id) };
-  } catch (error) {
-    console.error("Error reacting to chat message:", error);
-    throw error instanceof Error ? error : new Error("Failed to react");
-  }
+    return { message: await loadSerialized(db, existing._id) };
+  });
 }
 
 // an uploaded file the user removed before sending, or a send that failed
-export async function discardChatUploadsAction(
-  bandId: string,
-  urls: string[],
-): Promise<void> {
-  const { db } = await requireBandMemberContext(bandId);
-  const unsent: string[] = [];
-  for (const url of (Array.isArray(urls) ? urls : []).slice(0, MAX_ATTACHMENTS)) {
-    try {
-      const blob = await head(url);
-      if (!blob.pathname.startsWith(chatUploadPrefix(bandId))) continue;
-      // never remove a file that has already been sent in a message
-      const sent = await db
-        .collection("band_messages")
-        .findOne({ "attachments.blobUrl": blob.url }, { projection: { _id: 1 } });
-      if (!sent) unsent.push(blob.url);
-    } catch {
-      // already gone
+export async function discardChatUploadsAction(bandId: string, urls: string[]) {
+  return runAction("Failed to discard uploads", async () => {
+    const { db } = await requireBandMemberContext(bandId);
+    const unsent: string[] = [];
+    for (const url of readStringArray(urls, "uploads", MAX_ATTACHMENTS)) {
+      try {
+        const blob = await head(url);
+        if (!blob.pathname.startsWith(chatUploadPrefix(bandId))) continue;
+        // never remove a file that has already been sent in a message
+        const sent = await db
+          .collection("band_messages")
+          .findOne(
+            { "attachments.blobUrl": blob.url },
+            { projection: { _id: 1 } },
+          );
+        if (!sent) unsent.push(blob.url);
+      } catch {
+        // already gone
+      }
     }
-  }
-  if (unsent.length > 0) await del(unsent);
+    if (unsent.length > 0) await del(unsent);
+  });
 }

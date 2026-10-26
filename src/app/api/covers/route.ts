@@ -1,7 +1,7 @@
 ﻿import {
-  getServerErrorStatus,
+  serverErrorResponse,
   requireBandMemberContext,
-} from "@/app/lib/serverUtils";
+} from "@/app/lib/server/utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -43,14 +43,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ covers: formatted }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching covers:", error);
-    const status = getServerErrorStatus(error);
-    return NextResponse.json(
-      {
-        error:
-          status === 500 ? "Failed to fetch covers" : (error as Error).message,
-      },
-      { status },
-    );
+    return serverErrorResponse(error, "Failed to fetch covers");
   }
 }

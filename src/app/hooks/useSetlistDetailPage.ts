@@ -12,6 +12,7 @@ import { addBandCoverAction } from "@/app/actions/covers";
 import { BandCover, Band, LearntMap, Setlist, Song } from "@/app/types";
 import { getProgress } from "@/app/lib/setlistUtils";
 import { useSetlistEditor } from "@/app/hooks/useSetlistEditor";
+import { unwrapAction } from "@/app/lib/actionResult";
 
 export function useSetlistDetailPage(
   params: Promise<{ id: string; setlistId: string }>,
@@ -28,9 +29,7 @@ export function useSetlistDetailPage(
   const [memberCount, setMemberCount] = useState(0);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [coverSongIds, setCoverSongIds] = useState<Set<string>>(new Set());
-  const [addingCoverIds, setAddingCoverIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const [addingCoverIds, setAddingCoverIds] = useState<Set<string>>(new Set());
 
   const editor = useSetlistEditor({
     onSaveSuccess: (name, songs) => {
@@ -108,7 +107,7 @@ export function useSetlistDetailPage(
     if (!setlistId) return;
     try {
       setIsDeleting(true);
-      await deleteSetlistAction(setlistId);
+      unwrapAction(await deleteSetlistAction(setlistId));
       router.push(`/bands/${bandId}/setlists`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete setlist");
@@ -120,10 +119,10 @@ export function useSetlistDetailPage(
     if (!bandId || !setlistId || !setlist) return;
     try {
       if (setlist.isActive) {
-        await deactivateSetlistAction(bandId, setlistId);
+        unwrapAction(await deactivateSetlistAction(bandId, setlistId));
         setSetlist({ ...setlist, isActive: false });
       } else {
-        await setActiveSetlistAction(bandId, setlistId);
+        unwrapAction(await setActiveSetlistAction(bandId, setlistId));
         setSetlist({ ...setlist, isActive: true });
       }
     } catch (err) {
@@ -137,7 +136,7 @@ export function useSetlistDetailPage(
     if (!bandId) return;
     setTogglingIds((prev) => new Set(prev).add(songId));
     try {
-      await toggleLearntSongAction(bandId, songId);
+      unwrapAction(await toggleLearntSongAction(bandId, songId));
       const learntRes = await fetch(`/api/learnt-songs?bandId=${bandId}`);
       if (learntRes.ok) {
         const learntData = await learntRes.json();
@@ -161,15 +160,17 @@ export function useSetlistDetailPage(
     if (!bandId || song.isCustom || addingCoverIds.has(song.id)) return;
     setAddingCoverIds((prev) => new Set(prev).add(song.id));
     try {
-      await addBandCoverAction(bandId, {
-        id: song.id,
-        title: song.title,
-        artist: song.artist || "",
-        album: song.album || "",
-        duration: song.duration,
-        preview: song.preview,
-        image: song.image,
-      });
+      unwrapAction(
+        await addBandCoverAction(bandId, {
+          id: song.id,
+          title: song.title,
+          artist: song.artist || "",
+          album: song.album || "",
+          duration: song.duration,
+          preview: song.preview,
+          image: song.image,
+        }),
+      );
       setCoverSongIds((prev) => new Set(prev).add(song.id));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to add cover");

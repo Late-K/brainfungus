@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSetlistAction } from "@/app/actions/setlists";
 import { DeezerResult, Song, BandCover } from "@/app/types";
+import { unwrapAction } from "@/app/lib/actionResult";
 
 export function useCreateSetlistPage(params: Promise<{ id: string }>) {
   const router = useRouter();
@@ -70,10 +71,9 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
       setIsSaving(true);
       setError("");
 
-      const songsToSave = selectedSongs.map(
-        ({ audioUrl: _audioUrl, ...song }) => song,
+      unwrapAction(
+        await createSetlistAction(bandId, setlistName, selectedSongs),
       );
-      await createSetlistAction(bandId, setlistName, songsToSave);
 
       router.push(`/bands/${bandId}`);
     } catch (err) {

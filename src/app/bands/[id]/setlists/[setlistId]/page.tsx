@@ -5,8 +5,8 @@
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import SetlistEditMode from "@/app/components/setlistEditMode";
-import SetlistViewMode from "@/app/components/setlistViewMode";
+import SetlistEditMode from "@/app/components/setlists/setlistEditMode";
+import SetlistViewMode from "@/app/components/setlists/setlistViewMode";
 import { useSetlistDetailPage } from "@/app/hooks/useSetlistDetailPage";
 
 export default function SetlistDetailPage({

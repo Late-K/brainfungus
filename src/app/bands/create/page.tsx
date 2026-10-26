@@ -5,7 +5,7 @@
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useRouter } from "next/navigation";
-import BandForm from "@/app/components/createBandForm";
+import CreateBandForm from "@/app/components/bands/createBandForm";
 
 export default function CreateBandPage() {
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function CreateBandPage() {
       <section className="card page-container">
         <h1 className="heading">Create a Band</h1>
 
-        <BandForm
+        <CreateBandForm
           submitLabel="Create Band"
           onSuccess={() => {
             router.push("/");

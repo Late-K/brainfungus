@@ -1,9 +1,9 @@
 // another user's profile page
 
 import { getServerSession } from "next-auth/next";
-import { authOptions, getAuthUser } from "@/app/lib/auth";
+import { authOptions, getAuthUser } from "@/app/lib/server/auth";
 import { redirect } from "next/navigation";
-import UserProfileComponent from "@/app/components/userProfileComponent";
+import UserProfile from "@/app/components/profile/userProfile";
 
 export default async function UserProfilePage({
   params,
@@ -26,7 +26,7 @@ export default async function UserProfilePage({
 
   return (
     <div className="page-container">
-      <UserProfileComponent userId={id} />
+      <UserProfile userId={id} />
     </div>
   );
 }

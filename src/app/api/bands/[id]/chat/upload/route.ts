@@ -2,7 +2,8 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import {
   getServerErrorStatus,
   requireBandMemberContext,
-} from "@/app/lib/serverUtils";
+} from "@/app/lib/server/utils";
+import { UserError } from "@/app/lib/actionResult";
 import { MAX_ATTACHMENT_BYTES, chatUploadPrefix } from "@/app/lib/chatConfig";
 
 // hands the browser a short lived token so chat attachments upload straight
@@ -28,7 +29,7 @@ export async function POST(
           !pathname.startsWith(chatUploadPrefix(bandId)) ||
           pathname.includes("..")
         ) {
-          throw new Error("Invalid upload path");
+          throw new UserError("Invalid upload path");
         }
 
         return {

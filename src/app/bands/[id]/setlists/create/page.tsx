@@ -4,9 +4,9 @@
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import SetlistEditMode from "@/app/components/setlistEditMode";
+import SetlistEditMode from "@/app/components/setlists/setlistEditMode";
 import { useCreateSetlistPage } from "@/app/hooks/useCreateSetlistPage";
-import BandSubpageHeader from "@/app/components/bandSubpageHeader";
+import BandSubpageHeader from "@/app/components/bands/bandSubpageHeader";
 
 export default function CreateSetlistPage({
   params,

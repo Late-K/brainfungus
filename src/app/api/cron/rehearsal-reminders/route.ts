@@ -1,9 +1,9 @@
 // daily rehearsal reminders - vercel cron calls this every morning (see vercel.json)
 // and every band member gets a push for rehearsals happening today and tomorrow
 
-import { ObjectId } from "mongodb";
-import { getDb } from "@/app/lib/mongodb";
-import { sendPushToUsers } from "@/app/lib/push";
+import { getDb } from "@/app/lib/server/mongodb";
+import { sendPushToUsers } from "@/app/lib/server/push";
+import { getMemberIds, toObjectIds } from "@/app/lib/server/utils";
 import {
   addDaysToDateStr,
   doesRehearsalOccurOnDate,
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     const bandIds = [...new Set(rehearsals.map((r) => r.bandId.toString()))];
     const bands = await db
       .collection("bands")
-      .find({ _id: { $in: bandIds.map((id) => new ObjectId(id)) } })
+      .find({ _id: { $in: toObjectIds(bandIds) } })
       .project({ name: 1, members: 1 })
       .toArray();
     const bandMap = new Map(bands.map((b) => [b._id.toString(), b]));
@@ -61,22 +61,23 @@ export async function GET(request: Request) {
 
       for (const { dateStr, label } of days) {
         // dates are parsed in server time on both sides, so this matches the stored YYYY-MM-DD
-        if (!doesRehearsalOccurOnDate(rehearsal, new Date(dateStr + "T00:00:00"))) {
+        if (
+          !doesRehearsalOccurOnDate(rehearsal, new Date(dateStr + "T00:00:00"))
+        ) {
           continue;
         }
 
         // remember what's been sent so a retried cron run doesn't double up
-        const marker = await db.collection("rehearsal_reminders").updateOne(
-          { rehearsalId: r._id, occurrenceDate: dateStr, label },
-          { $setOnInsert: { sentAt: new Date() } },
-          { upsert: true },
-        );
+        const marker = await db
+          .collection("rehearsal_reminders")
+          .updateOne(
+            { rehearsalId: r._id, occurrenceDate: dateStr, label },
+            { $setOnInsert: { sentAt: new Date() } },
+            { upsert: true },
+          );
         if (marker.upsertedCount === 0) continue;
 
-        const memberIds = ((band.members as Array<{ userId: string }>) ?? [])
-          .map((m) => m.userId)
-          .filter((id) => ObjectId.isValid(id))
-          .map((id) => new ObjectId(id));
+        const memberIds = toObjectIds(getMemberIds(band));
 
         const times = formatRehearsalTimes(r.startTime, r.endTime);
         await sendPushToUsers(db, memberIds, "rehearsals", rehearsal.bandId, {

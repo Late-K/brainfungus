@@ -6,10 +6,10 @@ import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useBandSongsPage } from "@/app/hooks/useBandSongsPage";
 import { useActiveSetlist } from "@/app/hooks/useActiveSetlist";
-import CustomSongCreateForm from "@/app/components/customSongCreateForm";
-import CustomSongRow from "@/app/components/customSongRow";
-import BandSubpageHeader from "@/app/components/bandSubpageHeader";
-import SortControls from "@/app/components/sortControls";
+import CustomSongCreateForm from "@/app/components/songs/customSongCreateForm";
+import CustomSongRow from "@/app/components/songs/customSongRow";
+import BandSubpageHeader from "@/app/components/bands/bandSubpageHeader";
+import SortControls from "@/app/components/ui/sortControls";
 import { CustomSong } from "@/app/types";
 
 const knownSongSortOptions = [

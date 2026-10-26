@@ -21,6 +21,7 @@ import {
   Message,
   MessageReplyPreview,
 } from "@/app/types";
+import { unwrapAction } from "@/app/lib/actionResult";
 
 const POLL_MS = 3000;
 const TYPING_PING_MS = 3000;
@@ -132,7 +133,9 @@ export function useBandChat(bandId: string) {
         setError("");
       } catch (err) {
         if (controller.signal.aborted) return;
-        setError(err instanceof Error ? err.message : "Failed to load messages");
+        setError(
+          err instanceof Error ? err.message : "Failed to load messages",
+        );
       } finally {
         if (!controller.signal.aborted) setIsLoading(false);
       }
@@ -247,13 +250,13 @@ export function useBandChat(bandId: string) {
         );
 
         updatePending(tempId, { progress: 100 });
-        const result = await sendChatMessageAction(bandId, {
-          message: item.text,
-          replyToId: item.replyTo?._id ?? null,
-          attachments: uploaded.filter(
-            (a): a is ChatAttachmentInput => !!a,
-          ),
-        });
+        const result = unwrapAction(
+          await sendChatMessageAction(bandId, {
+            message: item.text,
+            replyToId: item.replyTo?._id ?? null,
+            attachments: uploaded.filter((a): a is ChatAttachmentInput => !!a),
+          }),
+        );
 
         setMessages((prev) => mergeMessages(prev, [result.message]));
         setPending((prev) => prev.filter((p) => p.tempId !== tempId));
@@ -308,14 +311,17 @@ export function useBandChat(bandId: string) {
       const urls = item.uploaded
         .filter((a): a is ChatAttachmentInput => !!a)
         .map((a) => a.url);
-      if (urls.length > 0) discardChatUploadsAction(bandId, urls).catch(() => {});
+      if (urls.length > 0)
+        discardChatUploadsAction(bandId, urls).catch(() => {});
     },
     [bandId],
   );
 
   const edit = useCallback(
     async (messageId: string, text: string) => {
-      const result = await editChatMessageAction(bandId, messageId, text);
+      const result = unwrapAction(
+        await editChatMessageAction(bandId, messageId, text),
+      );
       setMessages((prev) => mergeMessages(prev, [result.message]));
     },
     [bandId],
@@ -323,7 +329,9 @@ export function useBandChat(bandId: string) {
 
   const remove = useCallback(
     async (messageId: string) => {
-      const result = await deleteChatMessageAction(bandId, messageId);
+      const result = unwrapAction(
+        await deleteChatMessageAction(bandId, messageId),
+      );
       setMessages((prev) => mergeMessages(prev, [result.message]));
     },
     [bandId],
@@ -345,13 +353,19 @@ export function useBandChat(bandId: string) {
             group.userIds.push(currentUserId);
             group.userNames.push("You");
           } else {
-            reactions.push({ emoji, userIds: [currentUserId], userNames: ["You"] });
+            reactions.push({
+              emoji,
+              userIds: [currentUserId],
+              userNames: ["You"],
+            });
           }
           return { ...m, reactions: reactions.filter((r) => r.userIds.length) };
         }),
       );
       try {
-        const result = await toggleChatReactionAction(bandId, messageId, emoji);
+        const result = unwrapAction(
+          await toggleChatReactionAction(bandId, messageId, emoji),
+        );
         setMessages((prev) => mergeMessages(prev, [result.message]));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to react");

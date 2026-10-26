@@ -1,87 +1,69 @@
 ﻿"use server";
 
-import { getAuthUser } from "@/app/lib/auth";
+import { getAuthUser } from "@/app/lib/server/auth";
 import { isMusicApp } from "@/app/lib/musicAppUtils";
+import { runAction, UserError } from "@/app/lib/actionResult";
+import { readBoolean } from "@/app/lib/validate";
 import { MusicApp } from "@/app/types";
 
+// sets one of the current user's own settings
+async function setUserSetting(field: string, value: unknown) {
+  const { db, user } = await getAuthUser();
+  await db
+    .collection("users")
+    .updateOne(
+      { _id: user._id },
+      { $set: { [field]: value, updatedAt: new Date() } },
+    );
+}
+
 export async function getAlwaysAvailableAction() {
-  try {
+  return runAction("Failed to load setting", async () => {
     const { user } = await getAuthUser();
-    return { alwaysAvailable: user.alwaysAvailable ?? false };
-  } catch (error) {
-    console.error("getAlwaysAvailableAction error:", error);
-    throw error;
-  }
+    return { alwaysAvailable: (user.alwaysAvailable as boolean) ?? false };
+  });
 }
 
 export async function setAlwaysAvailableUserAction(alwaysAvailable: boolean) {
-  try {
-    const { db, user } = await getAuthUser();
-    await db
-      .collection("users")
-      .updateOne(
-        { _id: user._id },
-        { $set: { alwaysAvailable, updatedAt: new Date() } },
-      );
-    return { success: true, alwaysAvailable };
-  } catch (error) {
-    console.error("setAlwaysAvailableUserAction error:", error);
-    throw error;
-  }
+  return runAction("Failed to save setting", async () => {
+    const value = readBoolean(alwaysAvailable, "setting");
+    await setUserSetting("alwaysAvailable", value);
+    return { alwaysAvailable: value };
+  });
 }
 
 export async function getLearntSongsPrivateAction() {
-  try {
+  return runAction("Failed to load setting", async () => {
     const { user } = await getAuthUser();
-    return { learntSongsPrivate: user.learntSongsPrivate ?? false };
-  } catch (error) {
-    console.error("getLearntSongsPrivateAction error:", error);
-    throw error;
-  }
+    return {
+      learntSongsPrivate: (user.learntSongsPrivate as boolean) ?? false,
+    };
+  });
 }
 
 export async function setLearntSongsPrivateAction(learntSongsPrivate: boolean) {
-  try {
-    const { db, user } = await getAuthUser();
-    await db
-      .collection("users")
-      .updateOne(
-        { _id: user._id },
-        { $set: { learntSongsPrivate, updatedAt: new Date() } },
-      );
-    return { success: true, learntSongsPrivate };
-  } catch (error) {
-    console.error("setLearntSongsPrivateAction error:", error);
-    throw error;
-  }
+  return runAction("Failed to save setting", async () => {
+    const value = readBoolean(learntSongsPrivate, "setting");
+    await setUserSetting("learntSongsPrivate", value);
+    return { learntSongsPrivate: value };
+  });
 }
 
 export async function getMusicAppAction() {
-  try {
+  return runAction("Failed to load setting", async () => {
     const { user } = await getAuthUser();
-    return { musicApp: isMusicApp(user.musicApp) ? user.musicApp : null };
-  } catch (error) {
-    console.error("getMusicAppAction error:", error);
-    throw error;
-  }
+    return {
+      musicApp: isMusicApp(user.musicApp) ? (user.musicApp as MusicApp) : null,
+    };
+  });
 }
 
 export async function setMusicAppAction(musicApp: MusicApp | null) {
-  try {
+  return runAction("Failed to save setting", async () => {
     if (musicApp !== null && !isMusicApp(musicApp)) {
-      throw new Error("Invalid music app");
+      throw new UserError("Invalid music app");
     }
-
-    const { db, user } = await getAuthUser();
-    await db
-      .collection("users")
-      .updateOne(
-        { _id: user._id },
-        { $set: { musicApp, updatedAt: new Date() } },
-      );
-    return { success: true, musicApp };
-  } catch (error) {
-    console.error("setMusicAppAction error:", error);
-    throw error;
-  }
+    await setUserSetting("musicApp", musicApp);
+    return { musicApp };
+  });
 }

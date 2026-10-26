@@ -3,8 +3,8 @@
 import { use } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import BandCoversComponent from "@/app/components/bandCoversComponent";
-import BandSubpageHeader from "@/app/components/bandSubpageHeader";
+import BandCovers from "@/app/components/covers/bandCovers";
+import BandSubpageHeader from "@/app/components/bands/bandSubpageHeader";
 
 export default function BandCoversPage({
   params,
@@ -25,7 +25,7 @@ export default function BandCoversPage({
         bandId={bandId}
       />
 
-      <BandCoversComponent bandId={bandId} userEmail={session.user?.email} />
+      <BandCovers bandId={bandId} userEmail={session.user?.email} />
     </div>
   );
 }

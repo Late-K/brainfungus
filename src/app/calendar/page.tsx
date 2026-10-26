@@ -4,11 +4,11 @@
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import Image from "next/image";
-import CalendarView from "@/app/components/calendarView";
-import RehearsalForm from "@/app/components/rehearsalForm";
-import ExpandedUserList from "@/app/components/expandedUserList";
-import CalendarRehearsals from "@/app/components/calendarRehearsals";
-import CalendarModalDialog from "@/app/components/calendarModalDialog";
+import CalendarView from "@/app/components/rehearsals/calendarView";
+import RehearsalForm from "@/app/components/rehearsals/rehearsalForm";
+import ExpandedUserList from "@/app/components/ui/expandedUserList";
+import CalendarRehearsals from "@/app/components/rehearsals/calendarRehearsals";
+import CalendarModalDialog from "@/app/components/rehearsals/calendarModalDialog";
 import { useCalendarPage } from "@/app/hooks/useCalendarPage";
 
 export default function CalendarPage() {

@@ -1,10 +1,11 @@
 ﻿import {
-  getServerErrorStatus,
+  getMemberIds,
   normaliseSongId,
   requireBandMemberContext,
-} from "@/app/lib/serverUtils";
+  serverErrorResponse,
+  toObjectIds,
+} from "@/app/lib/server/utils";
 import { NextRequest, NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
 
 // fetch learnt songs for a band
 export async function GET(request: NextRequest) {
@@ -19,10 +20,7 @@ export async function GET(request: NextRequest) {
 
     const { db, band } = await requireBandMemberContext(bandId);
 
-    const memberObjectIds = (band.members as Array<{ userId: string }>)
-      .map((m) => m.userId)
-      .filter((uid) => ObjectId.isValid(uid))
-      .map((uid) => new ObjectId(uid));
+    const memberObjectIds = toObjectIds(getMemberIds(band));
 
     const learnt = await db
       .collection("learnt_songs")
@@ -38,7 +36,7 @@ export async function GET(request: NextRequest) {
     const userDocs = await db
       .collection("users")
       .find({
-        _id: { $in: userIds.map((id) => new ObjectId(id)) },
+        _id: { $in: toObjectIds(userIds) },
       })
       .toArray();
 
@@ -89,17 +87,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ learntMap: songLearntMap }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching learnt songs:", error);
-    const status = getServerErrorStatus(error);
-
-    return NextResponse.json(
-      {
-        error:
-          status === 500
-            ? "Failed to fetch learnt songs"
-            : (error as Error).message,
-      },
-      { status },
-    );
+    return serverErrorResponse(error, "Failed to fetch learnt songs");
   }
 }

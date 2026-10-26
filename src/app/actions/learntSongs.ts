@@ -1,14 +1,16 @@
-﻿"use server";
+"use server";
 
-import { getAuthUser } from "@/app/lib/auth";
+import { getAuthUser } from "@/app/lib/server/auth";
 import {
   normaliseSongId,
   requireBandMemberContext,
-} from "@/app/lib/serverUtils";
-import { ObjectId } from "mongodb";
+} from "@/app/lib/server/utils";
+import { Db, ObjectId } from "mongodb";
+import { runAction } from "@/app/lib/actionResult";
+import { readSongInput, readString } from "@/app/lib/validate";
 
 async function getSongMetadataForBand(
-  db: Awaited<ReturnType<typeof getAuthUser>>["db"],
+  db: Db,
   bandObjectId: ObjectId,
   songId: string,
 ) {
@@ -84,59 +86,56 @@ async function getSongMetadataForBand(
   };
 }
 
-export async function toggleLearntSongAction(bandId: string, songId: string) {
-  const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
-  const normalisedSongId = normaliseSongId(songId);
-
-  const existingActive = await db.collection("learnt_songs").findOne({
-    userId: user._id,
-    songId: normalisedSongId,
-    active: { $ne: false },
-  });
-
-  if (existingActive) {
-    await db.collection("learnt_songs").deleteMany({
-      userId: user._id,
-      songId: normalisedSongId,
-    });
-
-    return { learnt: false };
-  } else {
-    const metadata = await getSongMetadataForBand(
-      db,
-      bandObjectId,
-      normalisedSongId,
+// marks a song learnt for a user, reusing any entry left inactive when they
+// left a band
+async function markLearnt(
+  db: Db,
+  userId: ObjectId,
+  songId: string,
+  metadata: Record<string, unknown>,
+) {
+  const result = await db
+    .collection("learnt_songs")
+    .updateMany(
+      { userId, songId },
+      { $set: { active: true, ...metadata, updatedAt: new Date() } },
     );
-
-    const existingInactive = await db.collection("learnt_songs").findOne({
-      userId: user._id,
-      songId: normalisedSongId,
-      active: false,
+  if (result.matchedCount === 0) {
+    await db.collection("learnt_songs").insertOne({
+      userId,
+      songId,
+      active: true,
+      ...metadata,
+      createdAt: new Date(),
     });
-
-    if (existingInactive) {
-      await db.collection("learnt_songs").updateMany(
-        {
-          userId: user._id,
-          songId: normalisedSongId,
-          active: false,
-        },
-        { $set: { active: true, ...metadata, updatedAt: new Date() } },
-      );
-    } else {
-      await db.collection("learnt_songs").insertOne({
-        userId: user._id,
-        songId: normalisedSongId,
-        active: true,
-        ...metadata,
-        createdAt: new Date(),
-      });
-    }
-
-    return { learnt: true };
   }
 }
 
+export async function toggleLearntSongAction(bandId: string, songId: string) {
+  return runAction("Failed to update learnt status", async () => {
+    const id = readString(songId, "song", 100);
+    const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
+
+    const existingActive = await db.collection("learnt_songs").findOne({
+      userId: user._id,
+      songId: id,
+      active: { $ne: false },
+    });
+
+    if (existingActive) {
+      await db
+        .collection("learnt_songs")
+        .deleteMany({ userId: user._id, songId: id });
+      return { learnt: false };
+    }
+
+    const metadata = await getSongMetadataForBand(db, bandObjectId, id);
+    await markLearnt(db, user._id, id, metadata);
+    return { learnt: true };
+  });
+}
+
+// add a song to the user's own learnt list, from search or someone else's profile
 export async function addPersonalLearntSongAction(song: {
   id: string;
   title: string;
@@ -146,70 +145,28 @@ export async function addPersonalLearntSongAction(song: {
   preview?: string;
   image?: string;
 }) {
-  const { db, user } = await getAuthUser();
-  const songId = normaliseSongId(song.id);
+  return runAction("Failed to add song", async () => {
+    const input = readSongInput(song);
+    const { db, user } = await getAuthUser();
 
-  const metadata = {
-    title: song.title,
-    artist: song.artist,
-    album: song.album,
-    duration: song.duration,
-    preview: song.preview,
-    image: song.image,
-  };
-
-  const activeLearnt = await db.collection("learnt_songs").findOne({
-    userId: user._id,
-    songId: songId,
-    active: { $ne: false },
-  });
-
-  if (!activeLearnt) {
-    const inactive = await db.collection("learnt_songs").findOne({
-      userId: user._id,
-      songId: songId,
-      active: false,
+    await markLearnt(db, user._id, input.id, {
+      title: input.title,
+      artist: input.artist,
+      album: input.album,
+      duration: input.duration,
+      preview: input.preview,
+      image: input.image,
     });
-
-    if (inactive) {
-      await db.collection("learnt_songs").updateMany(
-        {
-          userId: user._id,
-          songId: songId,
-          active: false,
-        },
-        { $set: { active: true, ...metadata, updatedAt: new Date() } },
-      );
-    } else {
-      await db.collection("learnt_songs").insertOne({
-        userId: user._id,
-        songId,
-        active: true,
-        ...metadata,
-        createdAt: new Date(),
-      });
-    }
-  } else {
-    await db
-      .collection("learnt_songs")
-      .updateOne(
-        { userId: user._id, songId: songId, active: { $ne: false } },
-        { $set: { ...metadata, updatedAt: new Date() } },
-      );
-  }
-
-  return { added: true };
+  });
 }
 
 export async function removePersonalLearntSongAction(songId: string) {
-  const { db, user } = await getAuthUser();
+  return runAction("Failed to remove song", async () => {
+    const id = readString(songId, "song", 100);
+    const { db, user } = await getAuthUser();
 
-  const songIdStr = normaliseSongId(songId);
-
-  await db.collection("learnt_songs").deleteMany({
-    userId: user._id,
-    songId: songIdStr,
+    await db
+      .collection("learnt_songs")
+      .deleteMany({ userId: user._id, songId: id });
   });
-
-  return { removed: true };
 }

@@ -5,7 +5,7 @@
 import { use } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import BandChatComponent from "@/app/components/bandChatComponent";
+import BandChat from "@/app/components/chat/bandChat";
 
 export default function BandChatPage({
   params,
@@ -20,7 +20,7 @@ export default function BandChatPage({
 
   return (
     <div className="page-chat">
-      <BandChatComponent
+      <BandChat
         bandId={bandId}
         fullPage
         backHref={`/bands/${bandId}`}

@@ -1,7 +1,7 @@
 import {
   getServerErrorStatus,
   requireBandMemberContext,
-} from "@/app/lib/serverUtils";
+} from "@/app/lib/server/utils";
 
 // "someone is typing" pings. the chat sends one every few seconds while the
 // user types, and polls read back anyone who pinged in the last few seconds.

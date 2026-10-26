@@ -95,13 +95,20 @@ Open [http://localhost:3000](http://localhost:3000) in your browser and sign in 
 
 ```
 src/app/
-├── api/          # REST-style Next.js route handlers
-├── actions/      # Server actions (bands, songs, setlists, rehearsals, …)
-├── components/   # Reusable UI components
+├── api/          # REST-style Next.js route handlers (reads)
+├── actions/      # Server actions (writes): bands, invites, songs, setlists, rehearsals, …
+├── components/   # UI components, grouped by feature
+│   ├── auth/  bands/  chat/  covers/  profile/
+│   ├── rehearsals/  setlists/  songs/
+│   ├── layout/   # app-wide pieces: navbar, service worker, music app context
+│   └── ui/       # shared building blocks: headers, loading, toggles, upload field
 ├── hooks/        # Custom React hooks (data fetching, page logic)
-├── lib/          # Core utilities: auth, DB connection, setlist/rehearsal logic
+├── lib/          # Helpers safe to use in the browser: validation, formatting, rehearsal/setlist logic
+│   └── server/   # Server-only code: auth, DB connection, access checks, blob storage, push
 └── types/        # Shared TypeScript types
 ```
+
+Files in `lib/server/` start with `import "server-only"`, so the build fails if one is ever imported into browser code.
 
 ---
 
@@ -113,7 +120,7 @@ src/app/
 - Rehearsal recurrence - Rehearsals store an anchor date, `repeatType` (`once` / `weekly` / `biweekly`) and optional `endDate`, with all complicated occurance computation and calls happening in the background at runtime.
 - Setlists - Songs are stored as minimal references, setlists are set active to display on band dashboard and song learning is tracked in a separate `learnt-songs` collection for globalisation.
 - Band roles - `creator` / `admin` / `member` roles. Band deletion cascades to all dependent collections.
-- Deezer - Two Next.js route handlers (`/api/deezer/search` and `/api/deezer/track/[id]`) forward requests to the public Deezer API. Results are not cached; saving a result persists it as `BandCover` in MongoDB.
+- Deezer - Next.js route handlers (`/api/deezer/search`, `/api/deezer/track`, `/api/deezer/artist` and `/api/deezer/album`) forward requests to the public Deezer API. Results are not cached; saving a result persists it as `BandCover` in MongoDB.
 - Modularity - UI is split into focused single-purpose components. Large page logic lives in dedicated hooks, keeping components thin. Shared utilities are reused across both components and server actions.
 - Audio storage - Custom song audio files are uploaded to private Vercel Blob storage
 - Push notifications - Devices opt in from the profile page and their Web Push subscriptions are stored in `push_subscriptions`. Chat messages and active setlist changes notify the rest of the band straight away (sent with `after()` so actions stay fast). Rehearsal reminders for today and tomorrow are sent by a daily Vercel cron (`vercel.json` → `/api/cron/rehearsal-reminders`, authorised with `CRON_SECRET`). Push only works in production builds, since the service worker isn't registered in dev, and on iOS only once the app is added to the Home Screen.

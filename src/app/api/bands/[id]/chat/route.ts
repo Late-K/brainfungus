@@ -1,9 +1,9 @@
 ﻿import { Document, Filter } from "mongodb";
 import {
-  getServerErrorStatus,
+  serverErrorResponse,
   requireBandMemberContext,
-} from "@/app/lib/serverUtils";
-import { getTypingUsers, serializeMessages } from "@/app/lib/chatServer";
+} from "@/app/lib/server/utils";
+import { getTypingUsers, serializeMessages } from "@/app/lib/server/chat";
 import { CHAT_PAGE_SIZE } from "@/app/lib/chatConfig";
 import { ChatMessagesResponse } from "@/app/types";
 
@@ -62,7 +62,9 @@ export async function GET(
 
     const [messages, typing] = await Promise.all([
       serializeMessages(db, rawMessages),
-      before ? Promise.resolve(undefined) : getTypingUsers(db, bandObjectId, user._id),
+      before
+        ? Promise.resolve(undefined)
+        : getTypingUsers(db, bandObjectId, user._id),
     ]);
 
     const body: ChatMessagesResponse = {
@@ -74,16 +76,6 @@ export async function GET(
     };
     return Response.json(body);
   } catch (error) {
-    console.error("Failed to fetch messages:", error);
-    const status = getServerErrorStatus(error);
-    return Response.json(
-      {
-        error:
-          status === 500
-            ? "Failed to fetch messages"
-            : (error as Error).message,
-      },
-      { status },
-    );
+    return serverErrorResponse(error, "Failed to fetch messages");
   }
 }

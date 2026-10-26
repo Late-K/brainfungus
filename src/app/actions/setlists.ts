@@ -1,15 +1,18 @@
 ﻿"use server";
 
-import { getAuthUser } from "@/app/lib/auth";
+import { getAuthUser } from "@/app/lib/server/auth";
 import {
   normaliseSongId,
   requireBandMember,
   requireBandMemberContext,
-} from "@/app/lib/serverUtils";
+  toObjectId,
+} from "@/app/lib/server/utils";
 import { Db, Document, ObjectId } from "mongodb";
 import { Song } from "@/app/types";
 import { toSetlistSong } from "@/app/lib/setlistUtils";
-import { notifyBandMembers } from "@/app/lib/push";
+import { notifyBandMembers } from "@/app/lib/server/push";
+import { runAction, UserError } from "@/app/lib/actionResult";
+import { readSongInput, readString } from "@/app/lib/validate";
 
 // tell the rest of the band their active setlist changed.
 // one tag per band so a burst of edits replaces the previous notification
@@ -29,16 +32,45 @@ function notifyActiveSetlistChange(
   });
 }
 
+function readSetlistName(name: unknown) {
+  const trimmed = readString(name, "setlist name", 200).trim();
+  if (!trimmed) throw new UserError("Setlist name is required");
+  return trimmed;
+}
+
+function readSetlistSongs(songs: unknown) {
+  if (!Array.isArray(songs) || songs.length > 500) {
+    throw new UserError("Invalid songs");
+  }
+  return songs.map((song) => toSetlistSong(readSongInput(song)));
+}
+
+// loads a setlist and checks the current user is in its band
+async function requireSetlist(setlistId: unknown) {
+  const setlistObjectId = toObjectId(setlistId, "setlist ID");
+  const { db, user } = await getAuthUser();
+
+  const setlist = await db
+    .collection("setlists")
+    .findOne({ _id: setlistObjectId });
+  if (!setlist) throw new UserError("Setlist not found");
+
+  const { band } = await requireBandMember(
+    db,
+    user._id.toString(),
+    setlist.bandId,
+  );
+  return { db, user, band, setlist };
+}
+
 export async function createSetlistAction(
   bandId: string,
   name: string,
   songs: Song[],
 ) {
-  try {
-    if (!bandId || !name) {
-      throw new Error("Band ID and name are required");
-    }
-
+  return runAction("Failed to create setlist", async () => {
+    const setlistName = readSetlistName(name);
+    const setlistSongs = readSetlistSongs(songs);
     const { db, user, band, bandObjectId } =
       await requireBandMemberContext(bandId);
 
@@ -50,75 +82,48 @@ export async function createSetlistAction(
         { $set: { isActive: false, updatedAt: new Date() } },
       );
 
-    const newSetlist = {
+    const result = await db.collection("setlists").insertOne({
       bandId: bandObjectId,
       creatorId: user._id,
-      name,
-      songs: songs.map(toSetlistSong),
+      name: setlistName,
+      songs: setlistSongs,
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-    };
-
-    const result = await db.collection("setlists").insertOne(newSetlist);
+    });
 
     notifyActiveSetlistChange(
       db,
       band,
       user,
       result.insertedId.toString(),
-      `made a new active setlist: ${name}`,
+      `made a new active setlist: ${setlistName}`,
     );
 
-    return {
-      success: true,
-      setlistId: result.insertedId.toString(),
-      message: "Setlist created successfully",
-    };
-  } catch (error) {
-    console.error("Error creating setlist:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to create setlist");
-  }
+    return { setlistId: result.insertedId.toString() };
+  });
 }
 
 export async function deleteSetlistAction(setlistId: string) {
-  try {
-    if (!ObjectId.isValid(setlistId)) throw new Error("Invalid setlist ID");
-    const { db, user } = await getAuthUser();
-
-    const setlist = await db
-      .collection("setlists")
-      .findOne({ _id: new ObjectId(setlistId) });
-    if (!setlist) {
-      throw new Error("Setlist not found");
-    }
+  return runAction("Failed to delete setlist", async () => {
+    const { db, user, setlist } = await requireSetlist(setlistId);
 
     if (setlist.creatorId.toString() !== user._id.toString()) {
-      throw new Error("Not authorized to delete this setlist");
+      throw new UserError(
+        "Only the person who made this setlist can delete it",
+      );
     }
 
-    await db.collection("setlists").deleteOne({ _id: new ObjectId(setlistId) });
-
-    return {
-      success: true,
-      message: "Setlist deleted successfully",
-    };
-  } catch (error) {
-    console.error("Error deleting setlist:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to delete setlist");
-  }
+    await db.collection("setlists").deleteOne({ _id: setlist._id });
+  });
 }
 
 export async function setActiveSetlistAction(
   bandId: string,
   setlistId: string,
 ) {
-  try {
-    if (!ObjectId.isValid(setlistId)) throw new Error("Invalid setlist ID");
+  return runAction("Failed to set active setlist", async () => {
+    const setlistObjectId = toObjectId(setlistId, "setlist ID");
     const { db, user, band, bandObjectId } =
       await requireBandMemberContext(bandId);
 
@@ -131,32 +136,22 @@ export async function setActiveSetlistAction(
     const setlist = await db
       .collection("setlists")
       .findOneAndUpdate(
-        { _id: new ObjectId(setlistId), bandId: bandObjectId },
+        { _id: setlistObjectId, bandId: bandObjectId },
         { $set: { isActive: true, updatedAt: new Date() } },
       );
 
     if (!setlist) {
-      throw new Error("Setlist not found");
+      throw new UserError("Setlist not found");
     }
 
     notifyActiveSetlistChange(
       db,
       band,
       user,
-      setlistId,
+      setlistObjectId.toString(),
       `set the active setlist to ${setlist.name}`,
     );
-
-    return {
-      success: true,
-      message: "Setlist activated successfully",
-    };
-  } catch (error) {
-    console.error("Error setting active setlist:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to set active setlist");
-  }
+  });
 }
 
 export async function updateSetlistAction(
@@ -164,31 +159,17 @@ export async function updateSetlistAction(
   name: string,
   songs: Song[],
 ) {
-  try {
-    if (!ObjectId.isValid(setlistId)) throw new Error("Invalid setlist ID");
-    const { db, user } = await getAuthUser();
-
-    if (!name.trim()) {
-      throw new Error("Setlist name is required");
-    }
-
-    const setlist = await db
-      .collection("setlists")
-      .findOne({ _id: new ObjectId(setlistId) });
-    if (!setlist) throw new Error("Setlist not found");
-
-    const { band } = await requireBandMember(
-      db,
-      user._id.toString(),
-      setlist.bandId,
-    );
+  return runAction("Failed to update setlist", async () => {
+    const setlistName = readSetlistName(name);
+    const setlistSongs = readSetlistSongs(songs);
+    const { db, user, band, setlist } = await requireSetlist(setlistId);
 
     await db.collection("setlists").updateOne(
-      { _id: new ObjectId(setlistId) },
+      { _id: setlist._id },
       {
         $set: {
-          name: name.trim(),
-          songs: songs.map(toSetlistSong),
+          name: setlistName,
+          songs: setlistSongs,
           updatedAt: new Date(),
         },
       },
@@ -199,85 +180,62 @@ export async function updateSetlistAction(
         db,
         band,
         user,
-        setlistId,
-        `updated the active setlist ${name.trim()}`,
+        setlist._id.toString(),
+        `updated the active setlist ${setlistName}`,
       );
     }
-
-    return { success: true, message: "Setlist updated" };
-  } catch (error) {
-    console.error("Error updating setlist:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to update setlist");
-  }
+  });
 }
 
 export async function deactivateSetlistAction(
   bandId: string,
   setlistId: string,
 ) {
-  try {
-    if (!ObjectId.isValid(setlistId)) throw new Error("Invalid setlist ID");
+  return runAction("Failed to deactivate setlist", async () => {
+    const setlistObjectId = toObjectId(setlistId, "setlist ID");
     const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
     const result = await db
       .collection("setlists")
       .updateOne(
-        { _id: new ObjectId(setlistId), bandId: bandObjectId },
+        { _id: setlistObjectId, bandId: bandObjectId },
         { $set: { isActive: false, updatedAt: new Date() } },
       );
 
     if (result.matchedCount === 0) {
-      throw new Error("Setlist not found");
+      throw new UserError("Setlist not found");
     }
-
-    return { success: true, message: "Setlist deactivated" };
-  } catch (error) {
-    console.error("Error deactivating setlist:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to deactivate setlist");
-  }
+  });
 }
 
 // add a single song to the band's active setlist (used from covers and custom songs lists)
 export async function addSongToActiveSetlistAction(bandId: string, song: Song) {
-  try {
-    if (!bandId || !song?.id) {
-      throw new Error("Band ID and song are required");
-    }
-
+  return runAction("Failed to add song to setlist", async () => {
+    const input = readSongInput(song);
     const { db, user, band, bandObjectId } =
       await requireBandMemberContext(bandId);
 
     const setlist = await db
       .collection("setlists")
       .findOne({ bandId: bandObjectId, isActive: true });
-    if (!setlist) throw new Error("No active setlist");
-
-    const songId = normaliseSongId(song.id);
+    if (!setlist) throw new UserError("No active setlist");
 
     // custom songs must belong to this band
-    if (song.isCustom) {
-      if (!ObjectId.isValid(songId)) throw new Error("Song not found");
+    if (input.isCustom) {
+      if (!ObjectId.isValid(input.id)) throw new UserError("Song not found");
       const customSong = await db
         .collection("custom_songs")
-        .findOne({ _id: new ObjectId(songId), bandId: bandObjectId });
-      if (!customSong) throw new Error("Song not found");
+        .findOne({ _id: new ObjectId(input.id), bandId: bandObjectId });
+      if (!customSong) throw new UserError("Song not found");
     }
 
     const existingSongs: Array<{ id: unknown }> = setlist.songs || [];
-    if (existingSongs.some((s) => normaliseSongId(s.id) === songId)) {
-      return {
-        success: true,
-        alreadyExists: true,
-        setlistId: setlist._id.toString(),
-      };
+    if (existingSongs.some((s) => normaliseSongId(s.id) === input.id)) {
+      return { alreadyExists: true, setlistId: setlist._id.toString() };
     }
 
     await db.collection("setlists").updateOne({ _id: setlist._id }, {
-      $push: { songs: toSetlistSong({ ...song, id: songId }) },
+      $push: { songs: toSetlistSong(input) },
       $set: { updatedAt: new Date() },
     } as Record<string, unknown>);
 
@@ -286,31 +244,19 @@ export async function addSongToActiveSetlistAction(bandId: string, song: Song) {
       band,
       user,
       setlist._id.toString(),
-      `added ${song.title} to ${setlist.name}`,
+      `added ${input.title} to ${setlist.name}`,
     );
 
-    return {
-      success: true,
-      alreadyExists: false,
-      setlistId: setlist._id.toString(),
-    };
-  } catch (error) {
-    console.error("Error adding song to active setlist:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to add song to setlist");
-  }
+    return { alreadyExists: false, setlistId: setlist._id.toString() };
+  });
 }
 
 export async function removeSongFromActiveSetlistAction(
   bandId: string,
   songId: string,
 ) {
-  try {
-    if (!bandId || !songId) {
-      throw new Error("Band ID and song ID are required");
-    }
-
+  return runAction("Failed to remove song from setlist", async () => {
+    const id = readString(songId, "song", 100);
     const { db, user, band, bandObjectId } =
       await requireBandMemberContext(bandId);
 
@@ -318,15 +264,15 @@ export async function removeSongFromActiveSetlistAction(
     const setlist = await db
       .collection("setlists")
       .findOneAndUpdate({ bandId: bandObjectId, isActive: true }, {
-        $pull: { songs: { id: normaliseSongId(songId) } },
+        $pull: { songs: { id } },
         $set: { updatedAt: new Date() },
       } as Record<string, unknown>);
 
-    if (!setlist) throw new Error("No active setlist");
+    if (!setlist) throw new UserError("No active setlist");
 
-    const removedSong = ((setlist.songs ?? []) as Array<{ id: unknown; title?: string }>).find(
-      (s) => normaliseSongId(s.id) === normaliseSongId(songId),
-    );
+    const removedSong = (
+      (setlist.songs ?? []) as Array<{ id: unknown; title?: string }>
+    ).find((s) => normaliseSongId(s.id) === id);
     if (removedSong) {
       notifyActiveSetlistChange(
         db,
@@ -336,12 +282,5 @@ export async function removeSongFromActiveSetlistAction(
         `removed ${removedSong.title || "a song"} from ${setlist.name}`,
       );
     }
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error removing song from active setlist:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to remove song from setlist");
-  }
+  });
 }

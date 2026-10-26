@@ -1,97 +1,40 @@
-﻿"use server";
+"use server";
 
-import { getAuthUser } from "@/app/lib/auth";
-import { ObjectId, Db } from "mongodb";
-import { del, put } from "@vercel/blob";
+import { getAuthUser } from "@/app/lib/server/auth";
+import { Db, ObjectId } from "mongodb";
+import { put } from "@vercel/blob";
 import {
   bandImageUrl,
   buildImageBlobPath,
   validateImageFile,
-} from "@/app/lib/customSongImages";
-
-type BandRole = "creator" | "admin" | "member";
-type BandMemberEntry = { userId: string; role: BandRole };
-
-type BandDocument = {
-  _id?: ObjectId;
-  name: string;
-  description: string;
-  members: BandMemberEntry[];
-  createdAt: Date;
-  image?: string;
-  imageBlobUrl?: string;
-  imageMimeType?: string;
-};
-
-async function deleteBandImageBlob(blobUrl: string | undefined) {
-  if (!blobUrl) return;
-  try {
-    await del(blobUrl);
-  } catch (blobErr) {
-    console.error("Failed to delete band image blob:", blobErr);
-  }
-}
-
-function getBandsCollection(db: Db) {
-  return db.collection<BandDocument>("bands");
-}
-
-function isMember(band: BandDocument, userId: string) {
-  return band.members.some((m) => m.userId === userId);
-}
-
-function isAdminOrCreator(band: BandDocument, userId: string) {
-  return band.members.some(
-    (m) => m.userId === userId && (m.role === "admin" || m.role === "creator"),
-  );
-}
-
-function isBandCreator(band: BandDocument, userId: string) {
-  return band.members.some((m) => m.userId === userId && m.role === "creator");
-}
-
-function getMemberEntry(band: BandDocument, userId: string) {
-  return band.members.find((m) => m.userId === userId);
-}
-
-async function setMemberBandDataActiveState(
-  db: Db,
-  bandId: string,
-  memberId: string,
-  active: boolean,
-) {
-  if (!ObjectId.isValid(memberId)) return;
-
-  const bandObjectId = new ObjectId(bandId);
-  const memberObjectId = new ObjectId(memberId);
-
-  const rehearsalIds = (
-    await db
-      .collection("rehearsals")
-      .find({ bandId: bandObjectId })
-      .project({ _id: 1 })
-      .toArray()
-  ).map((r) => r._id);
-
-  if (rehearsalIds.length === 0) return;
-
-  await db
-    .collection("rehearsal_availability")
-    .updateMany(
-      { rehearsalId: { $in: rehearsalIds }, userId: memberObjectId },
-      { $set: { active, updatedAt: new Date() } },
-    );
-}
+} from "@/app/lib/server/customSongImages";
+import { deleteBlobsQuietly } from "@/app/lib/server/blobStorage";
+import { runAction, UserError } from "@/app/lib/actionResult";
+import { isBandMember, toObjectId, toObjectIds } from "@/app/lib/server/utils";
+import {
+  BandDocument,
+  getBandsCollection,
+  getInvitesCollection,
+  isBandCreator,
+  readUserId,
+  sendBandInvites,
+  setMemberBandDataActiveState,
+  verifyAdmin,
+} from "@/app/lib/server/bands";
+import { BandRole } from "@/app/types";
+import {
+  readOptionalString,
+  readString,
+  readStringArray,
+} from "@/app/lib/validate";
 
 // delete a band and all its related data
-async function deleteBandCascade(db: Db, bandId: string) {
-  const oid = new ObjectId(bandId);
-
+async function deleteBandCascade(db: Db, oid: ObjectId) {
   const band = await getBandsCollection(db).findOne(
     { _id: oid },
     { projection: { imageBlobUrl: 1 } },
   );
-  await deleteBandImageBlob(band?.imageBlobUrl);
+  await deleteBlobsQuietly(band?.imageBlobUrl, "band image");
 
   const rehearsalIds = (
     await db
@@ -101,7 +44,8 @@ async function deleteBandCascade(db: Db, bandId: string) {
       .toArray()
   ).map((rehearsal) => rehearsal._id);
 
-  // chat attachments live in blob storage, so remove those files too
+  // chat attachments, custom song audio and images live in blob storage, so
+  // remove those files too
   const chatBlobUrls = (
     await db
       .collection("band_messages")
@@ -111,28 +55,42 @@ async function deleteBandCascade(db: Db, bandId: string) {
   ).flatMap((m) =>
     (m.attachments as { blobUrl: string }[]).map((a) => a.blobUrl),
   );
-  if (chatBlobUrls.length > 0) {
-    try {
-      await del(chatBlobUrls);
-    } catch (blobErr) {
-      console.error("Failed to delete chat attachment blobs:", blobErr);
-    }
-  }
+  const songBlobUrls = (
+    await db
+      .collection("custom_songs")
+      .find({ bandId: oid })
+      .project({ audioBlobUrl: 1, imageBlobUrl: 1 })
+      .toArray()
+  ).flatMap((s) => [s.audioBlobUrl, s.imageBlobUrl]);
+  const albumBlobUrls = (
+    await db
+      .collection("custom_albums")
+      .find({ bandId: oid })
+      .project({ imageBlobUrl: 1 })
+      .toArray()
+  ).map((a) => a.imageBlobUrl);
+  await deleteBlobsQuietly(
+    [...chatBlobUrls, ...songBlobUrls, ...albumBlobUrls],
+    "band",
+  );
 
   await getBandsCollection(db).deleteOne({ _id: oid });
-  await db.collection("band_messages").deleteMany({ bandId: oid });
-  await db.collection("band_chat_typing").deleteMany({ bandId: oid });
-  await db.collection("setlists").deleteMany({ bandId: oid });
-  await db.collection("custom_songs").deleteMany({ bandId: oid });
-  await db.collection("covers").deleteMany({ bandId: oid });
-  await db.collection("learnt_songs").deleteMany({ bandId: oid });
-  await db.collection("rehearsals").deleteMany({ bandId: oid });
-
-  if (rehearsalIds.length > 0) {
-    await db.collection("rehearsal_availability").deleteMany({
-      rehearsalId: { $in: rehearsalIds },
-    });
-  }
+  await Promise.all([
+    getInvitesCollection(db).deleteMany({ bandId: oid }),
+    db.collection("band_messages").deleteMany({ bandId: oid }),
+    db.collection("band_chat_typing").deleteMany({ bandId: oid }),
+    db.collection("setlists").deleteMany({ bandId: oid }),
+    db.collection("custom_songs").deleteMany({ bandId: oid }),
+    db.collection("custom_albums").deleteMany({ bandId: oid }),
+    db.collection("covers").deleteMany({ bandId: oid }),
+    db.collection("learnt_songs").deleteMany({ bandId: oid }),
+    db.collection("rehearsals").deleteMany({ bandId: oid }),
+    rehearsalIds.length > 0
+      ? db.collection("rehearsal_availability").deleteMany({
+          rehearsalId: { $in: rehearsalIds },
+        })
+      : null,
+  ]);
 }
 
 export async function createBandAction(
@@ -140,79 +98,50 @@ export async function createBandAction(
   description: string,
   memberIds: string[],
 ) {
-  try {
+  return runAction("Failed to create band", async () => {
+    const bandName = readString(name, "band name", 100).trim();
+    if (!bandName) throw new UserError("Band name is required");
+    const bandDescription =
+      readOptionalString(description, "description", 2000)?.trim() ?? "";
+    const requestedIds = toObjectIds(readStringArray(memberIds, "members"));
+
     const { db, user } = await getAuthUser();
-
-    if (!name) {
-      throw new Error("Band name is required");
-    }
-
     const creatorId = user._id.toString();
-    const validatedMemberIds = memberIds.filter(
-      (id) => typeof id === "string" && ObjectId.isValid(id),
-    );
-    const allMemberIds = Array.from(
-      new Set([creatorId, ...validatedMemberIds]),
-    );
 
-    const members: BandMemberEntry[] = allMemberIds.map((id) => ({
-      userId: id,
-      role: id === creatorId ? "creator" : "member",
-    }));
+    // the creator is the only member to start with - everyone else picked
+    // gets an invite they have to accept. only invite people who really exist
+    const existingIds = (
+      await db
+        .collection("users")
+        .find({ _id: { $in: requestedIds, $ne: user._id } })
+        .project({ _id: 1 })
+        .toArray()
+    ).map((u) => u._id as ObjectId);
 
-    const newBand = {
-      name,
-      description: description || "",
-      members,
+    const band: BandDocument = {
+      name: bandName,
+      description: bandDescription,
+      members: [{ userId: creatorId, role: "creator" }],
       createdAt: new Date(),
     };
+    const result = await getBandsCollection(db).insertOne(band);
 
-    const result = await getBandsCollection(db).insertOne(newBand);
+    await sendBandInvites(db, result.insertedId, band, user, existingIds);
 
-    return {
-      success: true,
-      bandId: result.insertedId.toString(),
-      message: "Band created successfully",
-    };
-  } catch (error) {
-    console.error("Error creating band:", error);
-    throw error instanceof Error ? error : new Error("Failed to create band");
-  }
-}
-
-// verify user is admin of a band
-async function verifyAdmin(bandId: string) {
-  if (!ObjectId.isValid(bandId)) throw new Error("Invalid band ID");
-
-  const { db, user } = await getAuthUser();
-
-  const band = await getBandsCollection(db).findOne({
-    _id: new ObjectId(bandId),
+    return { bandId: result.insertedId.toString() };
   });
-  if (!band) throw new Error("Band not found");
-
-  const userId = user._id.toString();
-  if (!isAdminOrCreator(band, userId))
-    throw new Error("Only admins can perform this action");
-
-  return { db, band, user, userId, isCreator: isBandCreator(band, userId) };
 }
 
 export async function deleteBandAction(bandId: string) {
-  try {
-    const { db, isCreator } = await verifyAdmin(bandId);
+  return runAction("Failed to delete band", async () => {
+    const { db, bandObjectId, isCreator } = await verifyAdmin(bandId);
 
     if (!isCreator) {
-      throw new Error("Only the band creator can delete the band");
+      throw new UserError("Only the band creator can delete the band");
     }
 
-    await deleteBandCascade(db, bandId);
-
-    return { success: true, message: "Band deleted" };
-  } catch (error) {
-    console.error("Error deleting band:", error);
-    throw error instanceof Error ? error : new Error("Failed to delete band");
-  }
+    await deleteBandCascade(db, bandObjectId);
+  });
 }
 
 export async function updateBandAction(
@@ -220,238 +149,185 @@ export async function updateBandAction(
   name: string,
   description: string,
 ) {
-  try {
-    const { db } = await verifyAdmin(bandId);
+  return runAction("Failed to update band", async () => {
+    const bandName = readString(name, "band name", 100).trim();
+    if (!bandName) throw new UserError("Band name is required");
+    const bandDescription =
+      readOptionalString(description, "description", 2000)?.trim() ?? "";
 
-    if (!name?.trim()) throw new Error("Band name is required");
+    const { db, bandObjectId } = await verifyAdmin(bandId);
 
     await getBandsCollection(db).updateOne(
-      { _id: new ObjectId(bandId) },
-      { $set: { name: name.trim(), description: description?.trim() || "" } },
+      { _id: bandObjectId },
+      { $set: { name: bandName, description: bandDescription } },
     );
-
-    return { success: true, message: "Band updated" };
-  } catch (error) {
-    console.error("Error updating band:", error);
-    throw error instanceof Error ? error : new Error("Failed to update band");
-  }
+  });
 }
 
 // band images are optional, uploaded after the band is created or from settings
 export async function uploadBandImageAction(
   bandId: string,
   formData: FormData,
-): Promise<{ image: string }> {
-  const { db, band } = await verifyAdmin(bandId);
-  const file = validateImageFile(formData.get("image"));
+) {
+  return runAction("Failed to upload image", async () => {
+    const { db, band, bandObjectId } = await verifyAdmin(bandId);
+    const file = validateImageFile(formData.get("image"));
+    const id = bandObjectId.toString();
 
-  await deleteBandImageBlob(band.imageBlobUrl);
+    await deleteBlobsQuietly(band.imageBlobUrl, "band image");
 
-  const blob = await put(
-    buildImageBlobPath("bands", bandId, bandId, file.name || "image"),
-    file,
-    { access: "private", addRandomSuffix: false, contentType: file.type },
-  );
-
-  const image = bandImageUrl(bandId, Date.now());
-  await getBandsCollection(db).updateOne(
-    { _id: new ObjectId(bandId) },
-    {
-      $set: {
-        imageBlobUrl: blob.url,
-        imageMimeType: file.type,
-        image,
-      },
-    },
-  );
-
-  return { image };
-}
-
-export async function deleteBandImageAction(bandId: string): Promise<void> {
-  const { db, band } = await verifyAdmin(bandId);
-
-  await deleteBandImageBlob(band.imageBlobUrl);
-
-  await getBandsCollection(db).updateOne(
-    { _id: new ObjectId(bandId) },
-    { $unset: { imageBlobUrl: "", imageMimeType: "", image: "" } },
-  );
-}
-
-export async function addMemberAction(bandId: string, userId: string) {
-  try {
-    const { db, band } = await verifyAdmin(bandId);
-
-    if (!ObjectId.isValid(userId)) throw new Error("Invalid user ID");
-
-    if (isMember(band, userId)) {
-      return { success: true, message: "Already a member" };
-    }
-
-    // verify user exists
-    const targetUser = await db
-      .collection("users")
-      .findOne({ _id: new ObjectId(userId) });
-    if (!targetUser) throw new Error("User not found");
-
-    await getBandsCollection(db).updateOne(
-      { _id: new ObjectId(bandId) },
-      { $push: { members: { userId, role: "member" } } },
+    const blob = await put(
+      buildImageBlobPath("bands", id, id, file.name || "image"),
+      file,
+      { access: "private", addRandomSuffix: false, contentType: file.type },
     );
 
-    await setMemberBandDataActiveState(db, bandId, userId, true);
+    const image = bandImageUrl(id, Date.now());
+    await getBandsCollection(db).updateOne(
+      { _id: bandObjectId },
+      {
+        $set: {
+          imageBlobUrl: blob.url,
+          imageMimeType: file.type,
+          image,
+        },
+      },
+    );
 
-    return { success: true, message: "Member added" };
-  } catch (error) {
-    console.error("Error adding member:", error);
-    throw error instanceof Error ? error : new Error("Failed to add member");
-  }
+    return { image };
+  });
+}
+
+export async function deleteBandImageAction(bandId: string) {
+  return runAction("Failed to remove image", async () => {
+    const { db, band, bandObjectId } = await verifyAdmin(bandId);
+
+    await deleteBlobsQuietly(band.imageBlobUrl, "band image");
+
+    await getBandsCollection(db).updateOne(
+      { _id: bandObjectId },
+      { $unset: { imageBlobUrl: "", imageMimeType: "", image: "" } },
+    );
+  });
 }
 
 export async function removeMemberAction(bandId: string, memberId: string) {
-  try {
-    const { db, band } = await verifyAdmin(bandId);
+  return runAction("Failed to remove member", async () => {
+    const id = readUserId(memberId);
+    const { db, band, bandObjectId } = await verifyAdmin(bandId);
 
-    if (isBandCreator(band, memberId)) {
-      throw new Error("Cannot remove the band creator");
+    if (isBandCreator(band, id)) {
+      throw new UserError("Cannot remove the band creator");
     }
 
     await getBandsCollection(db).updateOne(
-      { _id: new ObjectId(bandId) },
-      { $pull: { members: { userId: memberId } } },
+      { _id: bandObjectId },
+      { $pull: { members: { userId: id } } },
     );
 
-    await setMemberBandDataActiveState(db, bandId, memberId, false);
-
-    return { success: true, message: "Member removed" };
-  } catch (error) {
-    console.error("Error removing member:", error);
-    throw error instanceof Error ? error : new Error("Failed to remove member");
-  }
+    await setMemberBandDataActiveState(db, bandObjectId, id, false);
+  });
 }
 
 export async function toggleAdminAction(bandId: string, memberId: string) {
-  try {
-    const { db, band } = await verifyAdmin(bandId);
+  return runAction("Failed to update role", async () => {
+    const id = readUserId(memberId);
+    const { db, band, bandObjectId } = await verifyAdmin(bandId);
 
-    if (isBandCreator(band, memberId)) {
-      throw new Error("Cannot change the creator's admin role");
+    if (isBandCreator(band, id)) {
+      throw new UserError("Cannot change the creator's admin role");
     }
 
-    if (!isMember(band, memberId)) {
-      throw new Error("User is not a band member");
+    const entry = band.members.find((m) => m.userId === id);
+    if (!entry) {
+      throw new UserError("User is not a band member");
     }
 
-    const entry = getMemberEntry(band, memberId);
-    const isCurrentlyAdmin = entry?.role === "admin";
+    const isCurrentlyAdmin = entry.role === "admin";
     const newRole: BandRole = isCurrentlyAdmin ? "member" : "admin";
 
     await getBandsCollection(db).updateOne(
-      { _id: new ObjectId(bandId), "members.userId": memberId },
+      { _id: bandObjectId, "members.userId": id },
       { $set: { "members.$.role": newRole } },
     );
 
     return {
-      success: true,
       isAdmin: !isCurrentlyAdmin,
       message: isCurrentlyAdmin ? "Admin role removed" : "Admin role granted",
     };
-  } catch (error) {
-    console.error("Error toggling admin:", error);
-    throw error instanceof Error ? error : new Error("Failed to toggle admin");
-  }
+  });
 }
 
 export async function leaveBandAction(bandId: string) {
-  try {
-    if (!ObjectId.isValid(bandId)) throw new Error("Invalid band ID");
-
+  return runAction("Failed to leave band", async () => {
+    const bandObjectId = toObjectId(bandId, "band ID");
     const { db, user } = await getAuthUser();
 
-    const band = await getBandsCollection(db).findOne({
-      _id: new ObjectId(bandId),
-    });
-    if (!band) throw new Error("Band not found");
+    const band = await getBandsCollection(db).findOne({ _id: bandObjectId });
+    if (!band) throw new UserError("Band not found");
 
     const userId = user._id.toString();
-    if (!isMember(band, userId)) {
-      throw new Error("You are not a member of this band");
+    if (!isBandMember(band, userId)) {
+      throw new UserError("You are not a member of this band");
     }
 
     // if only one member left, delete the band entirely
     if (band.members.length <= 1) {
-      await deleteBandCascade(db, bandId);
-      return {
-        success: true,
-        bandDeleted: true,
-        message: "You left and the band was deleted",
-      };
+      await deleteBandCascade(db, bandObjectId);
+      return { bandDeleted: true };
     }
 
-    const wasCreator = isBandCreator(band, userId);
-
     await getBandsCollection(db).updateOne(
-      { _id: new ObjectId(bandId) },
+      { _id: bandObjectId },
       { $pull: { members: { userId } } },
     );
 
-    await setMemberBandDataActiveState(db, bandId, userId, false);
+    await setMemberBandDataActiveState(db, bandObjectId, userId, false);
 
     // if the leaving user was creator, promote the last remaining member
-    if (wasCreator) {
+    if (isBandCreator(band, userId)) {
       const remainingMembers = band.members.filter((m) => m.userId !== userId);
       const newCreatorId = remainingMembers[remainingMembers.length - 1].userId;
 
       await getBandsCollection(db).updateOne(
-        { _id: new ObjectId(bandId), "members.userId": newCreatorId },
+        { _id: bandObjectId, "members.userId": newCreatorId },
         { $set: { "members.$.role": "creator" } },
       );
     }
 
-    return { success: true, bandDeleted: false, message: "You left the band" };
-  } catch (error) {
-    console.error("Error leaving band:", error);
-    throw error instanceof Error ? error : new Error("Failed to leave band");
-  }
+    return { bandDeleted: false };
+  });
 }
 
 export async function transferCreatorAction(
   bandId: string,
   newCreatorId: string,
 ) {
-  try {
-    const { db, band, userId, isCreator } = await verifyAdmin(bandId);
+  return runAction("Failed to transfer creator role", async () => {
+    const newId = readUserId(newCreatorId);
+    const { db, band, bandObjectId, userId, isCreator } =
+      await verifyAdmin(bandId);
 
     if (!isCreator) {
-      throw new Error("Only the creator can transfer the creator role");
+      throw new UserError("Only the creator can transfer the creator role");
     }
 
-    if (!ObjectId.isValid(newCreatorId)) throw new Error("Invalid user ID");
-
-    if (!isMember(band, newCreatorId)) {
-      throw new Error("Target user is not a band member");
+    if (!isBandMember(band, newId)) {
+      throw new UserError("Target user is not a band member");
     }
 
-    if (isBandCreator(band, newCreatorId)) {
-      throw new Error("User is already the creator");
+    if (isBandCreator(band, newId)) {
+      throw new UserError("User is already the creator");
     }
 
     // demote current creator to admin, promote new creator
     await getBandsCollection(db).updateOne(
-      { _id: new ObjectId(bandId), "members.userId": userId },
+      { _id: bandObjectId, "members.userId": userId },
       { $set: { "members.$.role": "admin" } },
     );
     await getBandsCollection(db).updateOne(
-      { _id: new ObjectId(bandId), "members.userId": newCreatorId },
+      { _id: bandObjectId, "members.userId": newId },
       { $set: { "members.$.role": "creator" } },
     );
-
-    return { success: true, message: "Creator role transferred" };
-  } catch (error) {
-    console.error("Error transferring creator:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to transfer creator role");
-  }
+  });
 }

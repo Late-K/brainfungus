@@ -1,13 +1,13 @@
 // profile page
 
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/lib/auth";
+import { authOptions } from "@/app/lib/server/auth";
 import { redirect } from "next/navigation";
 import Image from "next/image";
-import SignOutButton from "@/app/components/signOutButton";
-import ProfileCard from "@/app/components/profileCard";
-import ProfileLearntSongsPreview from "@/app/components/profileLearntSongsPreview";
-import FindPeopleComponent from "@/app/components/findPeopleComponent";
+import SignOutButton from "@/app/components/auth/signOutButton";
+import ProfileCard from "@/app/components/profile/profileCard";
+import LearntSongsPreview from "@/app/components/profile/learntSongsPreview";
+import FindPeople from "@/app/components/profile/findPeople";
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions);
@@ -38,11 +38,11 @@ export default async function ProfilePage() {
         </div>
 
         <div className="profile-layout-songs">
-          <ProfileLearntSongsPreview />
+          <LearntSongsPreview />
         </div>
 
         <div className="profile-layout-people">
-          <FindPeopleComponent />
+          <FindPeople />
         </div>
 
         <div className="row-center profile-layout-signout">

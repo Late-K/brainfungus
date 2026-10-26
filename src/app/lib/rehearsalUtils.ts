@@ -101,12 +101,6 @@ function isSameDay(date1: Date, date2: Date): boolean {
   );
 }
 
-export function isRecurringRehearsal(rehearsal: Rehearsal): boolean {
-  return (
-    rehearsal.repeatType === "weekly" || rehearsal.repeatType === "biweekly"
-  );
-}
-
 // "19:00-21:00", "19:00" or "" depending on which times were set
 export function formatRehearsalTimes(startTime?: string, endTime?: string) {
   if (startTime && endTime) return `${startTime}-${endTime}`;

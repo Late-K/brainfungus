@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   deleteBandAction,
   updateBandAction,
   uploadBandImageAction,
   deleteBandImageAction,
-  addMemberAction,
   removeMemberAction,
   toggleAdminAction,
   transferCreatorAction,
   leaveBandAction,
 } from "@/app/actions/bands";
+import { cancelInviteAction, inviteMemberAction } from "@/app/actions/invites";
 import { Band, User } from "@/app/types";
+import { unwrapAction } from "@/app/lib/actionResult";
 
 interface UseBandManagementProps {
   band: Band;
@@ -38,7 +39,7 @@ export function useBandManagement({
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isFetchingUsers, setIsFetchingUsers] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -55,6 +56,15 @@ export function useBandManagement({
   const isAdmin = currentMember?.isAdmin ?? false;
   const isCreator = currentMember?.isCreator ?? false;
 
+  // everyone who isn't already in the band or invited to it
+  const availableUsers = useMemo(() => {
+    const takenIds = new Set([
+      ...(band.members ?? []).map((m) => m.id),
+      ...(band.invites ?? []).map((i) => i.id),
+    ]);
+    return allUsers.filter((u) => !takenIds.has(u._id));
+  }, [allUsers, band.members, band.invites]);
+
   useEffect(() => {
     setName(band.name);
     setDescription(band.description || "");
@@ -66,10 +76,7 @@ export function useBandManagement({
       const res = await fetch("/api/users/all");
       if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
-      const memberIds = band.members?.map((m) => m.id) ?? [];
-      setAvailableUsers(
-        (data.users ?? []).filter((u: User) => !memberIds.includes(u._id)),
-      );
+      setAllUsers(data.users ?? []);
     } catch {
       setError("Failed to load users");
     } finally {
@@ -89,7 +96,7 @@ export function useBandManagement({
     setError("");
     setIsLeaving(true);
     try {
-      await leaveBandAction(band._id);
+      unwrapAction(await leaveBandAction(band._id));
       setIsOpen(false);
       onBandLeft();
     } catch (err) {
@@ -111,7 +118,7 @@ export function useBandManagement({
     setSuccess("");
     setIsSaving(true);
     try {
-      await updateBandAction(band._id, name, description);
+      unwrapAction(await updateBandAction(band._id, name, description));
       setSuccess("Band details updated");
       onBandUpdated();
     } catch (err) {
@@ -129,7 +136,7 @@ export function useBandManagement({
     try {
       const formData = new FormData();
       formData.append("image", file);
-      await uploadBandImageAction(band._id, formData);
+      unwrapAction(await uploadBandImageAction(band._id, formData));
       setSuccess("Band image updated");
       onBandUpdated();
     } catch (err) {
@@ -144,7 +151,7 @@ export function useBandManagement({
     setSuccess("");
     setIsUploadingImage(true);
     try {
-      await deleteBandImageAction(band._id);
+      unwrapAction(await deleteBandImageAction(band._id));
       setSuccess("Band image removed");
       onBandUpdated();
     } catch (err) {
@@ -158,7 +165,7 @@ export function useBandManagement({
     setError("");
     setIsDeleting(true);
     try {
-      await deleteBandAction(band._id);
+      unwrapAction(await deleteBandAction(band._id));
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete band");
@@ -166,17 +173,31 @@ export function useBandManagement({
     }
   };
 
-  const handleAddMember = async (userId: string) => {
+  const handleInviteMember = async (userId: string) => {
     setError("");
     setSuccess("");
     setActionLoading(userId);
     try {
-      await addMemberAction(band._id, userId);
-      setSuccess("Member added");
+      unwrapAction(await inviteMemberAction(band._id, userId));
+      setSuccess("Invite sent");
       onBandUpdated();
-      setAvailableUsers((prev) => prev.filter((u) => u._id !== userId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add member");
+      setError(err instanceof Error ? err.message : "Failed to send invite");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancelInvite = async (userId: string) => {
+    setError("");
+    setSuccess("");
+    setActionLoading(userId);
+    try {
+      unwrapAction(await cancelInviteAction(band._id, userId));
+      setSuccess("Invite cancelled");
+      onBandUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel invite");
     } finally {
       setActionLoading(null);
     }
@@ -187,7 +208,7 @@ export function useBandManagement({
     setSuccess("");
     setActionLoading(memberId);
     try {
-      await removeMemberAction(band._id, memberId);
+      unwrapAction(await removeMemberAction(band._id, memberId));
       setSuccess("Member removed");
       onBandUpdated();
     } catch (err) {
@@ -202,7 +223,7 @@ export function useBandManagement({
     setSuccess("");
     setActionLoading(memberId);
     try {
-      const result = await toggleAdminAction(band._id, memberId);
+      const result = unwrapAction(await toggleAdminAction(band._id, memberId));
       setSuccess(result.message);
       onBandUpdated();
     } catch (err) {
@@ -217,7 +238,7 @@ export function useBandManagement({
     setSuccess("");
     setActionLoading(memberId);
     try {
-      await transferCreatorAction(band._id, memberId);
+      unwrapAction(await transferCreatorAction(band._id, memberId));
       setSuccess("Creator role transferred");
       onBandUpdated();
     } catch (err) {
@@ -266,7 +287,8 @@ export function useBandManagement({
     handleImageRemove,
     handleDelete,
     handleLeaveBand,
-    handleAddMember,
+    handleInviteMember,
+    handleCancelInvite,
     handleRemoveMember,
     handleToggleAdmin,
     handleTransferCreator,

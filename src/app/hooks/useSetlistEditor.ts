@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { Song, DeezerResult, BandCover } from "@/app/types";
 import { updateSetlistAction } from "@/app/actions/setlists";
+import { unwrapAction } from "@/app/lib/actionResult";
 
 interface UseSetlistEditorOptions {
   onSaveSuccess?: (name: string, songs: Song[]) => void;
@@ -30,11 +31,8 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     if (!editName.trim()) return;
     try {
       setIsSaving(true);
-      const songsToSave = editSongs.map(
-        ({ audioUrl: _audioUrl, ...song }) => song,
-      );
-      await updateSetlistAction(setlistId, editName, songsToSave);
-      options?.onSaveSuccess?.(editName.trim(), songsToSave);
+      unwrapAction(await updateSetlistAction(setlistId, editName, editSongs));
+      options?.onSaveSuccess?.(editName.trim(), editSongs);
       setIsEditing(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to save setlist");

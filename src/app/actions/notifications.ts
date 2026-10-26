@@ -1,10 +1,17 @@
 "use server";
 
-import { getAuthUser } from "@/app/lib/auth";
-import { requireBandMemberContext } from "@/app/lib/serverUtils";
+import { getAuthUser } from "@/app/lib/server/auth";
+import { requireBandMemberContext } from "@/app/lib/server/utils";
+import { runAction, UserError } from "@/app/lib/actionResult";
+import { readBoolean, readOneOf, readString } from "@/app/lib/validate";
 import { NotificationPrefs, NotificationType } from "@/app/types";
 
-const notificationTypes: NotificationType[] = ["rehearsals", "chat", "setlists"];
+const notificationTypes: NotificationType[] = [
+  "rehearsals",
+  "chat",
+  "setlists",
+  "invites",
+];
 
 type SubscriptionInput = {
   endpoint?: string;
@@ -13,16 +20,19 @@ type SubscriptionInput = {
 
 // save this device's push subscription against the signed in user.
 // keyed by endpoint so a device that switches account moves to the new user
-export async function savePushSubscriptionAction(subscription: SubscriptionInput) {
-  try {
+export async function savePushSubscriptionAction(
+  subscription: SubscriptionInput,
+) {
+  return runAction("Failed to turn on notifications", async () => {
     const { endpoint, keys } = subscription ?? {};
     if (
       typeof endpoint !== "string" ||
       !endpoint.startsWith("https://") ||
+      endpoint.length > 2000 ||
       typeof keys?.p256dh !== "string" ||
       typeof keys?.auth !== "string"
     ) {
-      throw new Error("Invalid push subscription");
+      throw new UserError("Invalid push subscription");
     }
 
     const { db, user } = await getAuthUser();
@@ -38,96 +48,78 @@ export async function savePushSubscriptionAction(subscription: SubscriptionInput
       },
       { upsert: true },
     );
-
-    return { success: true };
-  } catch (error) {
-    console.error("savePushSubscriptionAction error:", error);
-    throw error;
-  }
+  });
 }
 
 export async function removePushSubscriptionAction(endpoint: string) {
-  try {
+  return runAction("Failed to turn off notifications", async () => {
+    const endpointUrl = readString(endpoint, "push subscription", 2000);
     const { db, user } = await getAuthUser();
     await db
       .collection("push_subscriptions")
-      .deleteOne({ endpoint, userId: user._id });
-    return { success: true };
-  } catch (error) {
-    console.error("removePushSubscriptionAction error:", error);
-    throw error;
-  }
+      .deleteOne({ endpoint: endpointUrl, userId: user._id });
+  });
 }
 
-export async function getNotificationPrefsAction(): Promise<NotificationPrefs> {
-  try {
-    const { user } = await getAuthUser();
-    const prefs = user.notificationPrefs ?? {};
-    return {
-      rehearsals: prefs.rehearsals ?? true,
-      chat: prefs.chat ?? true,
-      setlists: prefs.setlists ?? true,
-    };
-  } catch (error) {
-    console.error("getNotificationPrefsAction error:", error);
-    throw error;
-  }
+export async function getNotificationPrefsAction() {
+  return runAction(
+    "Failed to load notification settings",
+    async (): Promise<NotificationPrefs> => {
+      const { user } = await getAuthUser();
+      const prefs = user.notificationPrefs ?? {};
+      return {
+        rehearsals: prefs.rehearsals ?? true,
+        chat: prefs.chat ?? true,
+        setlists: prefs.setlists ?? true,
+        invites: prefs.invites ?? true,
+      };
+    },
+  );
 }
 
 export async function setNotificationPrefAction(
   type: NotificationType,
   enabled: boolean,
 ) {
-  try {
-    if (!notificationTypes.includes(type)) {
-      throw new Error("Invalid notification type");
-    }
+  return runAction("Failed to save notification setting", async () => {
+    const prefType = readOneOf(type, notificationTypes, "notification type");
+    const value = readBoolean(enabled, "notification setting");
 
     const { db, user } = await getAuthUser();
-    await db
-      .collection("users")
-      .updateOne(
-        { _id: user._id },
-        { $set: { [`notificationPrefs.${type}`]: enabled, updatedAt: new Date() } },
-      );
-    return { success: true, type, enabled };
-  } catch (error) {
-    console.error("setNotificationPrefAction error:", error);
-    throw error;
-  }
+    await db.collection("users").updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          [`notificationPrefs.${prefType}`]: value,
+          updatedAt: new Date(),
+        },
+      },
+    );
+    return { type: prefType, enabled: value };
+  });
 }
 
 // per band mute - stored on the user as a list of band ids they don't want notifications from
 export async function getBandNotificationsAction(bandId: string) {
-  try {
+  return runAction("Failed to load notification setting", async () => {
     const { user, bandObjectId } = await requireBandMemberContext(bandId);
     const mutedBands: string[] = user.mutedBands ?? [];
     return { enabled: !mutedBands.includes(bandObjectId.toString()) };
-  } catch (error) {
-    console.error("getBandNotificationsAction error:", error);
-    throw error;
-  }
+  });
 }
 
 export async function setBandNotificationsAction(
   bandId: string,
   enabled: boolean,
 ) {
-  try {
+  return runAction("Failed to save notification setting", async () => {
+    const value = readBoolean(enabled, "notification setting");
     const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
     const id = bandObjectId.toString();
-    await db
-      .collection("users")
-      .updateOne(
-        { _id: user._id },
-        {
-          [enabled ? "$pull" : "$addToSet"]: { mutedBands: id },
-          $set: { updatedAt: new Date() },
-        } as Record<string, unknown>,
-      );
-    return { success: true, enabled };
-  } catch (error) {
-    console.error("setBandNotificationsAction error:", error);
-    throw error;
-  }
+    await db.collection("users").updateOne({ _id: user._id }, {
+      [value ? "$pull" : "$addToSet"]: { mutedBands: id },
+      $set: { updatedAt: new Date() },
+    } as Record<string, unknown>);
+    return { enabled: value };
+  });
 }

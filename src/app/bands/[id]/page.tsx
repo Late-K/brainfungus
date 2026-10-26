@@ -5,13 +5,14 @@
 import { use, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect, useRouter } from "next/navigation";
-import SetlistComponent from "@/app/components/setlistComponent";
-import CustomSongsComponent from "@/app/components/customSongsComponent";
-import BandChatComponent from "@/app/components/bandChatComponent";
-import BandCoversPreview from "../../components/bandCoversPreview";
-import BandManagement from "@/app/components/bandManagement";
-import PageLoading from "@/app/components/pageLoading";
-import PageErrorCard from "@/app/components/pageErrorCard";
+import SetlistsPreview from "@/app/components/setlists/setlistsPreview";
+import CustomSongsPreview from "@/app/components/songs/customSongsPreview";
+import BandChat from "@/app/components/chat/bandChat";
+import BandCoversPreview from "@/app/components/covers/bandCoversPreview";
+import BandManagement from "@/app/components/bands/bandManagement";
+import PageLoading from "@/app/components/ui/pageLoading";
+import PageErrorCard from "@/app/components/ui/pageErrorCard";
+import { useFitToViewport } from "@/app/hooks/useFitToViewport";
 import { Band } from "@/app/types";
 
 export default function BandDetailsPage({
@@ -26,6 +27,8 @@ export default function BandDetailsPage({
   const [band, setBand] = useState<Band | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  // desktop: the sticky chat column is sized to reach the bottom of the screen
+  const sideRef = useFitToViewport<HTMLElement>();
 
   useEffect(() => {
     fetchBandDetails();
@@ -102,14 +105,14 @@ export default function BandDetailsPage({
 
       {/* chat comes first on mobile, desktop moves it to a side column */}
       <div className="band-layout">
-        <aside className="band-layout-side">
-          <BandChatComponent bandId={band._id} preview />
+        <aside ref={sideRef} className="band-layout-side">
+          <BandChat bandId={band._id} preview />
         </aside>
 
         <div className="band-layout-main">
-          <SetlistComponent bandId={band._id} />
+          <SetlistsPreview bandId={band._id} />
 
-          <CustomSongsComponent bandId={band._id} />
+          <CustomSongsPreview bandId={band._id} />
 
           <BandCoversPreview bandId={band._id} />
         </div>

@@ -15,6 +15,7 @@ import {
   CalendarEditMode,
   CalendarRehearsal,
 } from "@/app/types";
+import { unwrapAction } from "@/app/lib/actionResult";
 
 export function useCalendarPage() {
   const [rehearsals, setRehearsals] = useState<CalendarRehearsal[]>([]);
@@ -35,7 +36,7 @@ export function useCalendarPage() {
 
   const fetchRehearsals = async () => {
     try {
-      const data = await getUserRehearsalsAction();
+      const data = unwrapAction(await getUserRehearsalsAction());
       setRehearsals((data.rehearsals ?? []) as CalendarRehearsal[]);
       if (data.currentUser) {
         setCurrentUser(data.currentUser);
@@ -124,7 +125,9 @@ export function useCalendarPage() {
     }
 
     try {
-      await cancelRehearsalOccurrenceAction(choiceTarget._id, selectedDate);
+      unwrapAction(
+        await cancelRehearsalOccurrenceAction(choiceTarget._id, selectedDate),
+      );
       fetchRehearsals();
     } catch {
       // ignore and keep current state
@@ -143,9 +146,11 @@ export function useCalendarPage() {
 
     try {
       if (target && target.repeatType !== "once" && selectedDate) {
-        await endRehearsalSeriesAction(targetRehearsalId, selectedDate);
+        unwrapAction(
+          await endRehearsalSeriesAction(targetRehearsalId, selectedDate),
+        );
       } else {
-        await deleteRehearsalAction(targetRehearsalId);
+        unwrapAction(await deleteRehearsalAction(targetRehearsalId));
       }
       fetchRehearsals();
     } catch {
@@ -211,11 +216,13 @@ export function useCalendarPage() {
       );
 
       try {
-        await setRehearsalAvailabilityAction(
-          rehearsal._id,
-          nextValue,
-          undefined,
-          selectedDate,
+        unwrapAction(
+          await setRehearsalAvailabilityAction(
+            rehearsal._id,
+            nextValue,
+            undefined,
+            selectedDate,
+          ),
         );
       } catch {
         fetchRehearsals();
@@ -233,7 +240,9 @@ export function useCalendarPage() {
     );
 
     try {
-      await setRehearsalAvailabilityAction(rehearsal._id, nextValue);
+      unwrapAction(
+        await setRehearsalAvailabilityAction(rehearsal._id, nextValue),
+      );
     } catch {
       fetchRehearsals();
     }

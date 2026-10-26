@@ -982,6 +982,21 @@ h4 {
   white-space: nowrap;
 }
 
+/* BAND INVITES (home, above the band list) */
+.band-invite-card {
+  border-color: #784179;
+}
+.band-invite-from {
+  margin: 0 0 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+.band-invite-actions {
+  margin-top: 0.75rem;
+  gap: 0.5rem;
+}
+
 /* PROGRESS BAR */
 .progress-bar-wrap {
   display: flex;
@@ -1534,8 +1549,11 @@ h4 {
   min-height: 0;
   overscroll-behavior: contain;
 }
+/* the preview isn't a scroller on mobile, so swipes pass through to the page */
 .chat-container-preview {
   max-height: none;
+  overflow-y: hidden;
+  overscroll-behavior: auto;
 }
 .chat-container-full-page {
   flex: 1;
@@ -1722,7 +1740,22 @@ h4 {
   border-color: var(--error-border) !important;
 }
 
-/* actions for a bubble: shown on hover, or after tapping the bubble. they
+/* touch opens the toolbar with a long press, so holding a bubble shouldn't
+   select its text or pop the browser's own menu (copy is in the toolbar) */
+@media (hover: none) {
+  .chat-bubble {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* the long press already shows the quick reactions under the bubble */
+  .chat-toolbar .chat-toolbar-react {
+    display: none;
+  }
+}
+
+/* actions for a bubble: shown on hover or after clicking the bubble, or on
+   touch after a long press. they
    float over the bubble's top edge so they never take width from it, anchored
    on the side facing the middle of the chat so they can't run off screen */
 .chat-toolbar {
@@ -2972,8 +3005,11 @@ h4 {
     gap: 1rem;
     margin: 0.5rem 0 1.5rem;
   }
+  /* z-index reset too: it sits in a flex row, and flex items keep their
+     z-index even when static, which lifted it over the top bar */
   .floating-gear-button {
     position: static;
+    z-index: auto;
     box-shadow: none;
   }
   .page-chat {
@@ -3041,14 +3077,28 @@ h4 {
     grid-row: 1;
     min-width: 0;
   }
+  /* the chat card reaches down to just above the bottom of the screen:
+     --fit-height is measured by the page (shorter while the band title above
+     still pushes it down), the calc is a fallback until that runs. the message
+     list takes whatever height the card has left */
   .band-layout-side {
     grid-column: 2;
     grid-row: 1;
     position: sticky;
     top: calc(var(--topbar-height) + 1.5rem);
+    display: flex;
+    flex-direction: column;
+    max-height: var(--fit-height, calc(100dvh - var(--topbar-height) - 10rem));
+  }
+  .band-layout-side .chat-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
   }
   .band-layout-side .chat-container {
-    max-height: calc(100dvh - var(--topbar-height) - 12rem);
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   /* calendar: month grid left, selected day right */

@@ -1,151 +1,209 @@
 ﻿"use server";
 
-import { getAuthUser } from "@/app/lib/auth";
+import { getAuthUser } from "@/app/lib/server/auth";
 import { AnyBulkWriteOperation, Db, Document, ObjectId } from "mongodb";
 import {
   doesRehearsalOccurOnDate,
   formatRehearsalTimes,
   toDateStr,
 } from "@/app/lib/rehearsalUtils";
-import { notifyBandMembers } from "@/app/lib/push";
-import { AvailUser } from "@/app/types";
+import { notifyBandMembers } from "@/app/lib/server/push";
+import {
+  requireBandMember,
+  requireBandMemberContext,
+  toObjectId,
+  toObjectIds,
+} from "@/app/lib/server/utils";
+import { runAction, UserError } from "@/app/lib/actionResult";
+import {
+  readBoolean,
+  readDateStr,
+  readOneOf,
+  readOptionalString,
+  readOptionalTime,
+} from "@/app/lib/validate";
+import { AvailUser, RehearsalRepeatType } from "@/app/types";
 
-// verify rehearsal exists and user is a band member
-async function getAuthorizedRehearsal(
-  db: Db,
-  rehearsalId: string,
-  userId: string,
+const REPEAT_TYPES: RehearsalRepeatType[] = ["once", "weekly", "biweekly"];
+
+// the date, times, repeat and notes shared by creating and editing a rehearsal
+function readRehearsalFields(
+  date: unknown,
+  repeatType: unknown,
+  startTime: unknown,
+  endTime: unknown,
+  notes: unknown,
 ) {
-  if (!ObjectId.isValid(rehearsalId)) {
-    throw new Error("Invalid rehearsal ID");
-  }
-  const rehearsal = await db
-    .collection("rehearsals")
-    .findOne({ _id: new ObjectId(rehearsalId) });
-  if (!rehearsal) {
-    throw new Error("Rehearsal not found");
-  }
-  const band = await db.collection("bands").findOne({ _id: rehearsal.bandId });
-  if (!band) {
-    throw new Error("Band not found");
-  }
-  if (
-    !(band.members as Array<{ userId: string }>)?.some(
-      (m) => m.userId === userId,
-    )
-  ) {
-    throw new Error("Not a band member");
-  }
-  return rehearsal;
+  return {
+    date: readDateStr(date),
+    repeatType: readOneOf(repeatType, REPEAT_TYPES, "repeat"),
+    startTime: readOptionalTime(startTime, "start time"),
+    endTime: readOptionalTime(endTime, "end time"),
+    notes: readOptionalString(notes, "notes", 1000) ?? "",
+  };
 }
 
-type AvailabilityRecord = {
-  rehearsalId: { toString(): string };
-  userId: { toString(): string };
-  occurrenceDate?: string;
-};
+// loads a rehearsal and checks the current user is in its band
+async function requireRehearsal(rehearsalId: unknown) {
+  const rehearsalObjectId = toObjectId(rehearsalId, "rehearsal ID");
+  const { db, user } = await getAuthUser();
 
-function buildAvailableUsersMaps(
-  allAvailabilities: Document[],
-  userMap: Record<
-    string,
-    { userName: string; userEmail: string; userImage?: string }
-  >,
-): {
-  availableUsersBase: Record<string, AvailUser[]>;
-  availableUsersOcc: Record<string, Record<string, AvailUser[]>>;
-} {
+  const rehearsal = await db
+    .collection("rehearsals")
+    .findOne({ _id: rehearsalObjectId });
+  if (!rehearsal) {
+    throw new UserError("Rehearsal not found");
+  }
+
+  await requireBandMember(db, user._id.toString(), rehearsal.bandId);
+  return { db, user, rehearsal, rehearsalObjectId };
+}
+
+async function deleteRehearsal(db: Db, rehearsalObjectId: ObjectId) {
+  await db.collection("rehearsals").deleteOne({ _id: rehearsalObjectId });
+  await db
+    .collection("rehearsal_availability")
+    .deleteMany({ rehearsalId: rehearsalObjectId });
+}
+
+function currentUserInfo(user: Document) {
+  return {
+    userId: user._id.toString(),
+    userName: user.name || "Unknown",
+    userEmail: user.email || "",
+    userImage: user.image,
+  };
+}
+
+// older rehearsals have their date stored as a Date rather than YYYY-MM-DD,
+// so it is always turned into a string before use or before going to the browser
+function rehearsalDateStr(date: unknown) {
+  return date instanceof Date
+    ? date.toISOString().slice(0, 10)
+    : String(date).slice(0, 10);
+}
+
+// who is available for each rehearsal, and the current user's own answers.
+// "base" availability is for one-off rehearsals (no occurrence date), "occ"
+// is per date of a repeating one
+async function loadAvailability(
+  db: Db,
+  user: Document,
+  rehearsals: Document[],
+) {
+  const records =
+    rehearsals.length > 0
+      ? await db
+          .collection("rehearsal_availability")
+          .find({
+            rehearsalId: { $in: rehearsals.map((r) => r._id) },
+            active: { $ne: false },
+            $or: [{ userId: user._id }, { available: true }],
+          })
+          .toArray()
+      : [];
+
+  const availableRecords = records.filter((a) => a.available === true);
+  const users = await db
+    .collection("users")
+    .find({
+      _id: {
+        $in: toObjectIds([
+          ...new Set(availableRecords.map((a) => a.userId.toString())),
+        ]),
+      },
+    })
+    .project({ name: 1, email: 1, image: 1 })
+    .toArray();
+  const userMap = new Map<string, AvailUser>(
+    users.map((u) => [
+      u._id.toString(),
+      {
+        userId: u._id.toString(),
+        userName: u.name || "Unknown",
+        userEmail: u.email || "",
+        userImage: u.image,
+      },
+    ]),
+  );
+
   const availableUsersBase: Record<string, AvailUser[]> = {};
   const availableUsersOcc: Record<string, Record<string, AvailUser[]>> = {};
+  for (const a of availableRecords) {
+    const info = userMap.get(a.userId.toString());
+    if (!info) continue;
+    const rid = a.rehearsalId.toString();
+    const list = a.occurrenceDate
+      ? ((availableUsersOcc[rid] ??= {})[a.occurrenceDate] ??= [])
+      : (availableUsersBase[rid] ??= []);
+    if (!list.some((u) => u.userId === info.userId)) list.push(info);
+  }
 
-  for (const a of allAvailabilities) {
-    const record = a as Document & AvailabilityRecord;
-    const rid = record.rehearsalId.toString();
-    const uid = record.userId.toString();
-    if (!userMap[uid]) continue;
-    const info = { userId: uid, ...userMap[uid] };
-    if (!record.occurrenceDate) {
-      if (!availableUsersBase[rid]) availableUsersBase[rid] = [];
-      if (!availableUsersBase[rid].some((u) => u.userId === uid)) {
-        availableUsersBase[rid].push(info);
-      }
+  const myBase: Record<
+    string,
+    { available: boolean; alwaysAvailable: boolean }
+  > = {};
+  const myOcc: Record<string, Record<string, boolean>> = {};
+  for (const a of records) {
+    if (a.userId.toString() !== user._id.toString()) continue;
+    const rid = a.rehearsalId.toString();
+    if (!a.occurrenceDate) {
+      myBase[rid] = {
+        available: a.available ?? false,
+        alwaysAvailable: a.alwaysAvailable ?? false,
+      };
     } else {
-      if (!availableUsersOcc[rid]) availableUsersOcc[rid] = {};
-      if (!availableUsersOcc[rid][record.occurrenceDate]) {
-        availableUsersOcc[rid][record.occurrenceDate] = [];
-      }
-      if (
-        !availableUsersOcc[rid][record.occurrenceDate].some(
-          (u) => u.userId === uid,
-        )
-      ) {
-        availableUsersOcc[rid][record.occurrenceDate].push(info);
-      }
+      (myOcc[rid] ??= {})[a.occurrenceDate] = a.available ?? false;
     }
   }
 
-  return { availableUsersBase, availableUsersOcc };
+  return { availableUsersBase, availableUsersOcc, myBase, myOcc };
 }
 
 // create rehearsal
 export async function createRehearsalAction(
   bandId: string,
   date: string,
-  repeatType: "once" | "weekly" | "biweekly",
+  repeatType: RehearsalRepeatType,
   startTime?: string,
   endTime?: string,
   notes?: string,
 ) {
-  try {
-    const { db, user } = await getAuthUser();
-
-    if (!ObjectId.isValid(bandId)) {
-      throw new Error("Invalid band ID");
-    }
-
-    const band = await db
-      .collection("bands")
-      .findOne({ _id: new ObjectId(bandId) });
-    if (!band) {
-      throw new Error("Band not found");
-    }
-    if (
-      !(band.members as Array<{ userId: string }>)?.some(
-        (m) => m.userId === user._id.toString(),
-      )
-    ) {
-      throw new Error("Not a member of this band");
-    }
-
-    const newRehearsal = {
-      bandId: new ObjectId(bandId),
-      createdBy: user._id,
+  return runAction("Failed to create rehearsal", async () => {
+    const fields = readRehearsalFields(
       date,
+      repeatType,
       startTime,
       endTime,
-      repeatType,
-      notes: notes || "",
+      notes,
+    );
+    const { db, user, band, bandObjectId } =
+      await requireBandMemberContext(bandId);
+
+    const result = await db.collection("rehearsals").insertOne({
+      bandId: bandObjectId,
+      createdBy: user._id,
+      ...fields,
       createdAt: new Date(),
       updatedAt: new Date(),
-    };
-    const result = await db.collection("rehearsals").insertOne(newRehearsal);
-
-    const dayLabel = new Date(date + "T12:00:00").toLocaleDateString("en-GB", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
     });
-    const times = formatRehearsalTimes(startTime, endTime);
-    const repeatLabel = repeatType === "once" ? "" : `, repeating ${repeatType}`;
+
+    const dayLabel = new Date(fields.date + "T12:00:00").toLocaleDateString(
+      "en-GB",
+      { weekday: "short", day: "numeric", month: "short" },
+    );
+    const times = formatRehearsalTimes(fields.startTime, fields.endTime);
+    const repeatLabel =
+      fields.repeatType === "once" ? "" : `, repeating ${fields.repeatType}`;
     notifyBandMembers(db, band, user._id.toString(), "rehearsals", {
       title: band.name,
       body: `${user.name || "Someone"} scheduled a rehearsal on ${dayLabel}${times ? ` at ${times}` : ""}${repeatLabel}`,
-      url: `/bands/${bandId}`,
+      url: `/bands/${bandObjectId.toString()}`,
       tag: `rehearsal-${result.insertedId.toString()}`,
     });
 
-    //creator is auto available for the first rehearsal
-    if (repeatType === "once") {
+    // creator is auto available for the first rehearsal
+    if (fields.repeatType === "once") {
       await db.collection("rehearsal_availability").insertOne({
         rehearsalId: result.insertedId,
         userId: user._id,
@@ -165,247 +223,118 @@ export async function createRehearsalAction(
         {
           rehearsalId: result.insertedId,
           userId: user._id,
-          occurrenceDate: date,
+          occurrenceDate: fields.date,
           available: true,
           active: true,
         },
       ]);
     }
 
-    return {
-      success: true,
-      rehearsalId: result.insertedId.toString(),
-      message: "Rehearsal created successfully",
-    };
-  } catch (error) {
-    console.error("Error creating rehearsal:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to create rehearsal");
-  }
+    return { rehearsalId: result.insertedId.toString() };
+  });
 }
 
-//get user rehearsals (all rehearsals from bands the user is a member of)
+// get user rehearsals (all rehearsals from bands the user is a member of)
 export async function getUserRehearsalsAction() {
-  try {
+  return runAction("Failed to fetch rehearsals", async () => {
     const { db, user } = await getAuthUser();
-    const userId = user._id.toString();
 
     // find all bands the user belongs to
     const bands = await db
       .collection("bands")
-      .find({ "members.userId": userId })
+      .find({ "members.userId": user._id.toString() })
       .project({ name: 1 })
       .toArray();
-
-    if (bands.length === 0) {
-      return {
-        success: true,
-        rehearsals: [],
-        currentUser: {
-          userId: userId,
-          userName: user.name || "Unknown",
-          userEmail: user.email || "",
-          userImage: user.image,
-        },
-      };
-    }
-
-    const bandIds = bands.map((b) => b._id);
-    const bandNameMap: Record<string, string> = {};
-    for (const b of bands) {
-      bandNameMap[b._id.toString()] = b.name;
-    }
-
-    // fetch all rehearsals from those bands
-    const rehearsals = await db
-      .collection("rehearsals")
-      .find({ bandId: { $in: bandIds } })
-      .toArray();
-
-    if (rehearsals.length === 0) {
-      return {
-        success: true,
-        rehearsals: [],
-        currentUser: {
-          userId: userId,
-          userName: user.name || "Unknown",
-          userEmail: user.email || "",
-          userImage: user.image,
-        },
-      };
-    }
-
-    // fetch all relevant availability records
-    const rehearsalIds = rehearsals.map((r) => r._id);
-    const allRecords = await db
-      .collection("rehearsal_availability")
-      .find({
-        rehearsalId: { $in: rehearsalIds },
-        active: { $ne: false },
-        $or: [{ userId: user._id }, { available: true }],
-      })
-      .toArray();
-
-    const availabilities = allRecords.filter(
-      (a) => a.userId.toString() === user._id.toString(),
-    );
-    const allAvailabilities = allRecords.filter((a) => a.available === true);
-
-    // look up user info for all available users
-    const allUserIds = [
-      ...new Set(allAvailabilities.map((a) => a.userId.toString())),
-    ];
-    const users = await db
-      .collection("users")
-      .find({ _id: { $in: allUserIds.map((id) => new ObjectId(id)) } })
-      .project({ name: 1, email: 1, image: 1 })
-      .toArray();
-    const userMap: Record<
-      string,
-      { userName: string; userEmail: string; userImage?: string }
-    > = {};
-    for (const u of users) {
-      userMap[u._id.toString()] = {
-        userName: u.name || "Unknown",
-        userEmail: u.email || "",
-        userImage: u.image,
-      };
-    }
-
-    // build per rehearsal available users maps
-    // for one time availability vs occurrence availability
-    const { availableUsersBase, availableUsersOcc } = buildAvailableUsersMaps(
-      allAvailabilities,
-      userMap,
+    const bandNameMap = new Map(
+      bands.map((b) => [b._id.toString(), b.name as string]),
     );
 
-    const availMap: Record<string, boolean> = {};
-    const occurrenceAvailMap: Record<string, Record<string, boolean>> = {};
-    for (const a of availabilities) {
-      const rid = a.rehearsalId.toString();
-      if (!a.occurrenceDate) {
-        availMap[rid] = a.available ?? false;
-      } else {
-        if (!occurrenceAvailMap[rid]) occurrenceAvailMap[rid] = {};
-        occurrenceAvailMap[rid][a.occurrenceDate] = a.available ?? false;
-      }
-    }
+    const rehearsals =
+      bands.length > 0
+        ? await db
+            .collection("rehearsals")
+            .find({ bandId: { $in: bands.map((b) => b._id) } })
+            .toArray()
+        : [];
+
+    const { availableUsersBase, availableUsersOcc, myBase, myOcc } =
+      await loadAvailability(db, user, rehearsals);
 
     return {
-      success: true,
-      rehearsals: rehearsals.map((r) => ({
-        ...r,
-        _id: r._id.toString(),
-        bandId: r.bandId.toString(),
-        createdBy: r.createdBy.toString(),
-        bandName: bandNameMap[r.bandId.toString()] || "Unknown band",
-        available: availMap[r._id.toString()] ?? false,
-        occurrenceAvailability: occurrenceAvailMap[r._id.toString()] ?? {},
-        availableUsersBase: availableUsersBase[r._id.toString()] ?? [],
-        availableUsersOcc: availableUsersOcc[r._id.toString()] ?? {},
-      })),
-      currentUser: {
-        userId: userId,
-        userName: user.name || "Unknown",
-        userEmail: user.email || "",
-        userImage: user.image,
-      },
+      rehearsals: rehearsals.map((r) => {
+        const rid = r._id.toString();
+        return {
+          ...r,
+          _id: rid,
+          bandId: r.bandId.toString(),
+          createdBy: r.createdBy.toString(),
+          date: rehearsalDateStr(r.date),
+          bandName: bandNameMap.get(r.bandId.toString()) || "Unknown band",
+          available: myBase[rid]?.available ?? false,
+          occurrenceAvailability: myOcc[rid] ?? {},
+          availableUsersBase: availableUsersBase[rid] ?? [],
+          availableUsersOcc: availableUsersOcc[rid] ?? {},
+        };
+      }),
+      currentUser: currentUserInfo(user),
     };
-  } catch (error) {
-    console.error("Error fetching user rehearsals:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to fetch user rehearsals");
-  }
+  });
 }
 
-//set rehearsal availability
+// set rehearsal availability
 export async function setRehearsalAvailabilityAction(
   rehearsalId: string,
   available: boolean,
   alwaysAvailable?: boolean,
   occurrenceDate?: string,
 ) {
-  try {
-    const { db, user } = await getAuthUser();
-    if (!ObjectId.isValid(rehearsalId)) {
-      throw new Error("Invalid rehearsal ID");
-    }
+  return runAction("Failed to set availability", async () => {
+    const isAvailable = readBoolean(available, "availability");
+    const always =
+      alwaysAvailable === undefined
+        ? undefined
+        : readBoolean(alwaysAvailable, "availability");
+    const date =
+      occurrenceDate === undefined ? undefined : readDateStr(occurrenceDate);
 
-    // verify rehearsal exists + user is band member
-    const authorized = await db
-      .collection("rehearsals")
-      .aggregate([
-        { $match: { _id: new ObjectId(rehearsalId) } },
-        {
-          $lookup: {
-            from: "bands",
-            localField: "bandId",
-            foreignField: "_id",
-            as: "band",
-          },
-        },
-        { $unwind: "$band" },
-        { $match: { "band.members.userId": user._id.toString() } },
-        { $project: { _id: 1 } },
-      ])
-      .toArray();
-    if (authorized.length === 0) throw new Error("Not authorized");
+    const { db, user, rehearsalObjectId } = await requireRehearsal(rehearsalId);
+    const fields = {
+      available: isAvailable,
+      active: true,
+      ...(always !== undefined ? { alwaysAvailable: always } : {}),
+    };
 
-    if (occurrenceDate) {
+    if (date) {
       await db.collection("rehearsal_availability").updateOne(
         {
-          rehearsalId: new ObjectId(rehearsalId),
+          rehearsalId: rehearsalObjectId,
           userId: user._id,
-          occurrenceDate,
+          occurrenceDate: date,
         },
-        {
-          $set: {
-            available,
-            active: true,
-            ...(alwaysAvailable !== undefined ? { alwaysAvailable } : {}),
-            occurrenceDate,
-          },
-        },
+        { $set: { ...fields, occurrenceDate: date } },
         { upsert: true },
       );
-    } else {
-      // for base availability find and update to avoid $exists in upsert
-      const existing = await db.collection("rehearsal_availability").findOne({
-        rehearsalId: new ObjectId(rehearsalId),
-        userId: user._id,
-        occurrenceDate: { $exists: false },
-      });
-      if (existing) {
-        await db.collection("rehearsal_availability").updateOne(
-          { _id: existing._id },
-          {
-            $set: {
-              available,
-              active: true,
-              ...(alwaysAvailable !== undefined ? { alwaysAvailable } : {}),
-            },
-          },
-        );
-      } else {
-        await db.collection("rehearsal_availability").insertOne({
-          rehearsalId: new ObjectId(rehearsalId),
-          userId: user._id,
-          available,
-          active: true,
-          ...(alwaysAvailable !== undefined ? { alwaysAvailable } : {}),
-        });
-      }
+      return;
     }
 
-    return { success: true, message: "Rehearsal availability updated" };
-  } catch (error) {
-    console.error("Error setting rehearsal availability:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to set rehearsal availability");
-  }
+    // for base availability find and update to avoid $exists in upsert
+    const existing = await db.collection("rehearsal_availability").findOne({
+      rehearsalId: rehearsalObjectId,
+      userId: user._id,
+      occurrenceDate: { $exists: false },
+    });
+    if (existing) {
+      await db
+        .collection("rehearsal_availability")
+        .updateOne({ _id: existing._id }, { $set: fields });
+    } else {
+      await db.collection("rehearsal_availability").insertOne({
+        rehearsalId: rehearsalObjectId,
+        userId: user._id,
+        ...fields,
+      });
+    }
+  });
 }
 
 // cancel a single occurrence of a recurring rehearsal (adds date to excludedDates)
@@ -413,55 +342,34 @@ export async function cancelRehearsalOccurrenceAction(
   rehearsalId: string,
   occurrenceDate: string,
 ) {
-  try {
-    const { db, user } = await getAuthUser();
-    const rehearsal = await getAuthorizedRehearsal(
-      db,
-      rehearsalId,
-      user._id.toString(),
-    );
+  return runAction("Failed to cancel rehearsal", async () => {
+    const date = readDateStr(occurrenceDate);
+    const { db, rehearsal, rehearsalObjectId } =
+      await requireRehearsal(rehearsalId);
     if (rehearsal.repeatType === "once") {
-      throw new Error("Cannot cancel occurrence of a one-time rehearsal");
+      throw new UserError("Cannot cancel occurrence of a one-time rehearsal");
     }
     await db.collection("rehearsals").updateOne(
-      { _id: new ObjectId(rehearsalId) },
+      { _id: rehearsalObjectId },
       {
-        $addToSet: { excludedDates: occurrenceDate },
+        $addToSet: { excludedDates: date },
         $set: { updatedAt: new Date() },
       },
     );
     // clean up any occurrence availability for that date
     await db.collection("rehearsal_availability").deleteMany({
-      rehearsalId: new ObjectId(rehearsalId),
-      occurrenceDate,
+      rehearsalId: rehearsalObjectId,
+      occurrenceDate: date,
     });
-    return { success: true, message: "Occurrence cancelled" };
-  } catch (error) {
-    console.error("Error cancelling rehearsal occurrence:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to cancel rehearsal occurrence");
-  }
+  });
 }
 
-//delete rehearsal
+// delete rehearsal
 export async function deleteRehearsalAction(rehearsalId: string) {
-  try {
-    const { db, user } = await getAuthUser();
-    await getAuthorizedRehearsal(db, rehearsalId, user._id.toString());
-    await db
-      .collection("rehearsals")
-      .deleteOne({ _id: new ObjectId(rehearsalId) });
-    await db
-      .collection("rehearsal_availability")
-      .deleteMany({ rehearsalId: new ObjectId(rehearsalId) });
-    return { success: true, message: "Rehearsal deleted" };
-  } catch (error) {
-    console.error("Error deleting rehearsal:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to delete rehearsal");
-  }
+  return runAction("Failed to delete rehearsal", async () => {
+    const { db, rehearsalObjectId } = await requireRehearsal(rehearsalId);
+    await deleteRehearsal(db, rehearsalObjectId);
+  });
 }
 
 // end a recurring rehearsal series from a given date forward
@@ -469,175 +377,72 @@ export async function endRehearsalSeriesAction(
   rehearsalId: string,
   fromDate: string,
 ) {
-  try {
-    const { db, user } = await getAuthUser();
-    const rehearsal = await getAuthorizedRehearsal(
-      db,
-      rehearsalId,
-      user._id.toString(),
-    );
+  return runAction("Failed to end rehearsal series", async () => {
+    const from = readDateStr(fromDate);
+    const { db, rehearsal, rehearsalObjectId } =
+      await requireRehearsal(rehearsalId);
 
     // if the from date is the start date, just delete the whole thing
-    const startStr =
-      rehearsal.date instanceof Date
-        ? rehearsal.date.toISOString().slice(0, 10)
-        : String(rehearsal.date).slice(0, 10);
-    if (fromDate <= startStr) {
-      await db
-        .collection("rehearsals")
-        .deleteOne({ _id: new ObjectId(rehearsalId) });
-      await db
-        .collection("rehearsal_availability")
-        .deleteMany({ rehearsalId: new ObjectId(rehearsalId) });
-      return { success: true, message: "Rehearsal series deleted" };
+    if (from <= rehearsalDateStr(rehearsal.date)) {
+      await deleteRehearsal(db, rehearsalObjectId);
+      return { deleted: true };
     }
 
     // set endDate to the day before fromDate
-    const from = new Date(fromDate + "T12:00:00");
-    from.setDate(from.getDate() - 1);
-    const endDate = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}-${String(from.getDate()).padStart(2, "0")}`;
+    const dayBefore = new Date(from + "T12:00:00");
+    dayBefore.setDate(dayBefore.getDate() - 1);
 
     await db
       .collection("rehearsals")
       .updateOne(
-        { _id: new ObjectId(rehearsalId) },
-        { $set: { endDate, updatedAt: new Date() } },
+        { _id: rehearsalObjectId },
+        { $set: { endDate: toDateStr(dayBefore), updatedAt: new Date() } },
       );
-    return { success: true, message: "Rehearsal series ended" };
-  } catch (error) {
-    console.error("Error ending rehearsal series:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to end rehearsal series");
-  }
+    return { deleted: false };
+  });
 }
 
 export async function updateRehearsalAction(
   rehearsalId: string,
   date: string,
-  repeatType: "once" | "weekly" | "biweekly",
+  repeatType: RehearsalRepeatType,
   startTime?: string,
   endTime?: string,
   notes?: string,
 ) {
-  try {
-    const { db, user } = await getAuthUser();
-    await getAuthorizedRehearsal(db, rehearsalId, user._id.toString());
-    await db.collection("rehearsals").updateOne(
-      { _id: new ObjectId(rehearsalId) },
-      {
-        $set: {
-          date,
-          repeatType,
-          startTime,
-          endTime,
-          notes: notes || "",
-          updatedAt: new Date(),
-        },
-      },
+  return runAction("Failed to update rehearsal", async () => {
+    const fields = readRehearsalFields(
+      date,
+      repeatType,
+      startTime,
+      endTime,
+      notes,
     );
-    return { success: true, message: "Rehearsal updated" };
-  } catch (error) {
-    console.error("Error updating rehearsal:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to update rehearsal");
-  }
+    const { db, rehearsalObjectId } = await requireRehearsal(rehearsalId);
+    await db
+      .collection("rehearsals")
+      .updateOne(
+        { _id: rehearsalObjectId },
+        { $set: { ...fields, updatedAt: new Date() } },
+      );
+  });
 }
 
 // get band rehearsals with current users availability (for home page band cards)
 export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
-  try {
-    const { db, user } = await getAuthUser();
-    if (!ObjectId.isValid(bandId)) {
-      throw new Error("Invalid band ID");
-    }
-    const band = await db
-      .collection("bands")
-      .findOne({ _id: new ObjectId(bandId) });
-    if (!band) {
-      throw new Error("Band not found");
-    }
-    if (
-      !(band.members as Array<{ userId: string }>)?.some(
-        (m) => m.userId === user._id.toString(),
-      )
-    ) {
-      throw new Error("Not a band member");
-    }
+  return runAction("Failed to fetch band rehearsals", async () => {
+    const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
 
     const rehearsals = await db
       .collection("rehearsals")
-      .find({ bandId: new ObjectId(bandId) })
+      .find({ bandId: bandObjectId })
       .toArray();
 
-    // fetch all relevant availability records in one query
-    const rehearsalIds = rehearsals.map((r) => r._id);
-    const allRecords = await db
-      .collection("rehearsal_availability")
-      .find({
-        rehearsalId: { $in: rehearsalIds },
-        active: { $ne: false },
-        $or: [{ userId: user._id }, { available: true }],
-      })
-      .toArray();
+    const { availableUsersBase, availableUsersOcc, myBase, myOcc } =
+      await loadAvailability(db, user, rehearsals);
 
-    const availabilities = allRecords.filter(
-      (a) => a.userId.toString() === user._id.toString(),
-    );
-    const allAvailabilities = allRecords.filter((a) => a.available === true);
-
-    // look up user info
-    const allUserIds = [
-      ...new Set(allAvailabilities.map((a) => a.userId.toString())),
-    ];
-    const usersArr =
-      allUserIds.length > 0
-        ? await db
-            .collection("users")
-            .find({ _id: { $in: allUserIds.map((id) => new ObjectId(id)) } })
-            .project({ name: 1, email: 1, image: 1 })
-            .toArray()
-        : [];
-    const userInfoMap: Record<
-      string,
-      { userName: string; userEmail: string; userImage?: string }
-    > = {};
-    for (const u of usersArr) {
-      userInfoMap[u._id.toString()] = {
-        userName: u.name || "Unknown",
-        userEmail: u.email || "",
-        userImage: u.image,
-      };
-    }
-
-    // build per rehearsal available users
-    const { availableUsersBase, availableUsersOcc } = buildAvailableUsersMaps(
-      allAvailabilities,
-      userInfoMap,
-    );
-
-    const availMap: Record<
-      string,
-      { available: boolean; alwaysAvailable: boolean }
-    > = {};
-    const occAvailMap: Record<string, Record<string, boolean>> = {};
-    for (const a of availabilities) {
-      const rid = a.rehearsalId.toString();
-      if (!a.occurrenceDate) {
-        availMap[rid] = {
-          available: a.available ?? false,
-          alwaysAvailable: a.alwaysAvailable ?? false,
-        };
-      } else {
-        if (!occAvailMap[rid]) occAvailMap[rid] = {};
-        occAvailMap[rid][a.occurrenceDate] = a.available ?? false;
-      }
-    }
-
-    // auto mark occurrence for the next 7 days
-    const userAlwaysAvailable = user.alwaysAvailable ?? false;
-    if (userAlwaysAvailable) {
+    // always available users get marked available for the next 7 days
+    if (user.alwaysAvailable) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const next7 = Array.from({ length: 7 }, (_, i) => {
@@ -649,66 +454,60 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
       const bulkOps: AnyBulkWriteOperation<Document>[] = [];
 
       for (const r of rehearsals) {
+        const rid = r._id.toString();
+        const rData = {
+          _id: rid,
+          bandId: r.bandId.toString(),
+          createdBy: r.createdBy.toString(),
+          date: rehearsalDateStr(r.date),
+          repeatType: r.repeatType,
+          excludedDates: r.excludedDates,
+          endDate: r.endDate,
+        };
         for (const d of next7) {
-          const rData = {
-            _id: r._id.toString(),
-            bandId: r.bandId.toString(),
-            createdBy: r.createdBy.toString(),
-            date: r.date,
-            repeatType: r.repeatType,
-            excludedDates: r.excludedDates,
-            endDate: r.endDate,
-          };
-          if (doesRehearsalOccurOnDate(rData, d)) {
-            const dateStr = toDateStr(d);
-            const rid = r._id.toString();
-            if (r.repeatType === "once") {
-              if (!availMap[rid]?.available) {
-                bulkOps.push({
-                  updateOne: {
-                    filter: {
-                      rehearsalId: r._id,
-                      userId: user._id,
-                      occurrenceDate: { $exists: false },
-                    },
-                    update: {
-                      $set: { available: true, active: true },
-                      $setOnInsert: {
-                        rehearsalId: r._id,
-                        userId: user._id,
-                      },
-                    },
-                    upsert: true,
+          if (!doesRehearsalOccurOnDate(rData, d)) continue;
+          const dateStr = toDateStr(d);
+
+          if (r.repeatType === "once") {
+            if (myBase[rid]?.available) continue;
+            bulkOps.push({
+              updateOne: {
+                filter: {
+                  rehearsalId: r._id,
+                  userId: user._id,
+                  occurrenceDate: { $exists: false },
+                },
+                update: {
+                  $set: { available: true, active: true },
+                  $setOnInsert: { rehearsalId: r._id, userId: user._id },
+                },
+                upsert: true,
+              },
+            });
+            myBase[rid] = {
+              available: true,
+              alwaysAvailable: myBase[rid]?.alwaysAvailable ?? false,
+            };
+          } else {
+            if (myOcc[rid]?.[dateStr]) continue;
+            bulkOps.push({
+              updateOne: {
+                filter: {
+                  rehearsalId: r._id,
+                  userId: user._id,
+                  occurrenceDate: dateStr,
+                },
+                update: {
+                  $set: {
+                    available: true,
+                    active: true,
+                    occurrenceDate: dateStr,
                   },
-                });
-                availMap[rid] = {
-                  available: true,
-                  alwaysAvailable: availMap[rid]?.alwaysAvailable ?? false,
-                };
-              }
-            } else {
-              if (!occAvailMap[rid]?.[dateStr]) {
-                bulkOps.push({
-                  updateOne: {
-                    filter: {
-                      rehearsalId: r._id,
-                      userId: user._id,
-                      occurrenceDate: dateStr,
-                    },
-                    update: {
-                      $set: {
-                        available: true,
-                        active: true,
-                        occurrenceDate: dateStr,
-                      },
-                    },
-                    upsert: true,
-                  },
-                });
-                if (!occAvailMap[rid]) occAvailMap[rid] = {};
-                occAvailMap[rid][dateStr] = true;
-              }
-            }
+                },
+                upsert: true,
+              },
+            });
+            (myOcc[rid] ??= {})[dateStr] = true;
           }
         }
       }
@@ -718,40 +517,30 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
       }
     }
 
-    const result = rehearsals.map((r) => ({
-      _id: r._id.toString(),
-      bandId: r.bandId.toString(),
-      createdBy: r.createdBy.toString(),
-      date: r.date,
-      startTime: r.startTime,
-      endTime: r.endTime,
-      repeatType: r.repeatType,
-      notes: r.notes,
-      excludedDates: r.excludedDates ?? [],
-      endDate: r.endDate,
-      myAvailability: availMap[r._id.toString()] || {
-        available: false,
-        alwaysAvailable: false,
-      },
-      occurrenceAvailability: occAvailMap[r._id.toString()] ?? {},
-      availableUsersBase: availableUsersBase[r._id.toString()] ?? [],
-      availableUsersOcc: availableUsersOcc[r._id.toString()] ?? {},
-    }));
-
     return {
-      success: true,
-      rehearsals: result,
-      currentUser: {
-        userId: user._id.toString(),
-        userName: user.name || "Unknown",
-        userEmail: user.email || "",
-        userImage: user.image,
-      },
+      rehearsals: rehearsals.map((r) => {
+        const rid = r._id.toString();
+        return {
+          _id: rid,
+          bandId: r.bandId.toString(),
+          createdBy: r.createdBy.toString(),
+          date: rehearsalDateStr(r.date),
+          startTime: r.startTime,
+          endTime: r.endTime,
+          repeatType: r.repeatType,
+          notes: r.notes,
+          excludedDates: r.excludedDates ?? [],
+          endDate: r.endDate,
+          myAvailability: myBase[rid] || {
+            available: false,
+            alwaysAvailable: false,
+          },
+          occurrenceAvailability: myOcc[rid] ?? {},
+          availableUsersBase: availableUsersBase[rid] ?? [],
+          availableUsersOcc: availableUsersOcc[rid] ?? {},
+        };
+      }),
+      currentUser: currentUserInfo(user),
     };
-  } catch (error) {
-    console.error("Error fetching band rehearsals with availability:", error);
-    throw error instanceof Error
-      ? error
-      : new Error("Failed to fetch band rehearsals");
-  }
+  });
 }

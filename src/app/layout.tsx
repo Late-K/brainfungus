@@ -2,8 +2,8 @@
 
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "./providers";
-import Navbar from "./components/navbar";
-import ServiceWorkerRegister from "./components/serviceWorkerRegister";
+import Navbar from "@/app/components/layout/navbar";
+import ServiceWorkerRegister from "@/app/components/layout/serviceWorkerRegister";
 
 import "./globals.css";
 

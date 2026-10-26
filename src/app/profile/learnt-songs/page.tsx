@@ -1,10 +1,10 @@
 ﻿// profile/learnt-songs page
 
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/lib/auth";
+import { authOptions } from "@/app/lib/server/auth";
 import { redirect } from "next/navigation";
-import PageHeader from "@/app/components/pageHeader";
-import ProfileLearntSongsComponent from "@/app/components/profileLearntSongsComponent";
+import PageHeader from "@/app/components/ui/pageHeader";
+import AllLearntSongs from "@/app/components/profile/allLearntSongs";
 
 export default async function ProfileLearntSongsPage() {
   const session = await getServerSession(authOptions);
@@ -22,7 +22,7 @@ export default async function ProfileLearntSongsPage() {
         backLabel="Back to Profile"
       />
 
-      <ProfileLearntSongsComponent />
+      <AllLearntSongs />
     </div>
   );
 }

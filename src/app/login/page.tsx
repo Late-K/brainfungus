@@ -1,10 +1,11 @@
 //login page
 
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/lib/auth";
+import { authOptions } from "@/app/lib/server/auth";
 import { redirect } from "next/navigation";
-import SignInButton from "@/app/components/signInButton";
+import SignInButton from "@/app/components/auth/signInButton";
 import Image from "next/image";
+import { safeRedirectPath } from "@/app/lib/utils";
 
 interface LoginPageProps {
   searchParams: Promise<{ callbackUrl?: string }>;
@@ -13,12 +14,11 @@ interface LoginPageProps {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const session = await getServerSession(authOptions);
+  const callbackUrl = safeRedirectPath(params.callbackUrl);
 
   if (session) {
-    redirect(params.callbackUrl || "/");
+    redirect(callbackUrl);
   }
-
-  const callbackUrl = params.callbackUrl || "/";
 
   return (
     <>

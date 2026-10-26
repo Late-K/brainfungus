@@ -1,30 +1,21 @@
-﻿import { getAuthUser } from "@/app/lib/auth";
-import { getServerErrorStatus } from "@/app/lib/serverUtils";
+﻿import { getAuthUser } from "@/app/lib/server/auth";
+import { serverErrorResponse } from "@/app/lib/server/utils";
 import { NextResponse } from "next/server";
 
-// fetch all users (for band member selection)
+// fetch all users (for band member selection and find people).
+// only names and pictures - anyone can sign in, so emails stay private
 export async function GET() {
   try {
     const { db, user } = await getAuthUser();
 
-    // fetch all users except the current user
     const allUsers = await db
       .collection("users")
-      .find({ email: { $ne: user.email } })
-      .project({ email: 1, name: 1, image: 1 })
+      .find({ _id: { $ne: user._id } })
+      .project({ name: 1, image: 1 })
       .toArray();
 
     return NextResponse.json({ users: allUsers }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching users:", error);
-    const status = getServerErrorStatus(error);
-    return NextResponse.json(
-      {
-        error:
-          status === 500 ? "Failed to fetch users" : (error as Error).message,
-      },
-      { status },
-    );
+    return serverErrorResponse(error, "Failed to fetch users");
   }
 }
-

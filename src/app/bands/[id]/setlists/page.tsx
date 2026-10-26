@@ -4,8 +4,8 @@ import { use, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import PageLoading from "@/app/components/pageLoading";
-import BandSubpageHeader from "@/app/components/bandSubpageHeader";
+import PageLoading from "@/app/components/ui/pageLoading";
+import BandSubpageHeader from "@/app/components/bands/bandSubpageHeader";
 import {
   deleteSetlistAction,
   setActiveSetlistAction,
@@ -13,6 +13,7 @@ import {
 } from "@/app/actions/setlists";
 import { Setlist, LearntMap } from "@/app/types";
 import { formatDuration, getProgress } from "@/app/lib/setlistUtils";
+import { unwrapAction } from "@/app/lib/actionResult";
 
 export default function SetlistsPage({
   params,
@@ -78,7 +79,7 @@ export default function SetlistsPage({
     if (!confirm("Are you sure you want to delete this setlist?")) return;
 
     try {
-      await deleteSetlistAction(setlistId);
+      unwrapAction(await deleteSetlistAction(setlistId));
       setSetlists((prev) => prev.filter((s) => s._id !== setlistId));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete setlist");
@@ -89,7 +90,7 @@ export default function SetlistsPage({
     if (!bandId) return;
 
     try {
-      await setActiveSetlistAction(bandId, setlistId);
+      unwrapAction(await setActiveSetlistAction(bandId, setlistId));
       setSetlists((prev) =>
         prev.map((s) => ({
           ...s,
@@ -105,7 +106,7 @@ export default function SetlistsPage({
     if (!bandId) return;
 
     try {
-      await deactivateSetlistAction(bandId, setlistId);
+      unwrapAction(await deactivateSetlistAction(bandId, setlistId));
       setSetlists((prev) =>
         prev.map((s) => ({
           ...s,

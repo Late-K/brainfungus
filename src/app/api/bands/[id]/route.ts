@@ -1,29 +1,39 @@
 ﻿import {
-  getServerErrorStatus,
   requireBandMemberContext,
-} from "@/app/lib/serverUtils";
+  serverErrorResponse,
+  toObjectIds,
+} from "@/app/lib/server/utils";
 import { NextRequest, NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
 
 // fetch a specific band with members
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
-    const { db, band } = await requireBandMemberContext(id);
+    // the private blob url stays on the server - the image is served by /api/bands/[id]/image
+    const {
+      db,
+      bandObjectId,
+      band: { imageBlobUrl: _blobUrl, imageMimeType: _mimeType, ...band },
+    } = await requireBandMemberContext(id);
 
     const memberEntries =
       (band.members as Array<{ userId: string; role: string }>) ?? [];
-    const memberObjectIds = memberEntries
-      .map((m) => m.userId)
-      .filter((uid) => ObjectId.isValid(uid))
-      .map((uid) => new ObjectId(uid));
+    const memberObjectIds = toObjectIds(memberEntries.map((m) => m.userId));
+
+    const invites = await db
+      .collection("band_invites")
+      .find({ bandId: bandObjectId })
+      .sort({ createdAt: 1 })
+      .toArray();
 
     const users = await db
       .collection("users")
-      .find({ _id: { $in: memberObjectIds } })
+      .find({
+        _id: { $in: [...memberObjectIds, ...invites.map((i) => i.userId)] },
+      })
       .toArray();
 
     const userMap = new Map(users.map((u) => [u._id.toString(), u]));
@@ -44,19 +54,24 @@ export async function GET(
               isCreator: entry.role === "creator",
             };
           }),
+          // invitees aren't members yet, so only their name and picture
+          invites: invites.flatMap((invite) => {
+            const u = userMap.get(invite.userId.toString());
+            if (!u) return [];
+            return [
+              {
+                id: invite.userId.toString(),
+                name: u.name,
+                image: u.image,
+                invitedAt: invite.createdAt,
+              },
+            ];
+          }),
         },
       },
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error fetching band:", error);
-    const status = getServerErrorStatus(error);
-    return NextResponse.json(
-      {
-        error:
-          status === 500 ? "Failed to fetch band" : (error as Error).message,
-      },
-      { status },
-    );
+    return serverErrorResponse(error, "Failed to fetch band");
   }
 }

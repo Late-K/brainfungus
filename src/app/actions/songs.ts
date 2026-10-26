@@ -1,40 +1,46 @@
 ﻿"use server";
 
-import { getAuthUser } from "@/app/lib/auth";
+import { getAuthUser } from "@/app/lib/server/auth";
 import {
   normaliseSongId,
   requireBandMember,
   requireBandMemberContext,
-} from "@/app/lib/serverUtils";
+  toObjectId,
+  toObjectIds,
+} from "@/app/lib/server/utils";
 import {
   albumImageUrl,
   buildImageBlobPath,
   songImageUrl,
   validateImageFile,
-} from "@/app/lib/customSongImages";
-import { del, put } from "@vercel/blob";
+} from "@/app/lib/server/customSongImages";
+import { deleteBlobsQuietly } from "@/app/lib/server/blobStorage";
+import { runAction, UserError } from "@/app/lib/actionResult";
+import {
+  readOptionalString,
+  readString,
+  readStringArray,
+} from "@/app/lib/validate";
+import { put } from "@vercel/blob";
 import { ObjectId } from "mongodb";
 
-async function deleteBlobQuietly(blobUrl: unknown, label: string) {
-  if (typeof blobUrl !== "string" || !blobUrl) return;
-  try {
-    await del(blobUrl);
-  } catch (blobErr) {
-    console.error(`Failed to delete ${label} blob:`, blobErr);
-  }
-}
-
-async function requireSongForMember(songId: string) {
-  if (!ObjectId.isValid(songId)) throw new Error("Song not found");
+// loads a custom song and checks the current user is in its band
+async function requireSongForMember(songId: unknown) {
+  const songObjectId = toObjectId(songId, "song ID");
   const { db, user } = await getAuthUser();
 
   const song = await db
     .collection("custom_songs")
-    .findOne({ _id: new ObjectId(songId) });
-  if (!song) throw new Error("Song not found");
+    .findOne({ _id: songObjectId });
+  if (!song) throw new UserError("Song not found");
 
   await requireBandMember(db, user._id.toString(), song.bandId);
-  return { db, song };
+  return { db, song, songObjectId };
+}
+
+// not trimmed - album images are matched on the exact name stored on songs
+function readAlbumName(album: unknown) {
+  return readOptionalString(album, "album", 200) ?? "";
 }
 
 function buildAudioBlobPath(
@@ -53,73 +59,52 @@ export async function createSongAction(
   notes: string = "",
   album: string = "",
 ) {
-  try {
-    if (!bandId || !title) {
-      throw new Error("Band ID and title are required");
-    }
+  return runAction("Failed to create song", async () => {
+    const songTitle = readString(title, "title", 200).trim();
+    if (!songTitle) throw new UserError("Title is required");
+    const songNotes = readOptionalString(notes, "notes", 5000) ?? "";
+    const songAlbum = readAlbumName(album);
 
     const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
 
-    const newSong = {
+    const now = new Date();
+    const result = await db.collection("custom_songs").insertOne({
       bandId: bandObjectId,
       creatorId: user._id,
-      title,
-      notes: notes || "",
-      album: album || "",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    const result = await db.collection("custom_songs").insertOne(newSong);
+      title: songTitle,
+      notes: songNotes,
+      album: songAlbum,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     return {
-      success: true,
       song: {
         _id: result.insertedId.toString(),
-        bandId: bandId,
+        bandId: bandObjectId.toString(),
         creatorId: user._id.toString(),
-        title,
-        notes: notes || "",
-        album: album || "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        title: songTitle,
+        notes: songNotes,
+        album: songAlbum,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
       },
     };
-  } catch (error) {
-    console.error("Error creating song:", error);
-    throw error instanceof Error ? error : new Error("Failed to create song");
-  }
+  });
 }
 
 export async function deleteSongAction(songId: string) {
-  try {
-    if (!ObjectId.isValid(songId)) throw new Error("Song not found");
-    const { db, user } = await getAuthUser();
+  return runAction("Failed to delete song", async () => {
+    const { db, song, songObjectId } = await requireSongForMember(songId);
 
-    // Get the song
-    const song = await db
-      .collection("custom_songs")
-      .findOne({ _id: new ObjectId(songId) });
-    if (!song) {
-      throw new Error("Song not found");
-    }
+    await deleteBlobsQuietly(
+      [song.audioBlobUrl, song.imageBlobUrl],
+      "song audio and image",
+    );
 
-    // verify user is a member of the band
-    await requireBandMember(db, user._id.toString(), song.bandId);
+    const normalisedSongId = normaliseSongId(songObjectId);
 
-    const audioBlobUrl = song.audioBlobUrl as string | undefined;
-    if (audioBlobUrl) {
-      try {
-        await del(audioBlobUrl);
-      } catch (blobErr) {
-        console.error("Failed to delete audio blob for song:", blobErr);
-      }
-    }
-    await deleteBlobQuietly(song.imageBlobUrl, "song image");
-
-    const normalisedSongId = normaliseSongId(songId);
-
-    //remove all references from this custom song
+    // remove all references to this custom song
     await Promise.all([
       db
         .collection("setlists")
@@ -135,81 +120,54 @@ export async function deleteSongAction(songId: string) {
       }),
     ]);
 
-    // delete the song
-    await db
-      .collection("custom_songs")
-      .deleteOne({ _id: new ObjectId(songId) });
-
-    return {
-      success: true,
-      message: "Song deleted successfully",
-    };
-  } catch (error) {
-    console.error("Error deleting song:", error);
-    throw error instanceof Error ? error : new Error("Failed to delete song");
-  }
+    await db.collection("custom_songs").deleteOne({ _id: songObjectId });
+  });
 }
 
 export async function updateSongAction(
   songId: string,
   updates: { title?: string; notes?: string; album?: string },
 ) {
-  try {
-    if (!ObjectId.isValid(songId)) throw new Error("Song not found");
-    const { db, user } = await getAuthUser();
+  return runAction("Failed to update song", async () => {
+    const title = readOptionalString(updates?.title, "title", 200)?.trim();
+    if (title === "") throw new UserError("Title is required");
+    const notes = readOptionalString(updates?.notes, "notes", 5000);
+    const album =
+      updates?.album === undefined ? undefined : readAlbumName(updates.album);
 
-    const song = await db
-      .collection("custom_songs")
-      .findOne({ _id: new ObjectId(songId) });
-    if (!song) {
-      throw new Error("Song not found");
-    }
-
-    // verify user is a member of the band
-    await requireBandMember(db, user._id.toString(), song.bandId);
+    const { db, songObjectId } = await requireSongForMember(songId);
 
     const setFields: Record<string, unknown> = { updatedAt: new Date() };
-    if (updates.title !== undefined) setFields.title = updates.title;
-    if (updates.notes !== undefined) setFields.notes = updates.notes;
-    if (updates.album !== undefined) setFields.album = updates.album;
+    if (title !== undefined) setFields.title = title;
+    if (notes !== undefined) setFields.notes = notes;
+    if (album !== undefined) setFields.album = album;
 
     await db
       .collection("custom_songs")
-      .updateOne({ _id: new ObjectId(songId) }, { $set: setFields });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error updating song:", error);
-    throw error instanceof Error ? error : new Error("Failed to update song");
-  }
+      .updateOne({ _id: songObjectId }, { $set: setFields });
+  });
 }
 
+// saves the order of the songs in one album, from the drag and drop list
 export async function reorderAlbumSongsAction(
   bandId: string,
-  album: string,
   songIds: string[],
 ) {
-  try {
+  return runAction("Failed to reorder songs", async () => {
+    const ids = toObjectIds(readStringArray(songIds, "songs"));
     const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
-    const bulkOps = songIds
-      .filter((id) => ObjectId.isValid(id))
-      .map((id, index) => ({
-        updateOne: {
-          filter: { _id: new ObjectId(id), bandId: bandObjectId },
-          update: { $set: { order: index } },
-        },
-      }));
+    const bulkOps = ids.map((id, index) => ({
+      updateOne: {
+        filter: { _id: id, bandId: bandObjectId },
+        update: { $set: { order: index } },
+      },
+    }));
 
     if (bulkOps.length > 0) {
       await db.collection("custom_songs").bulkWrite(bulkOps);
     }
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error reordering songs:", error);
-    throw error instanceof Error ? error : new Error("Failed to reorder songs");
-  }
+  });
 }
 
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024; // 8 MB
@@ -224,159 +182,126 @@ const ALLOWED_AUDIO_TYPES = [
   "audio/webm",
 ];
 
-export async function uploadAudioAction(
-  songId: string,
-  formData: FormData,
-): Promise<{ audioUrl: string; duration?: number }> {
-  if (!ObjectId.isValid(songId)) throw new Error("Song not found");
+export async function uploadAudioAction(songId: string, formData: FormData) {
+  return runAction("Failed to upload audio", async () => {
+    const { db, song, songObjectId } = await requireSongForMember(songId);
 
-  const { db, user } = await getAuthUser();
+    const file = formData.get("audio");
+    if (!(file instanceof File)) throw new UserError("No audio file provided");
 
-  const song = await db
-    .collection("custom_songs")
-    .findOne({ _id: new ObjectId(songId) });
-  if (!song) throw new Error("Song not found");
+    if (!ALLOWED_AUDIO_TYPES.includes(file.type))
+      throw new UserError("Unsupported audio format");
+    if (file.size > MAX_AUDIO_BYTES)
+      throw new UserError("File too large — max 8 MB");
 
-  await requireBandMember(db, user._id.toString(), song.bandId);
+    const durationRaw = formData.get("durationSeconds");
+    const parsedDuration =
+      typeof durationRaw === "string" ? Number(durationRaw) : NaN;
+    const duration =
+      Number.isFinite(parsedDuration) && parsedDuration > 0
+        ? Math.round(parsedDuration)
+        : undefined;
 
-  const file = formData.get("audio");
-  if (!(file instanceof File)) throw new Error("No audio file provided");
+    await deleteBlobsQuietly(song.audioBlobUrl, "song audio");
 
-  if (!ALLOWED_AUDIO_TYPES.includes(file.type))
-    throw new Error("Unsupported audio format");
-  if (file.size > MAX_AUDIO_BYTES) throw new Error("File too large — max 8 MB");
-
-  const durationRaw = formData.get("durationSeconds");
-  const parsedDuration =
-    typeof durationRaw === "string" ? Number(durationRaw) : NaN;
-  const duration =
-    Number.isFinite(parsedDuration) && parsedDuration > 0
-      ? Math.round(parsedDuration)
-      : undefined;
-
-  const existingBlobUrl = song.audioBlobUrl as string | undefined;
-  if (existingBlobUrl) {
-    try {
-      await del(existingBlobUrl);
-    } catch (blobErr) {
-      console.error("Failed to delete existing audio blob:", blobErr);
-    }
-  }
-
-  const blob = await put(
-    buildAudioBlobPath(song.bandId, songId, file.name || "audio-file"),
-    file,
-    {
-      access: "private",
-      addRandomSuffix: false,
-      contentType: file.type,
-    },
-  );
-
-  const setFields: Record<string, unknown> = {
-    audioBlobUrl: blob.url,
-    audioBlobPathname: blob.pathname,
-    audioMimeType: file.type,
-    hasAudio: true,
-    updatedAt: new Date(),
-  };
-  if (duration !== undefined) setFields.duration = duration;
-
-  await db.collection("custom_songs").updateOne(
-    { _id: new ObjectId(songId) },
-    {
-      $set: setFields,
-      $unset: {
-        audioData: "",
-        audioUrl: "",
+    const id = songObjectId.toString();
+    const blob = await put(
+      buildAudioBlobPath(song.bandId, id, file.name || "audio-file"),
+      file,
+      {
+        access: "private",
+        addRandomSuffix: false,
+        contentType: file.type,
       },
-    },
-  );
+    );
 
-  return { audioUrl: `/api/songs/${songId}/audio`, duration };
+    const setFields: Record<string, unknown> = {
+      audioBlobUrl: blob.url,
+      audioBlobPathname: blob.pathname,
+      audioMimeType: file.type,
+      hasAudio: true,
+      updatedAt: new Date(),
+    };
+    if (duration !== undefined) setFields.duration = duration;
+
+    await db
+      .collection("custom_songs")
+      .updateOne({ _id: songObjectId }, { $set: setFields });
+
+    return { audioUrl: `/api/songs/${id}/audio`, duration };
+  });
 }
 
-export async function deleteAudioAction(songId: string): Promise<void> {
-  if (!ObjectId.isValid(songId)) throw new Error("Song not found");
+export async function deleteAudioAction(songId: string) {
+  return runAction("Failed to remove audio", async () => {
+    const { db, song, songObjectId } = await requireSongForMember(songId);
 
-  const { db, user } = await getAuthUser();
+    await deleteBlobsQuietly(song.audioBlobUrl, "song audio");
 
-  const song = await db
-    .collection("custom_songs")
-    .findOne({ _id: new ObjectId(songId) });
-  if (!song) throw new Error("Song not found");
-
-  await requireBandMember(db, user._id.toString(), song.bandId);
-
-  const audioBlobUrl = song.audioBlobUrl as string | undefined;
-  if (audioBlobUrl) {
-    try {
-      await del(audioBlobUrl);
-    } catch (blobErr) {
-      console.error("Failed to delete audio blob:", blobErr);
-    }
-  }
-
-  await db.collection("custom_songs").updateOne(
-    { _id: new ObjectId(songId) },
-    {
-      $unset: {
-        audioBlobUrl: "",
-        audioBlobPathname: "",
-        audioMimeType: "",
-        audioUrl: "",
-        audioData: "",
-        hasAudio: "",
-        duration: "",
+    await db.collection("custom_songs").updateOne(
+      { _id: songObjectId },
+      {
+        $unset: {
+          audioBlobUrl: "",
+          audioBlobPathname: "",
+          audioMimeType: "",
+          hasAudio: "",
+          duration: "",
+        },
+        $set: { updatedAt: new Date() },
       },
-      $set: { updatedAt: new Date() },
-    },
-  );
+    );
+  });
 }
 
 export async function uploadSongImageAction(
   songId: string,
   formData: FormData,
-): Promise<{ image: string }> {
-  const { db, song } = await requireSongForMember(songId);
-  const file = validateImageFile(formData.get("image"));
+) {
+  return runAction("Failed to upload image", async () => {
+    const { db, song, songObjectId } = await requireSongForMember(songId);
+    const file = validateImageFile(formData.get("image"));
+    const id = songObjectId.toString();
 
-  await deleteBlobQuietly(song.imageBlobUrl, "song image");
+    await deleteBlobsQuietly(song.imageBlobUrl, "song image");
 
-  const blob = await put(
-    buildImageBlobPath("songs", song.bandId, songId, file.name || "image"),
-    file,
-    { access: "private", addRandomSuffix: false, contentType: file.type },
-  );
+    const blob = await put(
+      buildImageBlobPath("songs", song.bandId, id, file.name || "image"),
+      file,
+      { access: "private", addRandomSuffix: false, contentType: file.type },
+    );
 
-  const image = songImageUrl(songId, Date.now());
-  await db.collection("custom_songs").updateOne(
-    { _id: new ObjectId(songId) },
-    {
-      $set: {
-        imageBlobUrl: blob.url,
-        imageMimeType: file.type,
-        image,
-        updatedAt: new Date(),
+    const image = songImageUrl(id, Date.now());
+    await db.collection("custom_songs").updateOne(
+      { _id: songObjectId },
+      {
+        $set: {
+          imageBlobUrl: blob.url,
+          imageMimeType: file.type,
+          image,
+          updatedAt: new Date(),
+        },
       },
-    },
-  );
+    );
 
-  return { image };
+    return { image };
+  });
 }
 
-export async function deleteSongImageAction(songId: string): Promise<void> {
-  const { db, song } = await requireSongForMember(songId);
+export async function deleteSongImageAction(songId: string) {
+  return runAction("Failed to remove image", async () => {
+    const { db, song, songObjectId } = await requireSongForMember(songId);
 
-  await deleteBlobQuietly(song.imageBlobUrl, "song image");
+    await deleteBlobsQuietly(song.imageBlobUrl, "song image");
 
-  await db.collection("custom_songs").updateOne(
-    { _id: new ObjectId(songId) },
-    {
-      $unset: { imageBlobUrl: "", imageMimeType: "", image: "" },
-      $set: { updatedAt: new Date() },
-    },
-  );
+    await db.collection("custom_songs").updateOne(
+      { _id: songObjectId },
+      {
+        $unset: { imageBlobUrl: "", imageMimeType: "", image: "" },
+        $set: { updatedAt: new Date() },
+      },
+    );
+  });
 }
 
 // album images are keyed by band + the album name stored on its songs
@@ -384,59 +309,65 @@ export async function uploadAlbumImageAction(
   bandId: string,
   albumName: string,
   formData: FormData,
-): Promise<{ image: string }> {
-  if (!albumName.trim()) throw new Error("Album name is required");
-  const { db, bandObjectId } = await requireBandMemberContext(bandId);
-  const file = validateImageFile(formData.get("image"));
+) {
+  return runAction("Failed to upload album image", async () => {
+    const name = readAlbumName(albumName);
+    if (!name.trim()) throw new UserError("Album name is required");
+    const { db, bandObjectId } = await requireBandMemberContext(bandId);
+    const file = validateImageFile(formData.get("image"));
 
-  const existing = await db
-    .collection("custom_albums")
-    .findOne({ bandId: bandObjectId, name: albumName });
-  await deleteBlobQuietly(existing?.imageBlobUrl, "album image");
+    const existing = await db
+      .collection("custom_albums")
+      .findOne({ bandId: bandObjectId, name });
+    await deleteBlobsQuietly(existing?.imageBlobUrl, "album image");
 
-  const albumId = (existing?._id as ObjectId | undefined) ?? new ObjectId();
-  const blob = await put(
-    buildImageBlobPath(
-      "albums",
-      bandObjectId,
-      albumId.toString(),
-      file.name || "image",
-    ),
-    file,
-    { access: "private", addRandomSuffix: false, contentType: file.type },
-  );
+    const albumId = (existing?._id as ObjectId | undefined) ?? new ObjectId();
+    const blob = await put(
+      buildImageBlobPath(
+        "albums",
+        bandObjectId,
+        albumId.toString(),
+        file.name || "image",
+      ),
+      file,
+      { access: "private", addRandomSuffix: false, contentType: file.type },
+    );
 
-  const image = albumImageUrl(albumId.toString(), Date.now());
-  await db.collection("custom_albums").updateOne(
-    { _id: albumId },
-    {
-      $set: {
-        bandId: bandObjectId,
-        name: albumName,
-        imageBlobUrl: blob.url,
-        imageMimeType: file.type,
-        image,
-        updatedAt: new Date(),
+    const image = albumImageUrl(albumId.toString(), Date.now());
+    await db.collection("custom_albums").updateOne(
+      { _id: albumId },
+      {
+        $set: {
+          bandId: bandObjectId,
+          name,
+          imageBlobUrl: blob.url,
+          imageMimeType: file.type,
+          image,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: { createdAt: new Date() },
       },
-      $setOnInsert: { createdAt: new Date() },
-    },
-    { upsert: true },
-  );
+      { upsert: true },
+    );
 
-  return { image };
+    return { image };
+  });
 }
 
 export async function deleteAlbumImageAction(
   bandId: string,
   albumName: string,
-): Promise<void> {
-  const { db, bandObjectId } = await requireBandMemberContext(bandId);
+) {
+  return runAction("Failed to remove album image", async () => {
+    const name = readAlbumName(albumName);
+    const { db, bandObjectId } = await requireBandMemberContext(bandId);
 
-  const album = await db
-    .collection("custom_albums")
-    .findOne({ bandId: bandObjectId, name: albumName });
-  if (!album) return;
+    const album = await db
+      .collection("custom_albums")
+      .findOne({ bandId: bandObjectId, name });
+    if (!album) return;
 
-  await deleteBlobQuietly(album.imageBlobUrl, "album image");
-  await db.collection("custom_albums").deleteOne({ _id: album._id });
+    await deleteBlobsQuietly(album.imageBlobUrl, "album image");
+    await db.collection("custom_albums").deleteOne({ _id: album._id });
+  });
 }
