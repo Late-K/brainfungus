@@ -57,7 +57,7 @@ function ensureInviteIndex(db: Db) {
 
 const DUPLICATE_KEY = 11000;
 
-function isAdminOrCreator(band: BandDocument, userId: string) {
+export function isAdminOrCreator(band: BandDocument, userId: string) {
   return band.members.some(
     (m) => m.userId === userId && (m.role === "admin" || m.role === "creator"),
   );

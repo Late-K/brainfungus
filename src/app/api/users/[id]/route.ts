@@ -1,7 +1,13 @@
 import { getAuthUser } from "@/app/lib/server/auth";
 import { serverErrorResponse } from "@/app/lib/server/utils";
 import { getUserLearntSongs } from "@/app/lib/server/learntSongs";
-import { PublicUserProfile } from "@/app/types";
+import {
+  BandDocument,
+  getInvitesCollection,
+  isAdminOrCreator,
+} from "@/app/lib/server/bands";
+import { isBandMember } from "@/app/lib/server/utils";
+import { ProfileInviteBand, PublicUserProfile } from "@/app/types";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
@@ -34,10 +40,10 @@ export async function GET(
       isPrivate ? [] : getUserLearntSongs(db, profileUser._id),
       getUserLearntSongs(db, currentUser._id),
       db
-        .collection("bands")
+        .collection<BandDocument>("bands")
         .find(
           { "members.userId": currentUser._id.toString() },
-          { projection: { _id: 1 } },
+          { projection: { name: 1, members: 1 } },
         )
         .toArray(),
     ]);
@@ -50,6 +56,35 @@ export async function GET(
         : song,
     );
 
+    // bands the current user admins, and whether this user is already in or invited to each
+    const adminBands = myBands.filter((band) =>
+      isAdminOrCreator(band, currentUser._id.toString()),
+    );
+    const invites =
+      adminBands.length > 0
+        ? await getInvitesCollection(db)
+            .find(
+              {
+                userId: profileUser._id,
+                bandId: { $in: adminBands.map((band) => band._id!) },
+              },
+              { projection: { bandId: 1 } },
+            )
+            .toArray()
+        : [];
+    const invitedBandIds = new Set(
+      invites.map((invite) => invite.bandId.toString()),
+    );
+    const inviteBands: ProfileInviteBand[] = adminBands.map((band) => ({
+      _id: band._id!.toString(),
+      name: band.name,
+      status: isBandMember(band, id)
+        ? "member"
+        : invitedBandIds.has(band._id!.toString())
+          ? "invited"
+          : "none",
+    }));
+
     const profile: PublicUserProfile = {
       user: {
         _id: profileUser._id.toString(),
@@ -59,6 +94,7 @@ export async function GET(
       isPrivate,
       songs,
       mySongs,
+      inviteBands,
     };
 
     return NextResponse.json(profile, { status: 200 });

@@ -1,8 +1,11 @@
 ﻿"use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Band, User } from "@/app/types";
+
+const max_results = 5;
 
 interface BandMembersTabProps {
   band: Band;
@@ -39,6 +42,15 @@ export default function BandMembersTab({
   onShowLeaveConfirm,
   onLeave,
 }: BandMembersTabProps) {
+  const [query, setQuery] = useState("");
+
+  const trimmedQuery = query.trim().toLowerCase();
+  const matches = trimmedQuery
+    ? availableUsers
+        .filter((user) => user.name?.toLowerCase().includes(trimmedQuery))
+        .slice(0, max_results)
+    : [];
+
   return (
     <div className="section-block">
       <h4 className="section-subtitle">Members</h4>
@@ -167,44 +179,62 @@ export default function BandMembersTab({
           Invite Members
         </h4>
       )}
-      {isAdmin &&
-        (isFetchingUsers ? (
-          <p className="empty-state">Loading users...</p>
-        ) : availableUsers.length > 0 ? (
-          <div className="list-compact">
-            {availableUsers.map((user) => (
-              <div key={user._id} className="member-row card-item">
-                <div className="member-info">
-                  <div className="member-avatar">
-                    {user.image ? (
-                      <Image
-                        src={user.image}
-                        alt={user.name}
-                        width={36}
-                        height={36}
-                        className="avatar-small"
-                      />
-                    ) : (
-                      <div className="avatar-small-fallback">
-                        {user.name.charAt(0).toUpperCase()}
+      {isAdmin && (
+        <>
+          <input
+            type="search"
+            className="input"
+            placeholder={
+              isFetchingUsers ? "Loading users..." : "Search by name..."
+            }
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            disabled={isFetchingUsers}
+          />
+          {trimmedQuery &&
+            !isFetchingUsers &&
+            (matches.length === 0 ? (
+              <p className="empty-state">No users found.</p>
+            ) : (
+              <div className="list-compact list-top">
+                {matches.map((user) => (
+                  <div key={user._id} className="member-row card-item">
+                    <div className="member-info">
+                      <div className="member-avatar">
+                        {user.image ? (
+                          <Image
+                            src={user.image}
+                            alt={user.name}
+                            width={36}
+                            height={36}
+                            className="avatar-small"
+                          />
+                        ) : (
+                          <div className="avatar-small-fallback">
+                            {user.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                       </div>
-                    )}
+                      <Link
+                        href={`/users/${user._id}`}
+                        className="member-name member-name-link"
+                      >
+                        {user.name}
+                      </Link>
+                    </div>
+                    <button
+                      className="button button-primary button-small"
+                      onClick={() => onInviteMember(user._id)}
+                      disabled={actionLoading === user._id}
+                    >
+                      {actionLoading === user._id ? "Inviting..." : "Invite"}
+                    </button>
                   </div>
-                  <span className="member-name">{user.name}</span>
-                </div>
-                <button
-                  className="button button-primary button-small"
-                  onClick={() => onInviteMember(user._id)}
-                  disabled={actionLoading === user._id}
-                >
-                  {actionLoading === user._id ? "Inviting..." : "Invite"}
-                </button>
+                ))}
               </div>
             ))}
-          </div>
-        ) : (
-          <p className="empty-state">No more users to invite</p>
-        ))}
+        </>
+      )}
 
       {!isAdmin && (
         <div className="band-options">

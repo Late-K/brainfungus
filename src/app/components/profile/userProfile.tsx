@@ -14,6 +14,7 @@ import OpenInMusicAppLink from "@/app/components/songs/openInMusicAppLink";
 import SortControls from "@/app/components/ui/sortControls";
 import PageLoading from "@/app/components/ui/pageLoading";
 import PageErrorCard from "@/app/components/ui/pageErrorCard";
+import InviteToBand from "@/app/components/profile/inviteToBand";
 import { unwrapAction } from "@/app/lib/actionResult";
 
 type CompareFilter = "theirs" | "common" | "onlyThem" | "onlyMe";
@@ -188,6 +189,12 @@ export default function UserProfile({ userId }: { userId: string }) {
             </div>
           </div>
         )}
+
+        <InviteToBand
+          userId={user._id}
+          firstName={firstName}
+          bands={data.inviteBands}
+        />
       </div>
 
       {isPrivate ? (

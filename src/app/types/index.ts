@@ -273,6 +273,14 @@ export interface PublicUserProfile {
   songs: ProfileLearntSong[];
   // the current user's songs, for comparison
   mySongs: ProfileLearntSong[];
+  // bands the current user can invite the viewed user to
+  inviteBands: ProfileInviteBand[];
+}
+
+export interface ProfileInviteBand {
+  _id: string;
+  name: string;
+  status: "member" | "invited" | "none";
 }
 
 export type NotificationType = "rehearsals" | "chat" | "setlists" | "invites";
