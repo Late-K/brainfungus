@@ -1,8 +1,8 @@
 "use client";
 
 // the band chat's message box: text with emoji and @mentions, attachments
-// (picked, pasted or dropped onto the chat), voice notes, and the replying /
-// editing banners
+// (picked, pasted or dropped onto the chat), gifs, voice notes, and the
+// replying / editing banners
 
 import Image from "next/image";
 import {
@@ -13,7 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ChatMember, ChatMention, Message } from "@/app/types";
+import { ChatGif, ChatMember, ChatMention, Message } from "@/app/types";
 import { DraftAttachment, SendInput } from "@/app/hooks/useBandChat";
 import { useVoiceRecorder } from "@/app/hooks/useVoiceRecorder";
 import {
@@ -31,6 +31,7 @@ import {
 } from "@/app/lib/chatMentions";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import ChatEmojiPicker from "@/app/components/chat/chatEmojiPicker";
+import ChatGifPicker from "@/app/components/chat/chatGifPicker";
 import {
   CloseIcon,
   FileIcon,
@@ -127,7 +128,8 @@ export default function ChatComposer({
 }) {
   const [text, setText] = useState("");
   const [drafts, setDrafts] = useState<DraftAttachment[]>([]);
-  const [showEmoji, setShowEmoji] = useState(false);
+  // the emoji button opens one panel with emoji and gif tabs
+  const [picker, setPicker] = useState<"emoji" | "gif" | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [caret, setCaret] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
@@ -284,7 +286,15 @@ export default function ChatComposer({
     onSend({ text: trimmed, replyTo, attachments: drafts });
     setText("");
     setDrafts([]);
-    setShowEmoji(false);
+    setPicker(null);
+    onCancelReply();
+    textareaRef.current?.focus();
+  };
+
+  // a gif goes straight out as its own message, leaving any typed text be
+  const sendGif = (gif: ChatGif) => {
+    onSend({ text: "", replyTo, attachments: [], gif });
+    setPicker(null);
     onCancelReply();
     textareaRef.current?.focus();
   };
@@ -356,19 +366,31 @@ export default function ChatComposer({
       ? {
           label: `Replying to ${replyTo.userName}`,
           body:
-            replyTo.message || attachmentLabel(replyTo.attachments?.[0]?.kind),
+            replyTo.message ||
+            attachmentLabel(
+              replyTo.gif ? "gif" : replyTo.attachments?.[0]?.kind,
+            ),
           onCancel: onCancelReply,
         }
       : null;
 
   return (
     <div className="chat-composer">
-      {showEmoji && (
-        <ChatEmojiPicker
-          title="Emoji"
-          onSelect={insertEmoji}
-          onClose={() => setShowEmoji(false)}
+      {picker === "gif" && !editing ? (
+        <ChatGifPicker
+          onSelect={sendGif}
+          onClose={() => setPicker(null)}
+          onShowEmoji={() => setPicker("emoji")}
         />
+      ) : (
+        picker && (
+          <ChatEmojiPicker
+            title="Emoji"
+            onSelect={insertEmoji}
+            onClose={() => setPicker(null)}
+            onShowGifs={editing ? undefined : () => setPicker("gif")}
+          />
+        )
       )}
 
       {banner && (
@@ -513,11 +535,11 @@ export default function ChatComposer({
           )}
           <button
             type="button"
-            className={`chat-icon-button${showEmoji ? " chat-icon-button-active" : ""}`}
+            className={`chat-icon-button${picker ? " chat-icon-button-active" : ""}`}
             data-emoji-toggle
-            onClick={() => setShowEmoji((v) => !v)}
-            aria-label="Emoji"
-            title="Emoji"
+            onClick={() => setPicker((v) => (v ? null : "emoji"))}
+            aria-label={editing ? "Emoji" : "Emoji and GIFs"}
+            title={editing ? "Emoji" : "Emoji and GIFs"}
           >
             <SmileIcon />
           </button>

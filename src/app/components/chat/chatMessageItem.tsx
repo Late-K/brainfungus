@@ -23,7 +23,9 @@ import {
   mentionsUser,
   splitMentions,
 } from "@/app/lib/chatMentions";
-import ChatAttachment from "@/app/components/chat/chatAttachment";
+import ChatAttachment, {
+  ChatGifPlayer,
+} from "@/app/components/chat/chatAttachment";
 import {
   CopyIcon,
   EditIcon,
@@ -233,7 +235,7 @@ export default function ChatMessageItem({
   const mediaOnly =
     !message.message &&
     !message.replyTo &&
-    attachments.length > 0 &&
+    (attachments.length > 0 || !!message.gif) &&
     attachments.every((a) => a.kind === "image" || a.kind === "video");
 
   const pointerTypeRef = useRef("mouse");
@@ -357,6 +359,14 @@ export default function ChatMessageItem({
                     onOpenImage={handlers.onOpenImage}
                     onMediaLoad={handlers.onMediaLoad}
                   />
+                )}
+                {message.gif && (
+                  <div className="chat-media-grid">
+                    <ChatGifPlayer
+                      gif={message.gif}
+                      onMediaLoad={handlers.onMediaLoad}
+                    />
+                  </div>
                 )}
                 {message.message && (
                   <p className="chat-bubble-text">
@@ -510,6 +520,11 @@ export function PendingMessageItem({
         <div className="chat-bubble-line">
           <div className={`chat-bubble${failed ? " chat-bubble-failed" : ""}`}>
             {item.replyTo && <ReplyQuote reply={item.replyTo} />}
+            {item.gif && (
+              <div className="chat-pending-attachments">
+                <img src={item.gif.previewUrl} alt={item.gif.title} />
+              </div>
+            )}
             {item.attachments.length > 0 && (
               <div className="chat-pending-attachments">
                 {item.attachments.map((a) =>

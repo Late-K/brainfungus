@@ -71,9 +71,10 @@ NEXT_PUBLIC_VAPID_PUBLIC_KEY=your_vapid_public_key
 VAPID_PRIVATE_KEY=your_vapid_private_key
 VAPID_SUBJECT=mailto:you@example.com
 CRON_SECRET=a_long_random_string
+GIPHY_API_KEY=your_giphy_api_key
 ```
 
-Generate the VAPID key pair with `npx web-push generate-vapid-keys`.
+Generate the VAPID key pair with `npx web-push generate-vapid-keys`. Get a GIPHY key by creating an API app at developers.giphy.com - without one the chat works as normal but GIF search shows "GIF search isn't set up".
 
 ### 3. Install dependencies
 
@@ -123,4 +124,5 @@ Files in `lib/server/` start with `import "server-only"`, so the build fails if 
 - Deezer - Next.js route handlers (`/api/deezer/search`, `/api/deezer/track`, `/api/deezer/artist` and `/api/deezer/album`) forward requests to the public Deezer API. Results are not cached; saving a result persists it as `BandCover` in MongoDB.
 - Modularity - UI is split into focused single-purpose components. Large page logic lives in dedicated hooks, keeping components thin. Shared utilities are reused across both components and server actions.
 - Audio storage - Custom song audio files are uploaded to private Vercel Blob storage
+- GIFs - The chat's GIF picker searches GIPHY through `/api/gifs`, so the API key stays on the server. A message stores only the GIF's GIPHY id and the media URLs the server looked up for that id (never URLs sent by the browser), and GIFs play as looping muted MP4s only while on screen.
 - Push notifications - Devices opt in from the profile page and their Web Push subscriptions are stored in `push_subscriptions`. Chat messages and active setlist changes notify the rest of the band straight away (sent with `after()` so actions stay fast). Rehearsal reminders for today and tomorrow are sent by a daily Vercel cron (`vercel.json` → `/api/cron/rehearsal-reminders`, authorised with `CRON_SECRET`). Push only works in production builds, since the service worker isn't registered in dev, and on iOS only once the app is added to the Home Screen.

@@ -1,7 +1,8 @@
 "use client";
 
 // emoji grid for the band chat, used both for typing emoji into a message and
-// for reacting with something beyond the quick reactions
+// for reacting with something beyond the quick reactions. in the message box
+// it also has a tab that switches over to the gif picker
 
 import { useEffect, useRef, useState } from "react";
 import { EMOJI_CATEGORIES } from "@/app/lib/chatEmojis";
@@ -35,10 +36,12 @@ export default function ChatEmojiPicker({
   title,
   onSelect,
   onClose,
+  onShowGifs,
 }: {
   title: string;
   onSelect: (emoji: string) => void;
   onClose: () => void;
+  onShowGifs?: () => void;
 }) {
   const [recent] = useState(readRecent);
   const [categoryId, setCategoryId] = useState(
@@ -87,20 +90,34 @@ export default function ChatEmojiPicker({
           <CloseIcon size={16} />
         </button>
       </div>
-      <div className="chat-emoji-tabs" role="tablist">
-        {categories.map((category) => (
+      {/* the gif switch sits outside the scrolling categories so they can't
+          slide underneath it */}
+      <div className="chat-emoji-tabs-row">
+        <div className="chat-emoji-tabs" role="tablist">
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              role="tab"
+              aria-selected={category.id === active.id}
+              title={category.label}
+              className={`chat-emoji-tab${category.id === active.id ? " chat-emoji-tab-active" : ""}`}
+              onClick={() => setCategoryId(category.id)}
+            >
+              {category.icon}
+            </button>
+          ))}
+        </div>
+        {onShowGifs && (
           <button
-            key={category.id}
             type="button"
-            role="tab"
-            aria-selected={category.id === active.id}
-            title={category.label}
-            className={`chat-emoji-tab${category.id === active.id ? " chat-emoji-tab-active" : ""}`}
-            onClick={() => setCategoryId(category.id)}
+            title="GIFs"
+            className="chat-emoji-tab chat-emoji-tab-gif"
+            onClick={onShowGifs}
           >
-            {category.icon}
+            GIF
           </button>
-        ))}
+        )}
       </div>
       <div className="chat-emoji-grid">
         {active.emojis.map((emoji) => (

@@ -54,7 +54,9 @@ export function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function attachmentLabel(kind: ChatAttachmentKind | undefined) {
+export function attachmentLabel(
+  kind: ChatAttachmentKind | "gif" | undefined,
+) {
   switch (kind) {
     case "image":
       return "📷 Photo";
@@ -64,6 +66,8 @@ export function attachmentLabel(kind: ChatAttachmentKind | undefined) {
       return "🎤 Audio";
     case "file":
       return "📎 File";
+    case "gif":
+      return "🎞️ GIF";
     default:
       return "";
   }

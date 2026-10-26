@@ -166,11 +166,28 @@ export interface MessageReaction {
   userNames: string[];
 }
 
+// a gif from giphy. url is the mp4 shown in the chat, previewUrl the small
+// animated webp shown in the picker
+export interface ChatGif {
+  id: string;
+  title: string;
+  url: string;
+  previewUrl: string;
+  width: number;
+  height: number;
+}
+
+export interface GifSearchResponse {
+  gifs: ChatGif[];
+  // offset of the next page, or null when there are no more
+  nextOffset: number | null;
+}
+
 export interface MessageReplyPreview {
   _id: string;
   userName: string;
   message: string;
-  attachmentKind?: ChatAttachmentKind;
+  attachmentKind?: ChatAttachmentKind | "gif";
   deleted?: boolean;
 }
 
@@ -189,6 +206,7 @@ export interface Message {
   attachments?: MessageAttachment[];
   reactions?: MessageReaction[];
   mentions?: ChatMention[];
+  gif?: ChatGif | null;
 }
 
 // someone @mentioned in a message. userId is "everyone" for @everyone, and

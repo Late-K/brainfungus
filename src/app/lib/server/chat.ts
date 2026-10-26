@@ -4,6 +4,7 @@ import { Db, Document, ObjectId } from "mongodb";
 import { streamPrivateBlob } from "@/app/lib/server/blobStorage";
 import {
   ChatAttachmentKind,
+  ChatGif,
   ChatMember,
   ChatMention,
   ChatTypingUser,
@@ -87,7 +88,13 @@ export async function serializeMessages(
     ? await db
         .collection("band_messages")
         .find({ _id: { $in: replyIds.map((id) => new ObjectId(id)) } })
-        .project({ userId: 1, message: 1, attachments: 1, deletedAt: 1 })
+        .project({
+          userId: 1,
+          message: 1,
+          attachments: 1,
+          gif: 1,
+          deletedAt: 1,
+        })
         .toArray()
     : [];
   const replyMap = new Map(replyDocs.map((r) => [r._id.toString(), r]));
@@ -123,8 +130,10 @@ export async function serializeMessages(
               : String(reply.message ?? "").slice(0, 200),
             attachmentKind: reply.deletedAt
               ? undefined
-              : (reply.attachments as StoredAttachment[] | undefined)?.[0]
-                  ?.kind,
+              : reply.gif
+                ? "gif"
+                : (reply.attachments as StoredAttachment[] | undefined)?.[0]
+                    ?.kind,
             deleted: !!reply.deletedAt,
           }
         : { _id: replyId, userName: "", message: "", deleted: true };
@@ -146,6 +155,8 @@ export async function serializeMessages(
         );
 
     // group the flat { emoji, userId } list by emoji, keeping first-use order
+    const gif = deleted ? null : ((m.gif as ChatGif | undefined) ?? null);
+
     const reactions: MessageReaction[] = [];
     if (!deleted) {
       for (const r of (m.reactions as
@@ -174,6 +185,14 @@ export async function serializeMessages(
       deleted,
       replyTo,
       attachments,
+      gif: gif && {
+        id: gif.id,
+        title: gif.title,
+        url: gif.url,
+        previewUrl: gif.previewUrl,
+        width: gif.width,
+        height: gif.height,
+      },
       reactions,
       mentions: deleted
         ? []

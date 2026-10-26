@@ -13,6 +13,7 @@ import {
   StoredAttachment,
 } from "@/app/lib/server/chat";
 import { MENTION_EVERYONE, findMentions } from "@/app/lib/chatMentions";
+import { getGif } from "@/app/lib/server/giphy";
 import {
   MAX_ATTACHMENTS,
   MAX_ATTACHMENT_BYTES,
@@ -174,6 +175,8 @@ export async function sendChatMessageAction(
     message?: string;
     replyToId?: string | null;
     attachments?: ChatAttachmentInput[];
+    // a giphy id - the gif's urls are looked up here, never taken from the browser
+    gifId?: string | null;
   },
 ) {
   return runAction(
@@ -184,9 +187,13 @@ export async function sendChatMessageAction(
         ? input.attachments
         : [];
       const replyToId = readOptionalString(input?.replyToId, "reply", 24);
+      const gifId = readOptionalString(input?.gifId, "GIF", 64);
 
-      if (!text && attachmentInputs.length === 0) {
+      if (!text && attachmentInputs.length === 0 && !gifId) {
         throw new UserError("Message is required");
+      }
+      if (gifId && attachmentInputs.length > 0) {
+        throw new UserError("A GIF has to be sent on its own");
       }
       if (attachmentInputs.length > MAX_ATTACHMENTS) {
         throw new UserError(
@@ -197,9 +204,10 @@ export async function sendChatMessageAction(
       const { db, user, band, bandObjectId } =
         await requireBandMemberContext(bandId);
 
-      const attachments = await Promise.all(
-        attachmentInputs.map((a) => verifyAttachment(bandId, a)),
-      );
+      const [attachments, gif] = await Promise.all([
+        Promise.all(attachmentInputs.map((a) => verifyAttachment(bandId, a))),
+        gifId ? getGif(gifId) : undefined,
+      ]);
 
       let replyTo: ObjectId | undefined;
       if (replyToId) {
@@ -228,6 +236,7 @@ export async function sendChatMessageAction(
       };
       if (replyTo) doc.replyTo = replyTo;
       if (attachments.length > 0) doc.attachments = attachments;
+      if (gif) doc.gif = gif;
       const mentions = findMentions(text, await getChatMembers(db, band));
       if (mentions.length > 0) doc.mentions = mentions;
 
@@ -240,11 +249,13 @@ export async function sendChatMessageAction(
 
       const preview =
         text ||
-        (attachments.length > 1
-          ? `📎 ${attachments.length} files`
-          : attachments[0]?.kind === "file"
-            ? `📎 ${attachments[0].name}`
-            : attachmentLabel(attachments[0]?.kind));
+        (gif
+          ? attachmentLabel("gif")
+          : attachments.length > 1
+            ? `📎 ${attachments.length} files`
+            : attachments[0]?.kind === "file"
+              ? `📎 ${attachments[0].name}`
+              : attachmentLabel(attachments[0]?.kind));
       // mentioned members get a mention notification instead of the usual one
       const senderId = user._id.toString();
       const memberIds = ((band.members as { userId: string }[]) ?? []).map(
@@ -291,7 +302,8 @@ export async function editChatMessageAction(
     } = await requireMessage(bandId, messageId, { ownOnly: true });
 
     const hasAttachments =
-      ((existing.attachments as unknown[] | undefined) ?? []).length > 0;
+      ((existing.attachments as unknown[] | undefined) ?? []).length > 0 ||
+      !!existing.gif;
     if (!text && !hasAttachments) throw new UserError("Message is required");
 
     if (text !== existing.message) {
@@ -353,6 +365,7 @@ export async function deleteChatMessageAction(
           reactions: "",
           editedAt: "",
           mentions: "",
+          gif: "",
         },
       },
     );

@@ -17,6 +17,7 @@ import { chatUploadPrefix } from "@/app/lib/chatConfig";
 import { findMentions } from "@/app/lib/chatMentions";
 import {
   ChatAttachmentKind,
+  ChatGif,
   ChatMember,
   ChatMention,
   ChatMessagesResponse,
@@ -47,6 +48,7 @@ export interface PendingMessage {
   mentions: ChatMention[];
   replyTo: MessageReplyPreview | null;
   attachments: DraftAttachment[];
+  gif?: ChatGif;
   progress: number;
   status: "sending" | "failed";
   error?: string;
@@ -58,6 +60,7 @@ export interface SendInput {
   text: string;
   replyTo: Message | null;
   attachments: DraftAttachment[];
+  gif?: ChatGif;
 }
 
 function mergeMessages(prev: Message[], incoming: Message[]) {
@@ -82,7 +85,7 @@ export function toReplyPreview(message: Message): MessageReplyPreview {
     _id: message._id,
     userName: message.userName,
     message: message.message.slice(0, 200),
-    attachmentKind: message.attachments?.[0]?.kind,
+    attachmentKind: message.gif ? "gif" : message.attachments?.[0]?.kind,
     deleted: message.deleted,
   };
 }
@@ -261,6 +264,7 @@ export function useBandChat(bandId: string) {
             message: item.text,
             replyToId: item.replyTo?._id ?? null,
             attachments: uploaded.filter((a): a is ChatAttachmentInput => !!a),
+            gifId: item.gif?.id ?? null,
           }),
         );
 
@@ -289,6 +293,7 @@ export function useBandChat(bandId: string) {
         mentions: findMentions(text, members),
         replyTo: input.replyTo ? toReplyPreview(input.replyTo) : null,
         attachments: input.attachments,
+        gif: input.gif,
         progress: 0,
         status: "sending",
         uploaded: input.attachments.map(() => undefined),

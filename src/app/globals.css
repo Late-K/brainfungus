@@ -511,6 +511,8 @@ h4 {
   display: flex;
   justify-content: space-around;
   padding: 0.5rem 0;
+  /* optical nudge: the bar reads slightly left of centre otherwise */
+  transform: translateX(1px);
 }
 .nav-item {
   /* equal-width columns so Home sits dead centre whatever the label widths */
@@ -2264,11 +2266,18 @@ h4 {
 .chat-composer-row {
   display: flex;
   align-items: flex-end;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
+/* kept small so the message box gets the room, and lifted to sit level
+   with the middle of a one line message box */
 .chat-composer-row > .chat-icon-button {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 4px;
+}
+/* the attach and emoji buttons sit together as one group */
+.chat-composer-row > .chat-icon-button + .chat-icon-button {
+  margin-left: -0.3rem;
 }
 .chat-composer-input {
   flex: 1;
@@ -2430,11 +2439,16 @@ h4 {
   font-size: 0.8rem;
   color: var(--muted);
 }
+.chat-emoji-tabs-row {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
 .chat-emoji-tabs {
   display: flex;
+  flex: 1;
+  min-width: 0;
   gap: 2px;
   padding: 0 0.4rem;
-  border-bottom: 1px solid var(--border);
   overflow-x: auto;
 }
 .chat-emoji-tab {
@@ -2457,6 +2471,69 @@ h4 {
   max-height: 200px;
   overflow-y: auto;
   padding: 0.4rem;
+}
+.chat-emoji-tab-gif {
+  flex-shrink: 0;
+  padding: 0.35rem 0.7rem;
+  border-left: 1px solid var(--border);
+  color: var(--fg);
+  opacity: 1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.chat-gif-picker .chat-emoji-picker-header {
+  gap: 0.25rem;
+  padding: 0.4rem 0.25rem 0.4rem 0.4rem;
+}
+.chat-gif-search {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.9rem;
+}
+.chat-gif-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 0 0.4rem 0.4rem;
+}
+.chat-gif-option {
+  height: 100px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  overflow: hidden;
+  cursor: pointer;
+}
+.chat-gif-option img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.chat-gif-option:hover,
+.chat-gif-option:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.chat-gif-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 1.5rem 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+}
+.chat-gif-attribution {
+  padding: 0.25rem 0.6rem 0.35rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-align: right;
 }
 .chat-emoji-button {
   height: 36px;
@@ -3056,6 +3133,7 @@ h4 {
   .navbar-inner {
     gap: 0.25rem;
     padding: 0;
+    transform: none;
   }
   .nav-item {
     flex: none;

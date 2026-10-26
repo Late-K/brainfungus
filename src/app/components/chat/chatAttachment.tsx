@@ -1,10 +1,11 @@
 "use client";
 
 // one attachment inside a chat message: a photo, video, audio clip / voice
-// note, or a file to download
+// note, or a file to download. also the player for gifs from giphy
 
 import { useEffect, useRef, useState } from "react";
-import { MessageAttachment } from "@/app/types";
+import { ChatGif, MessageAttachment } from "@/app/types";
+import { useMediaQuery } from "@/app/hooks/useMediaQuery";
 import { formatFileSize } from "@/app/lib/chatConfig";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import {
@@ -113,6 +114,51 @@ function ChatAudioPlayer({ attachment }: { attachment: MessageAttachment }) {
         </span>
       </div>
     </div>
+  );
+}
+
+// gifs are giphy's mp4 versions, looping silently like a .gif would. they
+// only play while on screen, and wait for a tap if the device asks for
+// reduced motion
+export function ChatGifPlayer({
+  gif,
+  onMediaLoad,
+}: {
+  gif: ChatGif;
+  onMediaLoad?: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || reduceMotion) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) video.play().catch(() => {});
+      else video.pause();
+    });
+    observer.observe(video);
+    return () => {
+      observer.disconnect();
+      video.pause();
+    };
+  }, [reduceMotion]);
+
+  return (
+    <video
+      ref={videoRef}
+      className="chat-attachment-video chat-gif"
+      src={gif.url}
+      style={{ aspectRatio: `${gif.width} / ${gif.height}` }}
+      aria-label={gif.title}
+      title={gif.title}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      controls={reduceMotion}
+      onLoadedMetadata={onMediaLoad}
+    />
   );
 }
 
