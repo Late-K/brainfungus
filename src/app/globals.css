@@ -681,6 +681,27 @@ h4 {
 .setting-block {
   padding: 0.85rem 1rem;
 }
+/* label on the left, a button on the right - like setting-row but without the whole row being clickable */
+.setting-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.setting-inline .button {
+  flex-shrink: 0;
+}
+.setting-steps {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.setting-steps strong {
+  color: var(--fg);
+  font-weight: 600;
+}
 .setting-text {
   display: flex;
   flex-direction: column;

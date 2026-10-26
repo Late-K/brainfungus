@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { Session } from "next-auth";
 import AlwaysAvailableToggle from "@/app/components/profile/alwaysAvailableToggle";
+import InstallAppSetting from "@/app/components/profile/installAppSetting";
 import LearntSongsPrivacyToggle from "@/app/components/profile/learntSongsPrivacyToggle";
 import MusicAppSettings from "@/app/components/profile/musicAppSettings";
 import NotificationSettings from "@/app/components/profile/notificationSettings";
@@ -38,6 +39,7 @@ export default function ProfileCard({ session }: { session: Session | null }) {
         <LearntSongsPrivacyToggle />
         <MusicAppSettings />
         <NotificationSettings />
+        <InstallAppSetting />
       </div>
     </div>
   );

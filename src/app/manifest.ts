@@ -5,6 +5,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    // fixed id so browsers treat it as the same installed app even if start_url ever changes
+    id: "/",
     name: "Brain Fungus",
     short_name: "Brain Fungus",
     description: "Organise your bands, setlists and rehearsals",
@@ -13,6 +15,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#0c090a",
     theme_color: "#0c090a",
+    lang: "en",
+    categories: ["music", "productivity"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },

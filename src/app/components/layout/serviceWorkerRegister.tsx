@@ -3,6 +3,8 @@
 // registers /sw.js - production only, since dev chunks aren't hashed and caching them breaks hot reload
 
 import { useEffect } from "react";
+// loaded on every page so chrome's install prompt is caught even before the profile page is opened
+import "@/app/lib/installClient";
 
 export default function ServiceWorkerRegister() {
   useEffect(() => {

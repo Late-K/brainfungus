@@ -1,6 +1,8 @@
 // browser side push helpers - subscribing this device and turning it off again.
 // relies on /sw.js, which is only registered in production (see serviceWorkerRegister)
 
+import { isIos, isStandalone } from "@/app/lib/installClient";
+
 export function isPushSupported() {
   return (
     process.env.NODE_ENV === "production" &&
@@ -12,9 +14,7 @@ export function isPushSupported() {
 
 // ios only allows push once the app has been added to the home screen
 export function needsHomeScreenInstall() {
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
-  return isIos && !isStandalone;
+  return isIos() && !isStandalone();
 }
 
 // the vapid key is base64url, but pushManager wants raw bytes

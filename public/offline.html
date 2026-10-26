@@ -1,0 +1,78 @@
+<!doctype html>
+<!-- shown by the service worker when a page can't load because there's no connection.
+     plain html with inline styles, since nothing else is guaranteed to be cached -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0c090a" />
+    <title>Offline - Brain Fungus</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #fff2fa;
+        background-color: #0c090a;
+        background-image:
+          radial-gradient(circle at 20% -5%, rgba(255, 76, 220, 0.22), transparent 34%),
+          radial-gradient(circle at 88% -12%, rgba(255, 77, 166, 0.2), transparent 38%);
+        background-repeat: no-repeat;
+      }
+      .card {
+        max-width: 22rem;
+        text-align: center;
+        padding: 2rem 1.5rem;
+        border: 1px solid #442d44;
+        border-radius: 16px;
+        background: #1a1215;
+      }
+      img {
+        width: 72px;
+        height: 72px;
+        border-radius: 16px;
+      }
+      h1 {
+        margin: 1rem 0 0.5rem;
+        font-size: 1.25rem;
+      }
+      p {
+        margin: 0 0 1.5rem;
+        line-height: 1.45;
+        color: #bc9ebc;
+      }
+      button {
+        border: none;
+        border-radius: 10px;
+        padding: 0.7rem 1.25rem;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #fff;
+        background: #b75ab9;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #a343a6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <img src="/icons/icon-192.png" alt="" />
+      <h1>You're offline</h1>
+      <p>Brain Fungus needs a connection to load your bands. Check your signal or Wi-Fi and try again.</p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </div>
+    <script>
+      // reload by itself once the connection comes back
+      window.addEventListener("online", () => location.reload());
+    </script>
+  </body>
+</html>

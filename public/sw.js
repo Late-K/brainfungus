@@ -1,11 +1,19 @@
-// service worker - only caches static build files and icons.
+// service worker - only caches static build files and icons, plus an offline page.
 // pages and /api responses are never cached, since they're per-user and behind auth
 
 // bump this to throw away old cached files
-const CACHE = "brainfungus-static-v1";
+const CACHE = "brainfungus-static-v2";
 
-self.addEventListener("install", () => {
-  self.skipWaiting();
+// shown instead of the browser's error screen when a page can't load
+const OFFLINE_URL = "/offline.html";
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll([OFFLINE_URL, "/icons/icon-192.png"]))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -15,6 +23,8 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))
       )
+      // lets page requests start while the worker boots, so going through it doesn't slow pages down
+      .then(() => self.registration.navigationPreload?.enable())
       .then(() => self.clients.claim())
   );
 });
@@ -25,6 +35,20 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // pages always come from the network - the offline page is only a fallback when that fails
+  if (request.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          return (await event.preloadResponse) || (await fetch(request));
+        } catch {
+          return caches.match(OFFLINE_URL);
+        }
+      })()
+    );
+    return;
+  }
 
   // next's build files have content hashes in their names so they never change - safe to serve from cache
   const isStatic = url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/");
