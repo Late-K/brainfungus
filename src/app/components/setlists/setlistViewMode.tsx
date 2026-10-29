@@ -1,9 +1,17 @@
 ﻿"use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Setlist, LearntMap } from "@/app/types";
+import {
+  Setlist,
+  LearntMap,
+  DeezerResult,
+  BandCover,
+  ProfileLearntSong,
+} from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import SetlistSongList from "@/app/components/setlists/setlistSongList";
+import SetlistSongPickers from "@/app/components/setlists/setlistSongPickers";
 
 interface SetlistViewModeProps {
   bandId: string;
@@ -11,17 +19,39 @@ interface SetlistViewModeProps {
   songsPrivate: boolean;
   setlist: Setlist;
   isDeleting: boolean;
+  isSaving: boolean;
   learntMap: LearntMap;
   learningIds: Set<string>;
   togglingIds: Set<string>;
   userEmail: string | null | undefined;
   totalDuration: number;
   progress: number;
-  onStartEdit: () => void;
+  onRename: (name: string) => Promise<boolean>;
   onToggleActive: () => void;
   onDelete: () => void;
   onToggleLearnt: (songId: string) => void;
   onToggleLearning: (songId: string) => void;
+  onMoveSong: (index: number, direction: "up" | "down") => void;
+  onRemoveSong: (songId: string) => void;
+  onAddFromSearch: (result: DeezerResult) => void;
+  onToggleCustomSong: (
+    songId: string,
+    title: string,
+    duration?: number,
+    image?: string,
+  ) => void;
+  onToggleCustomAlbum: (
+    albumName: string,
+    songs: Array<{
+      id: string;
+      title: string;
+      duration?: number;
+      image?: string;
+    }>,
+  ) => void;
+  onToggleCoverSong: (cover: BandCover) => void;
+  onToggleProfileSong: (song: ProfileLearntSong) => void;
+  isSongSelected: (songId: string) => boolean;
 }
 
 export default function SetlistViewMode({
@@ -29,49 +59,106 @@ export default function SetlistViewMode({
   songsPrivate,
   setlist,
   isDeleting,
+  isSaving,
   learntMap,
   learningIds,
   togglingIds,
   userEmail,
   totalDuration,
   progress,
-  onStartEdit,
+  onRename,
   onToggleActive,
   onDelete,
   onToggleLearnt,
   onToggleLearning,
+  onMoveSong,
+  onRemoveSong,
+  onAddFromSearch,
+  onToggleCustomSong,
+  onToggleCustomAlbum,
+  onToggleCoverSong,
+  onToggleProfileSong,
+  isSongSelected,
 }: SetlistViewModeProps) {
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+
+  const startRename = () => {
+    setNameDraft(setlist.name);
+    setIsRenaming(true);
+  };
+
+  const submitRename = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (await onRename(nameDraft)) setIsRenaming(false);
+  };
+
   return (
-    <div className="detail-layout">
+    <div className="detail-layout detail-layout-with-tools">
       <div
         className={`card margin-bottom detail-layout-side${setlist.isActive ? " card-panel-active" : ""}`}
       >
         <div className="stack margin-bottom">
-          <div className="row">
-            <h1 className="heading-small">{setlist.name}</h1>
-            <Link
-              href={`/bands/${bandId}/setlists`}
-              className="button button-tertiary ml-auto"
-            >
-              Back to Setlists
-            </Link>
-          </div>
+          {isRenaming ? (
+            <form onSubmit={submitRename} className="stack">
+              <label htmlFor="setlist-name" className="label">
+                Setlist Name
+              </label>
+              <input
+                id="setlist-name"
+                type="text"
+                className="input"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                placeholder="Setlist name"
+                autoFocus
+              />
+              <div className="inline-actions">
+                <button
+                  type="submit"
+                  disabled={!nameDraft.trim()}
+                  className="button button-primary button-small"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRenaming(false)}
+                  className="button button-tertiary button-small"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="row">
+              <h1 className="heading-small">{setlist.name}</h1>
+              <Link
+                href={`/bands/${bandId}/setlists`}
+                className="button button-tertiary ml-auto"
+              >
+                Back to Setlists
+              </Link>
+            </div>
+          )}
           <div className="inline-actions">
-            <button onClick={onStartEdit} className="button button-tertiary">
-              {" "}
-              Edit
-            </button>
+            {!isRenaming && (
+              <button onClick={startRename} className="button button-tertiary">
+                Rename
+              </button>
+            )}
             <button onClick={onToggleActive} className="button button-tertiary">
               {setlist.isActive ? "Deactivate" : "Set Active"}
             </button>
-            {!setlist.isActive && (
-              <button
-                onClick={onDelete}
-                disabled={isDeleting}
-                className="button button-tertiary button-tertiary-danger"
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
-              </button>
+            <button
+              onClick={onDelete}
+              disabled={isDeleting}
+              className="button button-tertiary button-tertiary-danger"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+            {isSaving && (
+              <span className="meta-text text-small">Saving...</span>
             )}
           </div>
         </div>
@@ -108,7 +195,7 @@ export default function SetlistViewMode({
         </div>
       </div>
 
-      <div className="card">
+      <div className="card detail-layout-main">
         <h2 className="heading">Songs</h2>
 
         <SetlistSongList
@@ -122,6 +209,24 @@ export default function SetlistViewMode({
           togglingIds={togglingIds}
           onToggleLearnt={onToggleLearnt}
           onToggleLearning={onToggleLearning}
+          onMoveSong={onMoveSong}
+          onRemoveSong={onRemoveSong}
+        />
+      </div>
+
+      {/* songs picked here are added to (or removed from) the setlist straight away */}
+      <div className="detail-layout-tools">
+        <h2 className="heading">Add Songs</h2>
+        <SetlistSongPickers
+          bandId={bandId}
+          collapsible
+          selectedSongs={setlist.songs}
+          onAddFromSearch={onAddFromSearch}
+          onToggleCustomSong={onToggleCustomSong}
+          onToggleCustomAlbum={onToggleCustomAlbum}
+          onToggleCoverSong={onToggleCoverSong}
+          onToggleProfileSong={onToggleProfileSong}
+          isSongSelected={isSongSelected}
         />
       </div>
     </div>

@@ -1541,6 +1541,11 @@ h4 {
   cursor: default;
 }
 
+/* "Add Songs" heading above the setlist page's pickers, inset to line up with the cards */
+.detail-layout-tools > .heading {
+  margin: 1.5rem 1rem 0;
+}
+
 .song-info,
 .song-details {
   flex: 1;
@@ -1750,6 +1755,188 @@ h4 {
   margin-top: 0.3rem;
   cursor: pointer;
   accent-color: var(--primary);
+}
+
+/* SONG PICKERS - lists of songs to tick into a setlist */
+.picker-trigger,
+.picker-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+}
+.picker-trigger {
+  padding: 0.4rem 0.35rem;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font-family: var(--font-display), "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.picker-trigger:hover {
+  background: var(--card-hover);
+}
+.picker-trigger .accordion-icon {
+  color: var(--muted);
+}
+.picker-title {
+  flex: 1;
+  min-width: 0;
+}
+.picker-count {
+  flex-shrink: 0;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+/* clear of the top bar when Show less scrolls the picker back into view */
+.picker {
+  scroll-margin-top: calc(var(--topbar-height) + 1rem);
+}
+.picker-show-less {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.45rem;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.picker-show-less:hover {
+  background: var(--card-hover);
+  color: var(--fg);
+}
+.picker-show-less span {
+  font-size: 0.6rem;
+}
+/* open lists can be height-capped, so their rows must not squash to fit */
+.picker-list > * {
+  flex-shrink: 0;
+}
+.picker .songs-grid {
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+}
+.picker-group-label {
+  margin: 0.75rem 0 0.35rem 0.35rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.picker-group-label + .songs-grid {
+  margin-top: 0;
+}
+/* the whole row is the tick target, highlighted once the song is in */
+.picker .song-checkbox label {
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.picker .song-checkbox label:hover {
+  background: var(--card-hover);
+}
+.picker .song-checkbox label:has(input:checked) {
+  background: rgba(183, 90, 185, 0.14);
+  border-color: rgba(183, 90, 185, 0.7);
+}
+.picker .song-checkbox input[type="checkbox"] {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+.picker .song-thumbnail {
+  width: 40px;
+  height: 40px;
+}
+.song-thumbnail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--muted);
+}
+.picker .song-details .item-title,
+.picker .song-details .meta-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.picker .song-details .item-title {
+  font-size: 0.95rem;
+}
+.picker .song-details .meta-text {
+  margin-top: 0.1rem;
+}
+/* custom song albums: quieter than the picker's own header */
+.picker .accordion-header {
+  gap: 0.5rem;
+  padding-right: 0.5rem;
+  background: var(--surface);
+}
+.picker .accordion-header .accordion-trigger {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.6rem;
+  background: none;
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+.picker .accordion-header .accordion-trigger:hover {
+  background: var(--card-hover);
+}
+.picker-album-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.picker .accordion-header .accordion-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.picker-album-count {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+.picker .accordion-header .button {
+  flex-shrink: 0;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.picker .accordion-content {
+  gap: 0.25rem;
+  padding: 0.35rem;
+  border-top: 1px solid var(--border);
+  background: none;
 }
 
 /* CHAT */
@@ -3360,17 +3547,6 @@ h4 {
   font-size: 0.82rem;
   white-space: nowrap;
 }
-.compare-learnt-button {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.compare-learnt-buttons {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.35rem;
-  flex-shrink: 0;
-}
 .notification-error {
   margin: 0 1rem 0.85rem;
 }
@@ -3652,16 +3828,51 @@ h4 {
     margin-bottom: 0;
   }
 
-  /* setlist view: summary pinned left, songs right */
+  /* setlist view: summary and song pickers left, songs right.
+     the 1fr row stops the long song list stretching the summary row */
   .detail-layout {
     display: grid;
     grid-template-columns: minmax(300px, 24rem) minmax(0, 1fr);
-    gap: 1.5rem;
+    grid-template-rows: auto 1fr;
+    column-gap: 1.5rem;
     align-items: start;
   }
   .detail-layout-side {
+    grid-column: 1;
+    grid-row: 1;
     position: sticky;
     top: calc(var(--topbar-height) + 1.5rem);
+  }
+  /* setlists have the song pickers under the summary, which a pinned summary
+     would slide over */
+  .detail-layout-with-tools .detail-layout-side {
+    position: static;
+  }
+  .detail-layout-main {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  /* stretched down beside the song list so the search has room to stay pinned */
+  .detail-layout-tools {
+    grid-column: 1;
+    grid-row: 2;
+    min-width: 0;
+    align-self: stretch;
+  }
+  /* open song pickers scroll inside themselves rather than pushing the search down */
+  .detail-layout-tools .picker-list {
+    max-height: 22rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.25rem;
+    scrollbar-width: thin;
+  }
+  .detail-layout-tools .song-picker-search {
+    position: sticky;
+    top: calc(var(--topbar-height) + 1.5rem);
+    max-height: calc(100dvh - var(--topbar-height) - 3rem);
+    overflow-y: auto;
+    border-radius: var(--radius);
   }
   .detail-layout-side .stat-grid {
     flex-wrap: wrap;

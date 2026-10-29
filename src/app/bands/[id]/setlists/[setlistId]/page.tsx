@@ -5,7 +5,6 @@
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import SetlistEditMode from "@/app/components/setlists/setlistEditMode";
 import SetlistViewMode from "@/app/components/setlists/setlistViewMode";
 import { useSetlistDetailPage } from "@/app/hooks/useSetlistDetailPage";
 
@@ -46,35 +45,7 @@ export default function SetlistDetailPage({
     );
   }
 
-  const setlist = setlistDetailPage.setlist;
-
-  if (setlistDetailPage.editor.isEditing) {
-    return (
-      <div className="page-container">
-        <SetlistEditMode
-          bandId={setlistDetailPage.bandId!}
-          collapseSongPickers
-          editName={setlistDetailPage.editor.editName}
-          setEditName={setlistDetailPage.editor.setEditName}
-          editSongs={setlistDetailPage.editor.editSongs}
-          isSaving={setlistDetailPage.editor.isSaving}
-          onSave={() =>
-            setlistDetailPage.editor.handleSave(setlistDetailPage.setlistId!)
-          }
-          onCancel={setlistDetailPage.editor.cancelEditing}
-          onRemoveSong={setlistDetailPage.editor.handleRemoveEditSong}
-          onMoveSong={setlistDetailPage.editor.handleMoveSong}
-          onAddFromSearch={setlistDetailPage.editor.handleAddFromSearch}
-          onToggleCustomSong={setlistDetailPage.editor.handleToggleCustomSong}
-          onToggleCustomAlbum={setlistDetailPage.editor.handleToggleCustomAlbum}
-          onToggleCoverSong={setlistDetailPage.editor.handleToggleCoverSong}
-          onToggleProfileSong={setlistDetailPage.editor.handleToggleProfileSong}
-          isEditSongSelected={setlistDetailPage.editor.isEditSongSelected}
-          saveLabel="Save Changes"
-        />
-      </div>
-    );
-  }
+  const editor = setlistDetailPage.editor;
 
   return (
     <div className="page-container">
@@ -83,19 +54,26 @@ export default function SetlistDetailPage({
         songsPrivate={setlistDetailPage.band?.customSongsPrivate === true}
         setlist={setlistDetailPage.setlist}
         isDeleting={setlistDetailPage.isDeleting}
+        isSaving={setlistDetailPage.isSaving}
         learntMap={setlistDetailPage.learntMap}
         learningIds={setlistDetailPage.learningIds}
         togglingIds={setlistDetailPage.togglingIds}
         userEmail={session.user?.email}
         totalDuration={setlistDetailPage.totalDuration}
         progress={setlistDetailPage.progress}
-        onStartEdit={() =>
-          setlistDetailPage.editor.startEditing(setlist.name, setlist.songs)
-        }
+        onRename={setlistDetailPage.handleRename}
         onToggleActive={setlistDetailPage.handleToggleActive}
         onDelete={setlistDetailPage.handleDelete}
         onToggleLearnt={setlistDetailPage.handleToggleLearnt}
         onToggleLearning={setlistDetailPage.handleToggleLearning}
+        onMoveSong={editor.handleMoveSong}
+        onRemoveSong={editor.handleRemoveSong}
+        onAddFromSearch={editor.handleAddFromSearch}
+        onToggleCustomSong={editor.handleToggleCustomSong}
+        onToggleCustomAlbum={editor.handleToggleCustomAlbum}
+        onToggleCoverSong={editor.handleToggleCoverSong}
+        onToggleProfileSong={editor.handleToggleProfileSong}
+        isSongSelected={editor.isSongSelected}
       />
     </div>
   );

@@ -1,13 +1,14 @@
 ﻿"use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   deactivateSetlistAction,
   deleteSetlistAction,
   setActiveSetlistAction,
+  updateSetlistAction,
 } from "@/app/actions/setlists";
-import { Band, Setlist } from "@/app/types";
+import { Band, Setlist, Song } from "@/app/types";
 import { getProgress } from "@/app/lib/setlistUtils";
 import { useSetlistEditor } from "@/app/hooks/useSetlistEditor";
 import { useBandLearntStatus } from "@/app/hooks/useBandLearntStatus";
@@ -25,6 +26,9 @@ export function useSetlistDetailPage(
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [memberCount, setMemberCount] = useState(0);
+  const [pendingSaves, setPendingSaves] = useState(0);
+  // saves run one at a time so a slow request can't overwrite a newer one
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const {
     learntMap,
     learningIds,
@@ -32,12 +36,6 @@ export function useSetlistDetailPage(
     handleToggleLearnt,
     handleToggleLearning,
   } = useBandLearntStatus(bandId);
-
-  const editor = useSetlistEditor({
-    onSaveSuccess: (name, songs) => {
-      setSetlist((prev) => (prev ? { ...prev, name, songs } : prev));
-    },
-  });
 
   useEffect(() => {
     async function fetchBand() {
@@ -91,6 +89,55 @@ export function useSetlistDetailPage(
     fetchData();
   }, [fetchData]);
 
+  // refetch without the loading screen, used to undo a change that failed to save
+  const reloadSetlist = async () => {
+    try {
+      const res = await fetch(`/api/setlists/${setlistId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSetlist(data.setlist);
+      }
+    } catch (err) {
+      console.error("Failed to reload setlist:", err);
+    }
+  };
+
+  // changes show straight away and are saved in the background
+  const saveSetlist = (name: string, songs: Song[]) => {
+    if (!setlistId) return Promise.resolve(false);
+    setSetlist((prev) => (prev ? { ...prev, name, songs } : prev));
+    setPendingSaves((count) => count + 1);
+
+    const save = saveQueue.current.then(async () => {
+      try {
+        unwrapAction(await updateSetlistAction(setlistId, name, songs));
+        return true;
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to save setlist");
+        await reloadSetlist();
+        return false;
+      } finally {
+        setPendingSaves((count) => count - 1);
+      }
+    });
+    saveQueue.current = save.then(() => undefined);
+    return save;
+  };
+
+  const editor = useSetlistEditor({
+    songs: setlist?.songs ?? [],
+    onSongsChange: (songs) => {
+      if (setlist) saveSetlist(setlist.name, songs);
+    },
+  });
+
+  const handleRename = async (name: string) => {
+    const trimmed = name.trim();
+    if (!setlist || !trimmed) return false;
+    if (trimmed === setlist.name) return true;
+    return saveSetlist(trimmed, setlist.songs);
+  };
+
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this setlist?")) return;
     if (!setlistId) return;
@@ -139,6 +186,8 @@ export function useSetlistDetailPage(
     totalDuration,
     progress,
     editor,
+    isSaving: pendingSaves > 0,
+    handleRename,
     handleDelete,
     handleToggleActive,
     handleToggleLearnt,

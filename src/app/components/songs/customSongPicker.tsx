@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { CustomSong } from "@/app/types";
 import { useFetchData } from "@/app/hooks/useFetchData";
+import PickerHeader, {
+  PickerShowLess,
+  pickerCountLabel,
+} from "@/app/components/songs/pickerHeader";
 
 interface CustomSongPickerProps {
   bandId: string;
@@ -100,12 +104,20 @@ export default function CustomSongPicker({
             onToggleSong(song._id, song.title, song.duration, songImage(song))
           }
         />
-        {songImage(song) && (
+        {/* a placeholder keeps titles lined up when a song has no image */}
+        {songImage(song) ? (
           <img
             src={songImage(song)}
             alt=""
             className="song-thumbnail song-thumbnail-small"
           />
+        ) : (
+          <span
+            className="song-thumbnail song-thumbnail-small song-thumbnail-placeholder"
+            aria-hidden="true"
+          >
+            &#9835;
+          </span>
         )}
         <div className="song-details">
           <span className="item-title">{song.title}</span>
@@ -120,31 +132,19 @@ export default function CustomSongPicker({
   );
 
   return (
-    <section className="card">
-      {collapsible ? (
-        <button
-          type="button"
-          className="accordion-trigger"
-          onClick={() => setIsOpen((prev) => !prev)}
-        >
-          <span
-            className={`accordion-icon ${isOpen ? "accordion-icon-open" : ""}`}
-          >
-            &#9654;
-          </span>
-          <span className="accordion-title">{title}</span>
-          <span className="accordion-count">
-            {customSongs.length} song{customSongs.length !== 1 ? "s" : ""}
-          </span>
-        </button>
-      ) : (
-        <h3>{title}</h3>
-      )}
+    <section className="card picker">
+      <PickerHeader
+        title={title}
+        total={customSongs.length}
+        collapsible={collapsible}
+        isOpen={isOpen}
+        onToggle={() => setIsOpen((prev) => !prev)}
+      />
 
       {error && <p className="alert alert-error">{error}</p>}
 
       {isOpen && (
-        <div className="songs-grid">
+        <div className="songs-grid picker-list">
           {albums.map(([albumName, albumSongs]) => {
             const allSelected = isAlbumSelected(albumSongs);
             const albumImage = albumSongs.find(
@@ -167,10 +167,12 @@ export default function CustomSongPicker({
                     {albumImage && (
                       <img src={albumImage} alt="" className="accordion-thumb" />
                     )}
-                    <span className="accordion-title">{albumName}</span>
-                    <span className="accordion-count">
-                      {albumSongs.length} song
-                      {albumSongs.length !== 1 ? "s" : ""}
+                    {/* count sits under the name so long names keep their room */}
+                    <span className="picker-album-text">
+                      <span className="accordion-title">{albumName}</span>
+                      <span className="picker-album-count">
+                        {pickerCountLabel(albumSongs.length)}
+                      </span>
                     </span>
                   </button>
                   {onToggleAlbum && (
@@ -203,9 +205,17 @@ export default function CustomSongPicker({
             );
           })}
 
+          {albums.length > 0 && looseSongs.length > 0 && (
+            <h4 className="picker-group-label">Other songs</h4>
+          )}
           {looseSongs.map(renderSongCheckbox)}
         </div>
       )}
+      <PickerShowLess
+        collapsible={collapsible}
+        isOpen={isOpen}
+        onCollapse={() => setIsOpen(false)}
+      />
     </section>
   );
 }

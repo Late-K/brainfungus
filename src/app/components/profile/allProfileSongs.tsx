@@ -10,18 +10,12 @@ import {
 } from "@/app/actions/learntSongs";
 import { ProfileLearntSong, ProfileSongList } from "@/app/types";
 import {
-  formatDuration,
   privateSongBandId,
   profileSongToSetlistSong,
 } from "@/app/lib/setlistUtils";
 import DeezerSearch from "@/app/components/songs/deezerSearch";
-import SongInfo from "@/app/components/songs/songInfo";
-import SongAudioPlayer from "@/app/components/songs/songAudioPlayer";
-import OpenInMusicAppLink from "@/app/components/songs/openInMusicAppLink";
-import {
-  LearningToggleButton,
-  LearntToggleButton,
-} from "@/app/components/songs/songLearntStatus";
+import SongCard, { CustomSongNote } from "@/app/components/songs/songCard";
+import { LearntStatusRow } from "@/app/components/songs/songLearntStatus";
 import SortControls from "@/app/components/ui/sortControls";
 import AddToSonglist from "@/app/components/songs/addToSonglist";
 import { compareByDate, safeTimestamp } from "@/app/lib/sortUtils";
@@ -210,77 +204,57 @@ export default function AllProfileSongs({ list }: { list: ProfileSongList }) {
         ) : (
           <div className="list list-top">
             {sortedSongs.map((song) => (
-              <div key={song.id} className="card-item card-item-compact">
-                <div className="song-row">
-                  <SongInfo
-                    image={song.image}
-                    imageAlt={song.title}
-                    title={song.title}
-                    meta={[song.artist, song.album].filter(Boolean).join(" — ")}
-                    extra={
-                      song.isCustom ? (
-                        <>
-                          {song.bandName ? (
-                            <>
-                              Custom song from <strong>{song.bandName}</strong>
-                            </>
-                          ) : (
-                            "Custom song"
-                          )}
-                          {song.notes ? ` - Note: ${song.notes}` : ""}
-                        </>
-                      ) : undefined
-                    }
-                  />
-                  {song.duration ? (
-                    <span className="song-duration">
-                      {formatDuration(song.duration)}
-                    </span>
-                  ) : null}
-                  <button
-                    onClick={() => handleRemoveSong(song)}
-                    disabled={savingIds.has(song.songId)}
-                    className="button button-small button-tertiary button-tertiary-danger"
-                  >
-                    Remove
-                  </button>
-                </div>
-
-                <SongAudioPlayer
-                  src={song.preview}
-                  deezerTrackId={!song.isCustom ? song.songId : undefined}
-                  unavailableLabel="Audio unavailable"
-                />
-                <OpenInMusicAppLink
-                  deezerTrackId={!song.isCustom ? song.songId : undefined}
-                  title={song.title}
-                  artist={song.artist}
-                />
-
-                <div className="learnt-row">
-                  {list === "learnt" ? (
-                    <LearningToggleButton
-                      isLearning={false}
-                      isLearnt
-                      isToggling={savingIds.has(song.songId)}
-                      onToggle={() => handleMoveSong(song)}
+              <SongCard
+                key={song.id}
+                image={song.image}
+                title={song.title}
+                artist={song.artist}
+                album={song.album}
+                extra={
+                  song.isCustom ? (
+                    <CustomSongNote
+                      bandName={song.bandName}
+                      notes={song.notes}
                     />
-                  ) : (
-                    <LearntToggleButton
-                      isLearnt={false}
-                      isToggling={savingIds.has(song.songId)}
-                      onToggle={() => handleMoveSong(song)}
+                  ) : undefined
+                }
+                duration={song.duration}
+                audioSrc={song.preview}
+                deezerTrackId={!song.isCustom ? song.songId : undefined}
+                unavailableLabel="Audio unavailable"
+                actions={
+                  <>
+                    <AddToSonglist
+                      song={profileSongToSetlistSong(song)}
+                      onlyBandId={privateSongBandId(song)}
                     />
-                  )}
-                </div>
-
-                <div className="learnt-row">
-                  <AddToSonglist
-                    song={profileSongToSetlistSong(song)}
-                    onlyBandId={privateSongBandId(song)}
-                  />
-                </div>
-              </div>
+                    <button
+                      onClick={() => handleRemoveSong(song)}
+                      disabled={savingIds.has(song.songId)}
+                      className="button button-small button-tertiary button-tertiary-danger"
+                    >
+                      Remove
+                    </button>
+                  </>
+                }
+              >
+                {/* turning off this list's toggle removes the song, the other moves it across */}
+                <LearntStatusRow
+                  isLearnt={list === "learnt"}
+                  isLearning={list === "learning"}
+                  isToggling={savingIds.has(song.songId)}
+                  onToggleLearnt={() =>
+                    list === "learnt"
+                      ? handleRemoveSong(song)
+                      : handleMoveSong(song)
+                  }
+                  onToggleLearning={() =>
+                    list === "learning"
+                      ? handleRemoveSong(song)
+                      : handleMoveSong(song)
+                  }
+                />
+              </SongCard>
             ))}
           </div>
         )}

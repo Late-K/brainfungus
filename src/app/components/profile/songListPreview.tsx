@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { ProfileLearntSong } from "@/app/types";
-import { formatDuration } from "@/app/lib/setlistUtils";
-import SongInfo from "@/app/components/songs/songInfo";
+import {
+  SongPreviewRow,
+  CustomSongNote,
+} from "@/app/components/songs/songCard";
 
 const preview_limit = 3;
 
@@ -66,44 +68,19 @@ export default function SongListPreview({
       ) : (
         <div className="list">
           {preview.map((song) => (
-            <div
+            <SongPreviewRow
               key={song.id}
-              className="card-item card-item-stack card-item-regular"
-            >
-              <div className="song-row">
-                <SongInfo
-                  image={song.image}
-                  imageAlt={song.title}
-                  title={song.title}
-                  meta={[song.artist, song.album].filter(Boolean).join(" — ")}
-                  extra={
-                    song.isCustom ? (
-                      <>
-                        {song.bandName ? (
-                          <>
-                            Custom song from <strong>{song.bandName}</strong>
-                          </>
-                        ) : (
-                          "Custom song"
-                        )}
-                        {song.notes ? ` - Note: ${song.notes}` : ""}
-                      </>
-                    ) : undefined
-                  }
-                  containerClassName="song-info"
-                  titleAs="h3"
-                  metaAs="p"
-                  extraAs="p"
-                  metaClassName="meta-text meta-text-small margin-top"
-                  extraClassName="meta-text meta-text-small margin-top"
-                />
-                {song.duration ? (
-                  <span className="song-duration">
-                    {formatDuration(song.duration)}
-                  </span>
-                ) : null}
-              </div>
-            </div>
+              image={song.image}
+              title={song.title}
+              artist={song.artist}
+              album={song.album}
+              extra={
+                song.isCustom ? (
+                  <CustomSongNote bandName={song.bandName} notes={song.notes} />
+                ) : undefined
+              }
+              duration={song.duration}
+            />
           ))}
 
           {hasMore && href && (

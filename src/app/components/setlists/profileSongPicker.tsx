@@ -9,6 +9,9 @@ import { ProfileLearntSong } from "@/app/types";
 import SongInfo from "@/app/components/songs/songInfo";
 import { useFetchData } from "@/app/hooks/useFetchData";
 import { canAddProfileSong } from "@/app/lib/setlistUtils";
+import PickerHeader, {
+  PickerShowLess,
+} from "@/app/components/songs/pickerHeader";
 
 interface ProfileSongPickerProps {
   bandId: string;
@@ -58,62 +61,58 @@ export default function ProfileSongPicker({
   const error = learnt.error || learning.error;
 
   return (
-    <section className="card">
-      {collapsible ? (
-        <button
-          type="button"
-          className="accordion-trigger"
-          onClick={() => setIsOpen((prev) => !prev)}
-        >
-          <span
-            className={`accordion-icon ${isOpen ? "accordion-icon-open" : ""}`}
-          >
-            &#9654;
-          </span>
-          <span className="accordion-title">{title}</span>
-          <span className="accordion-count">
-            {songCount} song{songCount !== 1 ? "s" : ""}
-          </span>
-        </button>
-      ) : (
-        <h3>{title}</h3>
-      )}
+    <section className="card picker">
+      <PickerHeader
+        title={title}
+        total={songCount}
+        collapsible={collapsible}
+        isOpen={isOpen}
+        onToggle={() => setIsOpen((prev) => !prev)}
+      />
 
       {error && <p className="alert alert-error">{error}</p>}
 
-      {isOpen &&
-        groups.map((group) => (
-          <div key={group.label}>
-            <h4 className="margin-top">{group.label}</h4>
-            <div className="songs-grid">
-              {group.songs.map((song) => (
-                <div key={song.id} className="song-checkbox">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={selectedSongIds.has(song.songId)}
-                      onChange={() => onToggleSong(song)}
-                    />
-                    <SongInfo
-                      image={song.image}
-                      imageAlt={song.title}
-                      title={song.title}
-                      meta={
-                        song.isCustom
-                          ? `Custom song from ${song.bandName ?? "another band"}`
-                          : [song.artist, song.album]
-                              .filter(Boolean)
-                              .join(" - ")
-                      }
-                      containerClassName="song-details"
-                      metaClassName="meta-text meta-text-small margin-top"
-                    />
-                  </label>
-                </div>
-              ))}
+      {isOpen && (
+        <div className="picker-list">
+          {groups.map((group) => (
+            <div key={group.label}>
+              <h4 className="picker-group-label">{group.label}</h4>
+              <div className="songs-grid">
+                {group.songs.map((song) => (
+                  <div key={song.id} className="song-checkbox">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={selectedSongIds.has(song.songId)}
+                        onChange={() => onToggleSong(song)}
+                      />
+                      <SongInfo
+                        image={song.image}
+                        imageAlt={song.title}
+                        title={song.title}
+                        meta={
+                          song.isCustom
+                            ? `Custom song from ${song.bandName ?? "another band"}`
+                            : [song.artist, song.album]
+                                .filter(Boolean)
+                                .join(" - ")
+                        }
+                        containerClassName="song-details"
+                        metaClassName="meta-text meta-text-small margin-top"
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+      )}
+      <PickerShowLess
+        collapsible={collapsible}
+        isOpen={isOpen}
+        onCollapse={() => setIsOpen(false)}
+      />
     </section>
   );
 }

@@ -1,79 +1,44 @@
-// custom hook for setlist editor logic
+// custom hook for adding, removing and reordering a setlist's songs.
+// every change is handed to onSongsChange with the full new song list
 
 "use client";
 
-import { useState } from "react";
-import {
-  Song,
-  DeezerResult,
-  BandCover,
-  ProfileLearntSong,
-} from "@/app/types";
-import { updateSetlistAction } from "@/app/actions/setlists";
+import { Song, DeezerResult, BandCover, ProfileLearntSong } from "@/app/types";
 import {
   coverToSetlistSong,
   profileSongToSetlistSong,
 } from "@/app/lib/setlistUtils";
-import { unwrapAction } from "@/app/lib/actionResult";
 
 interface UseSetlistEditorOptions {
-  onSaveSuccess?: (name: string, songs: Song[]) => void;
+  songs: Song[];
+  onSongsChange: (songs: Song[]) => void;
 }
 
-export function useSetlistEditor(options?: UseSetlistEditorOptions) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editSongs, setEditSongs] = useState<Song[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const startEditing = (name: string, songs: Song[]) => {
-    setEditName(name);
-    setEditSongs(songs);
-    setIsEditing(true);
-  };
-
-  const cancelEditing = () => {
-    setIsEditing(false);
-  };
-
-  const handleSave = async (setlistId: string) => {
-    if (!editName.trim()) return;
-    try {
-      setIsSaving(true);
-      unwrapAction(await updateSetlistAction(setlistId, editName, editSongs));
-      options?.onSaveSuccess?.(editName.trim(), editSongs);
-      setIsEditing(false);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to save setlist");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleRemoveEditSong = (songId: string) => {
-    setEditSongs((prev) => prev.filter((s) => s.id !== songId));
+export function useSetlistEditor({
+  songs,
+  onSongsChange,
+}: UseSetlistEditorOptions) {
+  const handleRemoveSong = (songId: string) => {
+    onSongsChange(songs.filter((s) => s.id !== songId));
   };
 
   const handleMoveSong = (index: number, direction: "up" | "down") => {
-    setEditSongs((prev) => {
-      const newSongs = [...prev];
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= newSongs.length) return prev;
-      [newSongs[index], newSongs[targetIndex]] = [
-        newSongs[targetIndex],
-        newSongs[index],
-      ];
-      return newSongs;
-    });
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= songs.length) return;
+    const newSongs = [...songs];
+    [newSongs[index], newSongs[targetIndex]] = [
+      newSongs[targetIndex],
+      newSongs[index],
+    ];
+    onSongsChange(newSongs);
   };
 
   const toggleSong = (song: Song) => {
-    setEditSongs((prev) => {
-      if (prev.some((s) => s.id === song.id)) {
-        return prev.filter((s) => s.id !== song.id);
-      }
-      return [...prev, song];
-    });
+    if (songs.some((s) => s.id === song.id)) {
+      onSongsChange(songs.filter((s) => s.id !== song.id));
+    } else {
+      onSongsChange([...songs, song]);
+    }
   };
 
   const handleAddFromSearch = (result: DeezerResult) => {
@@ -106,38 +71,37 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
 
   const handleToggleCustomAlbum = (
     albumName: string,
-    songs: Array<{
+    albumSongs: Array<{
       id: string;
       title: string;
       duration?: number;
       image?: string;
     }>,
   ) => {
-    setEditSongs((prev) => {
-      const albumSongIds = songs.map((song) => song.id);
-      const allSelected = albumSongIds.every((id) =>
-        prev.some((song) => song.id === id),
-      );
+    const albumSongIds = albumSongs.map((song) => song.id);
+    const allSelected = albumSongIds.every((id) =>
+      songs.some((song) => song.id === id),
+    );
 
-      if (allSelected) {
-        return prev.filter((song) => !albumSongIds.includes(song.id));
-      }
+    if (allSelected) {
+      onSongsChange(songs.filter((song) => !albumSongIds.includes(song.id)));
+      return;
+    }
 
-      const existingIds = new Set(prev.map((song) => song.id));
+    const existingIds = new Set(songs.map((song) => song.id));
 
-      const songsToAdd: Song[] = songs
-        .filter((song) => !existingIds.has(song.id))
-        .map((song) => ({
-          id: song.id,
-          title: song.title,
-          album: albumName,
-          duration: song.duration ?? 0,
-          image: song.image,
-          isCustom: true,
-        }));
+    const songsToAdd: Song[] = albumSongs
+      .filter((song) => !existingIds.has(song.id))
+      .map((song) => ({
+        id: song.id,
+        title: song.title,
+        album: albumName,
+        duration: song.duration ?? 0,
+        image: song.image,
+        isCustom: true,
+      }));
 
-      return [...prev, ...songsToAdd];
-    });
+    onSongsChange([...songs, ...songsToAdd]);
   };
 
   const handleToggleCoverSong = (cover: BandCover) => {
@@ -148,25 +112,16 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     toggleSong(profileSongToSetlistSong(song));
   };
 
-  const isEditSongSelected = (songId: string) =>
-    editSongs.some((s) => s.id === songId);
+  const isSongSelected = (songId: string) => songs.some((s) => s.id === songId);
 
   return {
-    isEditing,
-    editName,
-    setEditName,
-    editSongs,
-    isSaving,
-    startEditing,
-    cancelEditing,
-    handleSave,
-    handleRemoveEditSong,
+    handleRemoveSong,
     handleMoveSong,
     handleAddFromSearch,
     handleToggleCustomSong,
     handleToggleCustomAlbum,
     handleToggleCoverSong,
     handleToggleProfileSong,
-    isEditSongSelected,
+    isSongSelected,
   };
 }

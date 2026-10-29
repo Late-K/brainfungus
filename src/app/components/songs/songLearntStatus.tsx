@@ -9,23 +9,21 @@ import { useFittingCount } from "@/app/hooks/useFittingCount";
 
 const avatar_size_px = 24;
 
-// the Mark as Learnt / ✓ Learnt toggle, also used on other people's profiles
-export function LearntToggleButton({
+// the Mark as Learnt / ✓ Learnt toggle
+function LearntToggleButton({
   isLearnt,
   isToggling,
   onToggle,
-  className,
 }: {
   isLearnt: boolean;
   isToggling: boolean;
   onToggle: () => void;
-  className?: string;
 }) {
   return (
     <button
       onClick={onToggle}
       disabled={isToggling}
-      className={`button button-small ${isLearnt ? "button-learnt" : "button-tertiary"}${className ? ` ${className}` : ""}`}
+      className={`button button-small ${isLearnt ? "button-learnt" : "button-tertiary"}`}
     >
       {isToggling ? "..." : isLearnt ? "✓ Learnt" : "Mark as Learnt"}
     </button>
@@ -34,25 +32,23 @@ export function LearntToggleButton({
 
 // sits next to the learnt toggle. a learnt song can be put back into
 // learning if it's been forgotten, which takes it off the learnt songs
-export function LearningToggleButton({
+function LearningToggleButton({
   isLearning,
   isLearnt,
   isToggling,
   onToggle,
-  className,
 }: {
   isLearning: boolean;
   isLearnt: boolean;
   isToggling: boolean;
   onToggle: () => void;
-  className?: string;
 }) {
   return (
     <button
       onClick={onToggle}
       disabled={isToggling}
       title={isLearnt ? "Move back to learning" : undefined}
-      className={`button button-small ${isLearning ? "button-learning" : "button-tertiary"}${className ? ` ${className}` : ""}`}
+      className={`button button-small ${isLearning ? "button-learning" : "button-tertiary"}`}
     >
       {isToggling
         ? "..."
@@ -65,34 +61,28 @@ export function LearningToggleButton({
   );
 }
 
-interface SongLearntStatusProps {
-  songId: string;
-  learntMap: LearntMap;
-  learningIds: Set<string>;
-  userEmail: string | null | undefined;
-  togglingIds: Set<string>;
-  onToggleLearnt: (songId: string) => void;
-  onToggleLearning: (songId: string) => void;
+interface LearntStatusRowProps {
+  isLearnt: boolean;
+  isLearning: boolean;
+  isToggling: boolean;
+  onToggleLearnt: () => void;
+  onToggleLearning: () => void;
+  // band members who have learnt the song - left out on profiles
+  learners?: AvailUser[];
 }
 
-export default function SongLearntStatus({
-  songId,
-  learntMap,
-  learningIds,
-  userEmail,
-  togglingIds,
+// the Learning / Learnt toggles under a song in every list
+export function LearntStatusRow({
+  isLearnt,
+  isLearning,
+  isToggling,
   onToggleLearnt,
   onToggleLearning,
-}: SongLearntStatusProps) {
+  learners = [],
+}: LearntStatusRowProps) {
   const [expandedLearners, setExpandedLearners] = useState<AvailUser[] | null>(
     null,
   );
-
-  const normalisedSongId = String(songId);
-  const learners = learntMap[normalisedSongId] || [];
-  const isLearnt = currentUserLearnt(normalisedSongId, learntMap, userEmail);
-  const isLearning = learningIds.has(normalisedSongId);
-  const isToggling = togglingIds.has(normalisedSongId);
   const [setAvatarsEl, fitCount] = useFittingCount<HTMLDivElement>(
     learners.length,
     avatar_size_px,
@@ -107,12 +97,12 @@ export default function SongLearntStatus({
           isLearning={isLearning}
           isLearnt={isLearnt}
           isToggling={isToggling}
-          onToggle={() => onToggleLearning(normalisedSongId)}
+          onToggle={onToggleLearning}
         />
         <LearntToggleButton
           isLearnt={isLearnt}
           isToggling={isToggling}
-          onToggle={() => onToggleLearnt(normalisedSongId)}
+          onToggle={onToggleLearnt}
         />
 
         {learners.length > 0 && (
@@ -160,5 +150,39 @@ export default function SongLearntStatus({
         />
       )}
     </>
+  );
+}
+
+interface SongLearntStatusProps {
+  songId: string;
+  learntMap: LearntMap;
+  learningIds: Set<string>;
+  userEmail: string | null | undefined;
+  togglingIds: Set<string>;
+  onToggleLearnt: (songId: string) => void;
+  onToggleLearning: (songId: string) => void;
+}
+
+// the toggles for a band song, with who in the band has learnt it
+export default function SongLearntStatus({
+  songId,
+  learntMap,
+  learningIds,
+  userEmail,
+  togglingIds,
+  onToggleLearnt,
+  onToggleLearning,
+}: SongLearntStatusProps) {
+  const normalisedSongId = String(songId);
+
+  return (
+    <LearntStatusRow
+      isLearnt={currentUserLearnt(normalisedSongId, learntMap, userEmail)}
+      isLearning={learningIds.has(normalisedSongId)}
+      isToggling={togglingIds.has(normalisedSongId)}
+      onToggleLearnt={() => onToggleLearnt(normalisedSongId)}
+      onToggleLearning={() => onToggleLearning(normalisedSongId)}
+      learners={learntMap[normalisedSongId] || []}
+    />
   );
 }

@@ -6,15 +6,10 @@ import {
   removeBandCoverAction,
 } from "@/app/actions/covers";
 import { BandCover } from "@/app/types";
-import {
-  coverToSetlistSong,
-  formatDuration,
-} from "@/app/lib/setlistUtils";
-import SongAudioPlayer from "@/app/components/songs/songAudioPlayer";
-import OpenInMusicAppLink from "@/app/components/songs/openInMusicAppLink";
+import { coverToSetlistSong } from "@/app/lib/setlistUtils";
 import SongLearntStatus from "@/app/components/songs/songLearntStatus";
 import DeezerSearch from "@/app/components/songs/deezerSearch";
-import SongInfo from "@/app/components/songs/songInfo";
+import SongCard from "@/app/components/songs/songCard";
 import SortControls from "@/app/components/ui/sortControls";
 import AddToSonglist from "@/app/components/songs/addToSonglist";
 import { useBandLearntStatus } from "@/app/hooks/useBandLearntStatus";
@@ -203,50 +198,32 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
         ) : (
           <div className="list list-top">
             {sortedCovers.map((cover) => (
-              <div key={cover._id} className="card-item card-item-compact">
-                <div className="song-row">
-                  <SongInfo
-                    image={cover.image}
-                    imageAlt={cover.title}
-                    title={cover.title}
-                    meta={
-                      <>
-                        {cover.artist}
-                        {cover.album ? ` — ${cover.album}` : ""}
-                      </>
-                    }
-                  />
-                  <span className="song-duration">
-                    {formatDuration(cover.duration)}
-                  </span>
-                </div>
-
-                {/* own row so the title keeps its width in narrow columns */}
-                <div className="inline-actions song-actions">
-                  <AddToSonglist
-                    song={coverToSetlistSong(cover)}
-                    bandId={bandId}
-                    excludeCovers
-                  />
-                  <button
-                    onClick={() => handleRemoveCover(cover.songId)}
-                    disabled={savingCoverIds.has(cover.songId)}
-                    className="button button-small button-tertiary button-tertiary-danger"
-                  >
-                    Remove
-                  </button>
-                </div>
-
-                <SongAudioPlayer
-                  src={cover.preview}
-                  deezerTrackId={cover.isCustom ? undefined : cover.songId}
-                />
-                <OpenInMusicAppLink
-                  deezerTrackId={cover.isCustom ? undefined : cover.songId}
-                  title={cover.title}
-                  artist={cover.artist}
-                />
-
+              <SongCard
+                key={cover._id}
+                image={cover.image}
+                title={cover.title}
+                artist={cover.artist}
+                album={cover.album}
+                duration={cover.duration}
+                audioSrc={cover.preview}
+                deezerTrackId={cover.isCustom ? undefined : cover.songId}
+                actions={
+                  <>
+                    <AddToSonglist
+                      song={coverToSetlistSong(cover)}
+                      bandId={bandId}
+                      excludeCovers
+                    />
+                    <button
+                      onClick={() => handleRemoveCover(cover.songId)}
+                      disabled={savingCoverIds.has(cover.songId)}
+                      className="button button-small button-tertiary button-tertiary-danger"
+                    >
+                      Remove
+                    </button>
+                  </>
+                }
+              >
                 <SongLearntStatus
                   songId={cover.songId}
                   learntMap={learntMap}
@@ -256,7 +233,7 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
                   onToggleLearnt={handleToggleLearnt}
                   onToggleLearning={handleToggleLearning}
                 />
-              </div>
+              </SongCard>
             ))}
           </div>
         )}

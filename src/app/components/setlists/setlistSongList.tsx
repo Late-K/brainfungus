@@ -1,11 +1,8 @@
 ﻿"use client";
 
 import { Song, LearntMap } from "@/app/types";
-import { formatDuration } from "@/app/lib/setlistUtils";
 import SongLearntStatus from "@/app/components/songs/songLearntStatus";
-import SongAudioPlayer from "@/app/components/songs/songAudioPlayer";
-import OpenInMusicAppLink from "@/app/components/songs/openInMusicAppLink";
-import SongInfo from "@/app/components/songs/songInfo";
+import SongCard from "@/app/components/songs/songCard";
 import AddToSonglist from "@/app/components/songs/addToSonglist";
 
 interface SetlistSongListProps {
@@ -20,6 +17,8 @@ interface SetlistSongListProps {
   togglingIds: Set<string>;
   onToggleLearnt: (songId: string) => void;
   onToggleLearning: (songId: string) => void;
+  onMoveSong: (index: number, direction: "up" | "down") => void;
+  onRemoveSong: (songId: string) => void;
 }
 
 export default function SetlistSongList({
@@ -33,48 +32,52 @@ export default function SetlistSongList({
   togglingIds,
   onToggleLearnt,
   onToggleLearning,
+  onMoveSong,
+  onRemoveSong,
 }: SetlistSongListProps) {
   if (songs.length === 0) {
-    return <p className="empty-state">No songs in this setlist</p>;
+    return (
+      <p className="empty-state">No songs yet — add some from the pickers</p>
+    );
   }
 
   return (
     <div className="list">
-      {songs.map((song, index) => {
-        const audioSrc = song.isCustom ? song.audioUrl : song.preview;
-
-        return (
-          <div key={song.id} className="card-item card-item-compact">
-            <div className="song-row">
+      {songs.map((song, index) => (
+        <SongCard
+          key={song.id}
+          image={song.image}
+          title={song.title}
+          artist={song.artist}
+          album={song.album}
+          duration={song.duration}
+          audioSrc={song.isCustom ? song.audioUrl : song.preview}
+          deezerTrackId={!song.isCustom ? song.id : undefined}
+          leading={
+            <>
+              <div className="reorder-buttons">
+                <button
+                  onClick={() => onMoveSong(index, "up")}
+                  disabled={index === 0}
+                  className="button-reorder"
+                  title="Move up"
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => onMoveSong(index, "down")}
+                  disabled={index === songs.length - 1}
+                  className="button-reorder"
+                  title="Move down"
+                >
+                  ▼
+                </button>
+              </div>
               <span className="song-index">{index + 1}</span>
-              <SongInfo
-                image={song.image}
-                imageAlt={song.title}
-                title={song.title}
-                meta={
-                  <>
-                    {song.artist}
-                    {song.album ? ` — ${song.album}` : ""}
-                  </>
-                }
-              />
-              {song.duration > 0 && (
-                <span className="song-duration">
-                  {formatDuration(song.duration)}
-                </span>
-              )}
-            </div>
-
-            <SongAudioPlayer
-              src={audioSrc}
-              deezerTrackId={!song.isCustom ? song.id : undefined}
-            />
-            <OpenInMusicAppLink
-              deezerTrackId={!song.isCustom ? song.id : undefined}
-              title={song.title}
-              artist={song.artist}
-            />
-            <div className="learnt-row">
+            </>
+          }
+          actions={
+            <>
               <AddToSonglist
                 song={song}
                 bandId={bandId}
@@ -85,20 +88,26 @@ export default function SetlistSongList({
                     : undefined
                 }
               />
-            </div>
-
-            <SongLearntStatus
-              songId={song.id}
-              learntMap={learntMap}
-              learningIds={learningIds}
-              userEmail={userEmail}
-              togglingIds={togglingIds}
-              onToggleLearnt={onToggleLearnt}
-              onToggleLearning={onToggleLearning}
-            />
-          </div>
-        );
-      })}
+              <button
+                onClick={() => onRemoveSong(song.id)}
+                className="button button-small button-tertiary button-tertiary-danger"
+              >
+                Remove
+              </button>
+            </>
+          }
+        >
+          <SongLearntStatus
+            songId={song.id}
+            learntMap={learntMap}
+            learningIds={learningIds}
+            userEmail={userEmail}
+            togglingIds={togglingIds}
+            onToggleLearnt={onToggleLearnt}
+            onToggleLearning={onToggleLearning}
+          />
+        </SongCard>
+      ))}
     </div>
   );
 }

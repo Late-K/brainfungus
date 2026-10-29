@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { BandCover } from "@/app/types";
-import { formatDuration } from "@/app/lib/setlistUtils";
-import SongInfo from "@/app/components/songs/songInfo";
+import { SongPreviewRow } from "@/app/components/songs/songCard";
 import { useFetchData } from "@/app/hooks/useFetchData";
 
 const preview_limit = 3;
@@ -53,28 +52,14 @@ export default function BandCoversPreview({ bandId }: { bandId: string }) {
       ) : (
         <div className="list">
           {preview.map((cover) => (
-            <div
+            <SongPreviewRow
               key={cover._id}
-              className="card-item card-item-stack card-item-regular"
-            >
-              <div className="song-row">
-                <SongInfo
-                  image={cover.image}
-                  imageAlt={cover.title}
-                  title={cover.title}
-                  meta={`${cover.artist}${cover.album ? ` - ${cover.album}` : ""}`}
-                  containerClassName="song-info"
-                  titleAs="h3"
-                  metaAs="p"
-                  metaClassName="meta-text meta-text-small margin-top"
-                />
-                {cover.duration > 0 && (
-                  <span className="song-duration">
-                    {formatDuration(cover.duration)}
-                  </span>
-                )}
-              </div>
-            </div>
+              image={cover.image}
+              title={cover.title}
+              artist={cover.artist}
+              album={cover.album}
+              duration={cover.duration}
+            />
           ))}
 
           {hasMore && (

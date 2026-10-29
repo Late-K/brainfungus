@@ -7,14 +7,10 @@ import {
   ProfileLearntSong,
 } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
-import CustomSongPicker from "@/app/components/songs/customSongPicker";
-import CoverPicker from "@/app/components/covers/coverPicker";
-import ProfileSongPicker from "@/app/components/setlists/profileSongPicker";
-import DeezerSearch from "@/app/components/songs/deezerSearch";
+import SetlistSongPickers from "@/app/components/setlists/setlistSongPickers";
 
 interface SetlistEditModeProps {
   bandId: string;
-  collapseSongPickers?: boolean;
   editName: string;
   setEditName: (name: string) => void;
   editSongs: Song[];
@@ -49,7 +45,6 @@ interface SetlistEditModeProps {
 
 export default function SetlistEditMode({
   bandId,
-  collapseSongPickers = false,
   editName,
   setEditName,
   editSongs,
@@ -174,33 +169,14 @@ export default function SetlistEditMode({
       </div>
 
       <div className="editor-layout-side">
-        <CustomSongPicker
+        <SetlistSongPickers
           bandId={bandId || ""}
-          collapsible={collapseSongPickers}
-          defaultOpen={!collapseSongPickers}
           selectedSongs={editSongs}
-          onToggleSong={onToggleCustomSong}
-          onToggleAlbum={onToggleCustomAlbum}
-        />
-
-        <CoverPicker
-          bandId={bandId || ""}
-          collapsible={collapseSongPickers}
-          defaultOpen={!collapseSongPickers}
-          selectedSongs={editSongs}
-          onToggleCover={onToggleCoverSong}
-        />
-
-        <ProfileSongPicker
-          bandId={bandId || ""}
-          collapsible={collapseSongPickers}
-          defaultOpen={!collapseSongPickers}
-          selectedSongs={editSongs}
-          onToggleSong={onToggleProfileSong}
-        />
-
-        <DeezerSearch
           onAddFromSearch={onAddFromSearch}
+          onToggleCustomSong={onToggleCustomSong}
+          onToggleCustomAlbum={onToggleCustomAlbum}
+          onToggleCoverSong={onToggleCoverSong}
+          onToggleProfileSong={onToggleProfileSong}
           isSongSelected={isEditSongSelected}
         />
       </div>

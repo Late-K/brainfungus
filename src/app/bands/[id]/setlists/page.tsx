@@ -214,14 +214,12 @@ export default function SetlistsPage({
                       </button>
                     )}
 
-                    {!setlist.isActive && (
-                      <button
-                        onClick={() => handleDelete(setlist._id)}
-                        className="button button-tertiary button-tertiary-danger"
-                      >
-                        Delete
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleDelete(setlist._id)}
+                      className="button button-tertiary button-tertiary-danger"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               );

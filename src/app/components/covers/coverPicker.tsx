@@ -5,6 +5,9 @@ import { useState } from "react";
 import { BandCover } from "@/app/types";
 import SongInfo from "@/app/components/songs/songInfo";
 import { useFetchData } from "@/app/hooks/useFetchData";
+import PickerHeader, {
+  PickerShowLess,
+} from "@/app/components/songs/pickerHeader";
 
 interface CoverPickerProps {
   bandId: string;
@@ -40,31 +43,19 @@ export default function CoverPicker({
   const selectedSongIds = selectedSongs.map((song) => song.id);
 
   return (
-    <section className="card">
-      {collapsible ? (
-        <button
-          type="button"
-          className="accordion-trigger"
-          onClick={() => setIsOpen((prev) => !prev)}
-        >
-          <span
-            className={`accordion-icon ${isOpen ? "accordion-icon-open" : ""}`}
-          >
-            &#9654;
-          </span>
-          <span className="accordion-title">{title}</span>
-          <span className="accordion-count">
-            {covers.length} song{covers.length !== 1 ? "s" : ""}
-          </span>
-        </button>
-      ) : (
-        <h3>{title}</h3>
-      )}
+    <section className="card picker">
+      <PickerHeader
+        title={title}
+        total={covers.length}
+        collapsible={collapsible}
+        isOpen={isOpen}
+        onToggle={() => setIsOpen((prev) => !prev)}
+      />
 
       {error && <p className="alert alert-error">{error}</p>}
 
       {isOpen && (
-        <div className="songs-grid">
+        <div className="songs-grid picker-list">
           {covers.map((cover) => (
             <div key={cover._id} className="song-checkbox">
               <label>
@@ -90,6 +81,11 @@ export default function CoverPicker({
           ))}
         </div>
       )}
+      <PickerShowLess
+        collapsible={collapsible}
+        isOpen={isOpen}
+        onCollapse={() => setIsOpen(false)}
+      />
     </section>
   );
 }
