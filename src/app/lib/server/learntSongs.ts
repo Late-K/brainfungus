@@ -9,12 +9,22 @@ import {
 import { ProfileLearntSong } from "@/app/types";
 
 // fetch all learnt songs for a user from the unified learnt_songs collection
-export async function getUserLearntSongs(
+export function getUserLearntSongs(db: Db, userId: ObjectId) {
+  return getUserSongs(db, "learnt_songs", userId);
+}
+
+// songs the user is still learning, kept the same way as learnt songs
+export function getUserLearningSongs(db: Db, userId: ObjectId) {
+  return getUserSongs(db, "learning_songs", userId);
+}
+
+async function getUserSongs(
   db: Db,
+  collection: "learnt_songs" | "learning_songs",
   userId: ObjectId,
 ): Promise<ProfileLearntSong[]> {
   const learntEntries = await db
-    .collection("learnt_songs")
+    .collection(collection)
     .find({ userId, active: { $ne: false } })
     .sort({ createdAt: 1 })
     .toArray();

@@ -644,8 +644,14 @@ h4 {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.profile-edit-button {
+.profile-identity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin-top: 0.5rem;
+}
+.profile-install {
+  margin-top: 1rem;
 }
 .profile-editor {
   margin-top: 1.25rem;
@@ -667,6 +673,13 @@ h4 {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
+}
+.settings-title-first {
+  margin-top: 0;
+}
+/* a little wider than other modals so the setting hints wrap less */
+.settings-menu {
+  max-width: 480px;
 }
 .settings-list {
   display: flex;
@@ -1165,6 +1178,17 @@ h4 {
 }
 .button-learnt:hover {
   background: #4f2a4d;
+  border-color: rgba(255, 77, 166, 0.7);
+}
+/* dashed while still in progress, solid once learnt */
+.button-learning {
+  background: #261a29;
+  color: #fef4ff;
+  border-color: rgba(183, 90, 185, 0.7);
+  border-style: dashed;
+}
+.button-learning:hover {
+  background: #3a2440;
   border-color: rgba(255, 77, 166, 0.7);
 }
 
@@ -3185,6 +3209,13 @@ h4 {
   flex-shrink: 0;
   white-space: nowrap;
 }
+.compare-learnt-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
 .notification-error {
   margin: 0 1rem 0.85rem;
 }
@@ -3429,7 +3460,7 @@ h4 {
     padding: 1.25rem;
   }
 
-  /* profile: account + people left, learnt songs right */
+  /* profile: account + people left, learning and learnt songs right */
   .profile-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);

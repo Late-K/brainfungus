@@ -10,9 +10,11 @@ import SongInfo from "@/app/components/songs/songInfo";
 interface SetlistSongListProps {
   songs: Song[];
   learntMap: LearntMap;
+  learningIds: Set<string>;
   userEmail: string | null | undefined;
   togglingIds: Set<string>;
   onToggleLearnt: (songId: string) => void;
+  onToggleLearning: (songId: string) => void;
   coverSongIds?: Set<string>;
   addingCoverIds?: Set<string>;
   onAddToCovers?: (song: Song) => void;
@@ -21,9 +23,11 @@ interface SetlistSongListProps {
 export default function SetlistSongList({
   songs,
   learntMap,
+  learningIds,
   userEmail,
   togglingIds,
   onToggleLearnt,
+  onToggleLearning,
   coverSongIds,
   addingCoverIds,
   onAddToCovers,
@@ -87,9 +91,11 @@ export default function SetlistSongList({
             <SongLearntStatus
               songId={song.id}
               learntMap={learntMap}
+              learningIds={learningIds}
               userEmail={userEmail}
               togglingIds={togglingIds}
               onToggleLearnt={onToggleLearnt}
+              onToggleLearning={onToggleLearning}
             />
           </div>
         );

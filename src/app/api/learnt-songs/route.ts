@@ -18,17 +18,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { db, band } = await requireBandMemberContext(bandId);
+    const { db, band, user: currentUser } =
+      await requireBandMemberContext(bandId);
 
     const memberObjectIds = toObjectIds(getMemberIds(band));
 
-    const learnt = await db
-      .collection("learnt_songs")
-      .find({
-        userId: { $in: memberObjectIds },
-        active: { $ne: false },
-      })
-      .toArray();
+    const [learnt, learning] = await Promise.all([
+      db
+        .collection("learnt_songs")
+        .find({
+          userId: { $in: memberObjectIds },
+          active: { $ne: false },
+        })
+        .toArray(),
+      db
+        .collection("learning_songs")
+        .find({ userId: currentUser._id }, { projection: { songId: 1 } })
+        .toArray(),
+    ]);
 
     const userIds = [
       ...new Set(learnt.map((entry) => entry.userId.toString())),
@@ -85,7 +92,15 @@ export async function GET(request: NextRequest) {
       songLearntMap[songId].push(user);
     }
 
-    return NextResponse.json({ learntMap: songLearntMap }, { status: 200 });
+    // only the current user's own learning songs, for their Learning buttons
+    const learningIds = [
+      ...new Set(learning.map((entry) => normaliseSongId(entry.songId))),
+    ];
+
+    return NextResponse.json(
+      { learntMap: songLearntMap, learningIds },
+      { status: 200 },
+    );
   } catch (error) {
     return serverErrorResponse(error, "Failed to fetch learnt songs");
   }

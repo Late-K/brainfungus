@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import SignOutButton from "@/app/components/auth/signOutButton";
 import ProfileCard from "@/app/components/profile/profileCard";
-import LearntSongsPreview from "@/app/components/profile/learntSongsPreview";
+import ProfileSongsPreview from "@/app/components/profile/profileSongsPreview";
 import FindPeople from "@/app/components/profile/findPeople";
 import { OwnProfile } from "@/app/types";
 
@@ -51,7 +51,8 @@ export default async function ProfilePage() {
         </div>
 
         <div className="profile-layout-songs">
-          <LearntSongsPreview />
+          <ProfileSongsPreview list="learning" />
+          <ProfileSongsPreview list="learnt" />
         </div>
 
         <div className="profile-layout-people">

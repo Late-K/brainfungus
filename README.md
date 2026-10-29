@@ -12,7 +12,7 @@ Brain Fungus is a band management web app built for musicians. It gives bands a 
 | Custom Songs  | Add band-specific songs and albums with private Blob audio uploads                                                  |
 | Covers        | Search and save cover songs via the Deezer API                                                                      |
 | Setlists      | Build ordered setlists from custom songs and covers                                                                 |
-| Song Learning | Mark songs as learnt - bands showing completion percentage                                                          |
+| Song Learning | Mark songs as learning or learnt - bands showing completion percentage                                               |
 | Rehearsals    | Schedule one-time, weekly, or biweekly rehearsals and see who is available for them                                 |
 | Calendar      | Visual calendar of all upcoming rehearsals across every band the user belongs to                                    |
 | Band Chat     | Perband simple messaging capabilities                                                                               |
@@ -33,7 +33,7 @@ Brain Fungus is a band management web app built for musicians. It gives bands a 
 
 ### MongoDB Collections
 
-`users`, `bands`, `custom_songs`, `covers`, `setlists`, `learnt_songs`, `rehearsals`, `rehearsal_availability`, `band_messages`, `push_subscriptions`, `rehearsal_reminders`
+`users`, `bands`, `custom_songs`, `covers`, `setlists`, `learnt_songs`, `learning_songs`, `rehearsals`, `rehearsal_availability`, `band_messages`, `push_subscriptions`, `rehearsal_reminders`
 
 ---
 

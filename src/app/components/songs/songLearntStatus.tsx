@@ -32,20 +32,57 @@ export function LearntToggleButton({
   );
 }
 
+// sits next to the learnt toggle. a learnt song can be put back into
+// learning if it's been forgotten, which takes it off the learnt songs
+export function LearningToggleButton({
+  isLearning,
+  isLearnt,
+  isToggling,
+  onToggle,
+  className,
+}: {
+  isLearning: boolean;
+  isLearnt: boolean;
+  isToggling: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      disabled={isToggling}
+      title={isLearnt ? "Move back to learning" : undefined}
+      className={`button button-small ${isLearning ? "button-learning" : "button-tertiary"}${className ? ` ${className}` : ""}`}
+    >
+      {isToggling
+        ? "..."
+        : isLearning
+          ? "✓ Learning"
+          : isLearnt
+            ? "Relearn"
+            : "Start Learning"}
+    </button>
+  );
+}
+
 interface SongLearntStatusProps {
   songId: string;
   learntMap: LearntMap;
+  learningIds: Set<string>;
   userEmail: string | null | undefined;
   togglingIds: Set<string>;
   onToggleLearnt: (songId: string) => void;
+  onToggleLearning: (songId: string) => void;
 }
 
 export default function SongLearntStatus({
   songId,
   learntMap,
+  learningIds,
   userEmail,
   togglingIds,
   onToggleLearnt,
+  onToggleLearning,
 }: SongLearntStatusProps) {
   const [expandedLearners, setExpandedLearners] = useState<AvailUser[] | null>(
     null,
@@ -54,6 +91,7 @@ export default function SongLearntStatus({
   const normalisedSongId = String(songId);
   const learners = learntMap[normalisedSongId] || [];
   const isLearnt = currentUserLearnt(normalisedSongId, learntMap, userEmail);
+  const isLearning = learningIds.has(normalisedSongId);
   const isToggling = togglingIds.has(normalisedSongId);
   const [setAvatarsEl, fitCount] = useFittingCount<HTMLDivElement>(
     learners.length,
@@ -64,6 +102,13 @@ export default function SongLearntStatus({
   return (
     <>
       <div className="learnt-row">
+        {/* learnt sits next to the avatars of who has learnt the song */}
+        <LearningToggleButton
+          isLearning={isLearning}
+          isLearnt={isLearnt}
+          isToggling={isToggling}
+          onToggle={() => onToggleLearning(normalisedSongId)}
+        />
         <LearntToggleButton
           isLearnt={isLearnt}
           isToggling={isToggling}

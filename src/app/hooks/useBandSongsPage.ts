@@ -13,13 +13,13 @@ import {
   uploadAudioAction,
   uploadSongImageAction,
 } from "@/app/actions/songs";
-import { toggleLearntSongAction } from "@/app/actions/learntSongs";
+import { useBandLearntStatus } from "@/app/hooks/useBandLearntStatus";
 import {
   compareByDate,
   compareByKnownCount,
   safeTimestamp,
 } from "@/app/lib/sortUtils";
-import { Band, CustomSong, LearntMap } from "@/app/types";
+import { Band, CustomSong } from "@/app/types";
 import { unwrapAction } from "@/app/lib/actionResult";
 
 type KnownSongSort = "newest" | "oldest" | "mostKnown" | "leastKnown";
@@ -60,8 +60,13 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   const { id: bandId } = use(params);
   const [band, setBand] = useState<Band | null>(null);
   const [songs, setSongs] = useState<CustomSong[]>([]);
-  const [learntMap, setLearntMap] = useState<LearntMap>({});
-  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+  const {
+    learntMap,
+    learningIds,
+    togglingIds,
+    handleToggleLearnt,
+    handleToggleLearning,
+  } = useBandLearntStatus(bandId);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -113,18 +118,6 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     fetchBand();
   }, [bandId]);
 
-  const fetchLearntMap = useCallback(async () => {
-    if (!bandId) return;
-    try {
-      const res = await fetch(`/api/learnt-songs?bandId=${bandId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setLearntMap(data.learntMap || {});
-    } catch (err) {
-      console.error("Failed to fetch learnt songs:", err);
-    }
-  }, [bandId]);
-
   const fetchSongs = useCallback(async () => {
     if (!bandId) return;
     try {
@@ -144,27 +137,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
   useEffect(() => {
     if (!bandId) return;
     fetchSongs();
-    fetchLearntMap();
-  }, [bandId, fetchLearntMap, fetchSongs]);
-
-  const handleToggleLearnt = async (songId: string) => {
-    if (!bandId) return;
-    setTogglingIds((prev) => new Set(prev).add(songId));
-    try {
-      unwrapAction(await toggleLearntSongAction(bandId, songId));
-      await fetchLearntMap();
-    } catch (err) {
-      alert(
-        err instanceof Error ? err.message : "Failed to toggle learnt status",
-      );
-    } finally {
-      setTogglingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(songId);
-        return next;
-      });
-    }
-  };
+  }, [bandId, fetchSongs]);
 
   // every song in an album carries the album image, so any of them will do
   const getAlbumImage = (albumName?: string) => {
@@ -592,6 +565,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     band,
     songs,
     learntMap,
+    learningIds,
     togglingIds,
     isLoading,
     error,
@@ -638,6 +612,7 @@ export function useBandSongsPage(params: Promise<{ id: string }>) {
     handleUploadAlbumImage,
     handleDeleteAlbumImage,
     handleToggleLearnt,
+    handleToggleLearning,
     handleAddSong,
     handleDelete,
     startEditing,

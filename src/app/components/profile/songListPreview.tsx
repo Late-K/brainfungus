@@ -1,26 +1,42 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
+import { ReactNode } from "react";
 import { ProfileLearntSong } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import SongInfo from "@/app/components/songs/songInfo";
-import { useFetchData } from "@/app/hooks/useFetchData";
 
 const preview_limit = 3;
 
-export default function LearntSongsPreview() {
-  const { data, isLoading, error } = useFetchData<{
-    songs: ProfileLearntSong[];
-  }>("/api/learnt-songs/profile");
-  const songs = data?.songs ?? [];
+interface SongListPreviewProps {
+  heading: string;
+  // oldest first, as the server sends them
+  songs: ProfileLearntSong[];
+  // the full list, left out when there's nothing more to open
+  href?: string;
+  emptyMessage: ReactNode;
+  isLoading?: boolean;
+  loadingMessage?: string;
+  error?: string;
+}
 
+// a card with the newest few songs of a list and a link to the rest
+export default function SongListPreview({
+  heading,
+  songs,
+  href,
+  emptyMessage,
+  isLoading = false,
+  loadingMessage,
+  error,
+}: SongListPreviewProps) {
   if (isLoading) {
     return (
       <section className="card">
         <div className="section-header">
-          <h2>My Learnt Songs</h2>
+          <h2>{heading}</h2>
         </div>
-        <p className="empty-state">Loading learnt songs...</p>
+        <p className="empty-state">{loadingMessage}</p>
       </section>
     );
   }
@@ -35,19 +51,18 @@ export default function LearntSongsPreview() {
   return (
     <section className="card">
       <div className="section-header">
-        <h2>My Learnt Songs</h2>
-        <Link href="/profile/learnt-songs" className="button button-primary">
-          View All
-        </Link>
+        <h2>{heading}</h2>
+        {href && (
+          <Link href={href} className="button button-primary">
+            View All
+          </Link>
+        )}
       </div>
 
       {error && <p className="alert alert-error">{error}</p>}
 
       {songs.length === 0 ? (
-        <p className="empty-state">
-          No learnt songs yet.{" "}
-          <Link href="/profile/learnt-songs">Add some!</Link>
-        </p>
+        <p className="empty-state">{emptyMessage}</p>
       ) : (
         <div className="list">
           {preview.map((song) => (
@@ -91,8 +106,8 @@ export default function LearntSongsPreview() {
             </div>
           ))}
 
-          {hasMore && (
-            <Link href="/profile/learnt-songs" className="preview-link">
+          {hasMore && href && (
+            <Link href={href} className="preview-link">
               + {dedupedSongs.length - preview_limit} more...
             </Link>
           )}

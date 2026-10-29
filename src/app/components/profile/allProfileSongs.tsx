@@ -2,15 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  addPersonalLearningSongAction,
   addPersonalLearntSongAction,
+  moveSongAction,
+  removePersonalLearningSongAction,
   removePersonalLearntSongAction,
 } from "@/app/actions/learntSongs";
-import { ProfileLearntSong } from "@/app/types";
+import { ProfileLearntSong, ProfileSongList } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import DeezerSearch from "@/app/components/songs/deezerSearch";
 import SongInfo from "@/app/components/songs/songInfo";
 import SongAudioPlayer from "@/app/components/songs/songAudioPlayer";
 import OpenInMusicAppLink from "@/app/components/songs/openInMusicAppLink";
+import {
+  LearningToggleButton,
+  LearntToggleButton,
+} from "@/app/components/songs/songLearntStatus";
 import SortControls from "@/app/components/ui/sortControls";
 import { compareByDate, safeTimestamp } from "@/app/lib/sortUtils";
 import { unwrapAction } from "@/app/lib/actionResult";
@@ -22,7 +29,27 @@ const dateSortOptions = [
   { value: "oldest", label: "Oldest" },
 ] as const;
 
-export default function AllLearntSongs() {
+const lists = {
+  learnt: {
+    fetchUrl: "/api/learnt-songs/profile",
+    heading: "All Learnt Songs",
+    name: "learnt songs",
+    addSong: addPersonalLearntSongAction,
+    removeSong: removePersonalLearntSongAction,
+  },
+  learning: {
+    fetchUrl: "/api/learning-songs/profile",
+    heading: "All Learning Songs",
+    name: "learning songs",
+    addSong: addPersonalLearningSongAction,
+    removeSong: removePersonalLearningSongAction,
+  },
+};
+
+// the user's full learnt or learning list. each song can be moved over to the
+// other list - marked learnt once it's learnt, or relearnt if forgotten
+export default function AllProfileSongs({ list }: { list: ProfileSongList }) {
+  const config = lists[list];
   const [songs, setSongs] = useState<ProfileLearntSong[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -64,22 +91,35 @@ export default function AllLearntSongs() {
     try {
       setIsLoading(true);
       setError("");
-      const res = await fetch("/api/learnt-songs/profile");
-      if (!res.ok) throw new Error("Failed to fetch learnt songs");
+      const res = await fetch(config.fetchUrl);
+      if (!res.ok) throw new Error(`Failed to fetch ${config.name}`);
       const data = await res.json();
       setSongs(data.songs || []);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to load learnt songs",
+        err instanceof Error ? err.message : `Failed to load ${config.name}`,
       );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [config]);
 
   useEffect(() => {
     fetchSongs();
   }, [fetchSongs]);
+
+  const withSaving = async (songId: string, body: () => Promise<void>) => {
+    setSavingIds((prev) => new Set(prev).add(songId));
+    try {
+      await body();
+    } finally {
+      setSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(songId);
+        return next;
+      });
+    }
+  };
 
   const handleAddSong = async (result: {
     id: string;
@@ -92,37 +132,45 @@ export default function AllLearntSongs() {
   }) => {
     if (savingIds.has(result.id)) return;
 
-    setSavingIds((prev) => new Set(prev).add(result.id));
-    try {
-      unwrapAction(await addPersonalLearntSongAction(result));
-      await fetchSongs();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to add song");
-    } finally {
-      setSavingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(result.id);
-        return next;
-      });
-    }
+    await withSaving(result.id, async () => {
+      try {
+        unwrapAction(await config.addSong(result));
+        await fetchSongs();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to add song");
+      }
+    });
   };
 
   const handleRemoveSong = async (song: ProfileLearntSong) => {
-    if (!confirm(`Remove "${song.title}" from your learnt songs?`)) return;
+    if (!confirm(`Remove "${song.title}" from your ${config.name}?`)) return;
 
-    setSavingIds((prev) => new Set(prev).add(song.songId));
-    try {
-      unwrapAction(await removePersonalLearntSongAction(song.songId));
-      setSongs((prev) => prev.filter((s) => s.songId !== song.songId));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to remove song");
-    } finally {
-      setSavingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(song.songId);
-        return next;
-      });
-    }
+    await withSaving(song.songId, async () => {
+      try {
+        unwrapAction(await config.removeSong(song.songId));
+        setSongs((prev) => prev.filter((s) => s.songId !== song.songId));
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to remove song");
+      }
+    });
+  };
+
+  const handleMoveSong = async (song: ProfileLearntSong) => {
+    if (savingIds.has(song.songId)) return;
+
+    await withSaving(song.songId, async () => {
+      try {
+        unwrapAction(
+          await moveSongAction(
+            song.songId,
+            list === "learnt" ? "learning" : "learnt",
+          ),
+        );
+        setSongs((prev) => prev.filter((s) => s.songId !== song.songId));
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to move song");
+      }
+    });
   };
 
   return (
@@ -136,11 +184,11 @@ export default function AllLearntSongs() {
 
       <div className="card tools-layout-list">
         <div className="section-header">
-          <h2>All Learnt Songs</h2>
+          <h2>{config.heading}</h2>
         </div>
 
         <SortControls
-          id="profile-learnt-sort"
+          id={`profile-${list}-sort`}
           value={sortBy}
           onChange={setSortBy}
           options={dateSortOptions}
@@ -149,10 +197,10 @@ export default function AllLearntSongs() {
         {error && <p className="alert alert-error">{error}</p>}
 
         {isLoading ? (
-          <p className="empty-state">Loading learnt songs...</p>
+          <p className="empty-state">Loading {config.name}...</p>
         ) : songs.length === 0 ? (
           <p className="empty-state">
-            No learnt songs yet. Search for one above to get started.
+            No {config.name} yet. Search for one above to get started.
           </p>
         ) : (
           <div className="list list-top">
@@ -203,6 +251,23 @@ export default function AllLearntSongs() {
                   title={song.title}
                   artist={song.artist}
                 />
+
+                <div className="learnt-row">
+                  {list === "learnt" ? (
+                    <LearningToggleButton
+                      isLearning={false}
+                      isLearnt
+                      isToggling={savingIds.has(song.songId)}
+                      onToggle={() => handleMoveSong(song)}
+                    />
+                  ) : (
+                    <LearntToggleButton
+                      isLearnt={false}
+                      isToggling={savingIds.has(song.songId)}
+                      onToggle={() => handleMoveSong(song)}
+                    />
+                  )}
+                </div>
               </div>
             ))}
           </div>

@@ -10,6 +10,7 @@ interface SetlistViewModeProps {
   setlist: Setlist;
   isDeleting: boolean;
   learntMap: LearntMap;
+  learningIds: Set<string>;
   togglingIds: Set<string>;
   coverSongIds: Set<string>;
   addingCoverIds: Set<string>;
@@ -20,6 +21,7 @@ interface SetlistViewModeProps {
   onToggleActive: () => void;
   onDelete: () => void;
   onToggleLearnt: (songId: string) => void;
+  onToggleLearning: (songId: string) => void;
   onAddToCovers: (song: Song) => void;
 }
 
@@ -28,6 +30,7 @@ export default function SetlistViewMode({
   setlist,
   isDeleting,
   learntMap,
+  learningIds,
   togglingIds,
   coverSongIds,
   addingCoverIds,
@@ -38,6 +41,7 @@ export default function SetlistViewMode({
   onToggleActive,
   onDelete,
   onToggleLearnt,
+  onToggleLearning,
   onAddToCovers,
 }: SetlistViewModeProps) {
   return (
@@ -113,9 +117,11 @@ export default function SetlistViewMode({
         <SetlistSongList
           songs={setlist.songs}
           learntMap={learntMap}
+          learningIds={learningIds}
           userEmail={userEmail}
           togglingIds={togglingIds}
           onToggleLearnt={onToggleLearnt}
+          onToggleLearning={onToggleLearning}
           coverSongIds={coverSongIds}
           addingCoverIds={addingCoverIds}
           onAddToCovers={onAddToCovers}

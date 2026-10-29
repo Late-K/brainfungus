@@ -4,7 +4,7 @@
 // with a form to change the name and picture shown to everyone else.
 // changes are only sent when the form is saved
 
-import { FormEvent, useState } from "react";
+import { FormEvent, ReactNode, useState } from "react";
 import {
   deleteProfileImageAction,
   resetDisplayNameAction,
@@ -19,8 +19,11 @@ import ImageUploadField from "@/app/components/ui/imageUploadField";
 
 export default function ProfileIdentity({
   profile: initialProfile,
+  actions,
 }: {
   profile: OwnProfile;
+  // more buttons shown beside Edit profile
+  actions?: ReactNode;
 }) {
   const [profile, setProfile] = useState(initialProfile);
   const [isEditing, setIsEditing] = useState(false);
@@ -129,15 +132,18 @@ export default function ProfileIdentity({
           <p className="meta-text meta-text-medium margin-top">
             {profile.email}
           </p>
-          {!isEditing && (
-            <button
-              type="button"
-              className="button button-small button-tertiary profile-edit-button"
-              onClick={openEditor}
-            >
-              Edit profile
-            </button>
-          )}
+          <div className="profile-identity-actions">
+            {!isEditing && (
+              <button
+                type="button"
+                className="button button-small button-tertiary"
+                onClick={openEditor}
+              >
+                Edit profile
+              </button>
+            )}
+            {actions}
+          </div>
         </div>
       </div>
 

@@ -5,8 +5,7 @@ import {
   addBandCoverAction,
   removeBandCoverAction,
 } from "@/app/actions/covers";
-import { toggleLearntSongAction } from "@/app/actions/learntSongs";
-import { BandCover, LearntMap } from "@/app/types";
+import { BandCover } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import SongAudioPlayer from "@/app/components/songs/songAudioPlayer";
 import OpenInMusicAppLink from "@/app/components/songs/openInMusicAppLink";
@@ -16,6 +15,7 @@ import SongInfo from "@/app/components/songs/songInfo";
 import SortControls from "@/app/components/ui/sortControls";
 import ActiveSetlistButton from "@/app/components/setlists/activeSetlistButton";
 import { useActiveSetlist } from "@/app/hooks/useActiveSetlist";
+import { useBandLearntStatus } from "@/app/hooks/useBandLearntStatus";
 import {
   compareByDate,
   compareByKnownCount,
@@ -41,10 +41,13 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
   const [covers, setCovers] = useState<BandCover[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [learntMap, setLearntMap] = useState<LearntMap>({});
-  const [togglingLearntIds, setTogglingLearntIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const {
+    learntMap,
+    learningIds,
+    togglingIds: togglingLearntIds,
+    handleToggleLearnt,
+    handleToggleLearning,
+  } = useBandLearntStatus(bandId);
   const [savingCoverIds, setSavingCoverIds] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<KnownSongSort>("newest");
 
@@ -97,25 +100,6 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
     return sorted;
   }, [covers, learntMap, sortBy]);
 
-  const fetchLearntMap = useCallback(
-    async (signal?: AbortSignal) => {
-      if (!bandId) return;
-
-      try {
-        const res = await fetch(`/api/learnt-songs?bandId=${bandId}`, {
-          signal,
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (signal?.aborted) return;
-        setLearntMap(data.learntMap || {});
-      } catch {
-        // keep covers visible even if learnt stats fail
-      }
-    },
-    [bandId],
-  );
-
   const fetchCovers = useCallback(
     async (signal?: AbortSignal) => {
       if (!bandId) return;
@@ -145,9 +129,8 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
     if (!bandId) return;
     const controller = new AbortController();
     fetchCovers(controller.signal);
-    fetchLearntMap(controller.signal);
     return () => controller.abort();
-  }, [bandId, fetchCovers, fetchLearntMap]);
+  }, [bandId, fetchCovers]);
 
   const handleAddCover = async (song: {
     id: string;
@@ -187,26 +170,6 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
       alert(err instanceof Error ? err.message : "Failed to remove cover");
     } finally {
       setSavingCoverIds((prev) => {
-        const next = new Set(prev);
-        next.delete(songId);
-        return next;
-      });
-    }
-  };
-
-  const handleToggleLearnt = async (songId: string) => {
-    if (!bandId) return;
-
-    setTogglingLearntIds((prev) => new Set(prev).add(songId));
-    try {
-      unwrapAction(await toggleLearntSongAction(bandId, songId));
-      await fetchLearntMap();
-    } catch (err) {
-      alert(
-        err instanceof Error ? err.message : "Failed to toggle learnt status",
-      );
-    } finally {
-      setTogglingLearntIds((prev) => {
         const next = new Set(prev);
         next.delete(songId);
         return next;
@@ -311,9 +274,11 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
                 <SongLearntStatus
                   songId={cover.songId}
                   learntMap={learntMap}
+                  learningIds={learningIds}
                   userEmail={userEmail}
                   togglingIds={togglingLearntIds}
                   onToggleLearnt={handleToggleLearnt}
+                  onToggleLearning={handleToggleLearning}
                 />
               </div>
             ))}

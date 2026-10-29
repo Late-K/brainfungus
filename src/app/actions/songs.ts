@@ -118,6 +118,10 @@ export async function deleteSongAction(songId: string) {
         bandId: song.bandId,
         songId: normalisedSongId,
       }),
+      db.collection("learning_songs").deleteMany({
+        bandId: song.bandId,
+        songId: normalisedSongId,
+      }),
     ]);
 
     await db.collection("custom_songs").deleteOne({ _id: songObjectId });

@@ -23,6 +23,7 @@ interface CustomSongRowProps {
   editAlbumIsCustom: boolean;
   setEditAlbumIsCustom: Dispatch<SetStateAction<boolean>>;
   learntMap: LearntMap;
+  learningIds: Set<string>;
   userEmail: string | null | undefined;
   togglingIds: Set<string>;
   isUploadingAudio: boolean;
@@ -31,6 +32,7 @@ interface CustomSongRowProps {
   editAlbumImage?: string;
   isUploadingAlbumImage: boolean;
   onToggleLearnt: (songId: string) => void;
+  onToggleLearning: (songId: string) => void;
   onMoveSong: (
     album: string,
     albumSongs: CustomSong[],
@@ -69,6 +71,7 @@ export default function CustomSongRow({
   editAlbumIsCustom,
   setEditAlbumIsCustom,
   learntMap,
+  learningIds,
   userEmail,
   togglingIds,
   isUploadingAudio,
@@ -76,6 +79,7 @@ export default function CustomSongRow({
   editAlbumImage,
   isUploadingAlbumImage,
   onToggleLearnt,
+  onToggleLearning,
   onMoveSong,
   onStartEditing,
   onSaveEdit,
@@ -281,9 +285,11 @@ export default function CustomSongRow({
       <SongLearntStatus
         songId={song._id}
         learntMap={learntMap}
+        learningIds={learningIds}
         userEmail={userEmail}
         togglingIds={togglingIds}
         onToggleLearnt={onToggleLearnt}
+        onToggleLearning={onToggleLearning}
       />
     </div>
   );

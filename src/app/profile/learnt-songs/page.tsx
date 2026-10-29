@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/lib/server/auth";
 import { redirect } from "next/navigation";
 import PageHeader from "@/app/components/ui/pageHeader";
-import AllLearntSongs from "@/app/components/profile/allLearntSongs";
+import AllProfileSongs from "@/app/components/profile/allProfileSongs";
 
 export default async function ProfileLearntSongsPage() {
   const session = await getServerSession(authOptions);
@@ -22,7 +22,7 @@ export default async function ProfileLearntSongsPage() {
         backLabel="Back to Profile"
       />
 
-      <AllLearntSongs />
+      <AllProfileSongs list="learnt" />
     </div>
   );
 }

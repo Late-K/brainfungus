@@ -165,6 +165,7 @@ export default function SongsPage({
                             editAlbumIsCustom={songsPage.editAlbumIsCustom}
                             setEditAlbumIsCustom={songsPage.setEditAlbumIsCustom}
                             learntMap={songsPage.learntMap}
+                            learningIds={songsPage.learningIds}
                             userEmail={session.user?.email}
                             togglingIds={songsPage.togglingIds}
                             isUploadingAudio={songsPage.uploadingAudioIds.has(
@@ -174,6 +175,7 @@ export default function SongsPage({
                               song._id,
                             )}
                             onToggleLearnt={songsPage.handleToggleLearnt}
+                            onToggleLearning={songsPage.handleToggleLearning}
                             onMoveSong={songsPage.handleMoveSong}
                             onStartEditing={songsPage.startEditing}
                             onSaveEdit={songsPage.handleSaveEdit}
@@ -218,11 +220,13 @@ export default function SongsPage({
                   editAlbumIsCustom={songsPage.editAlbumIsCustom}
                   setEditAlbumIsCustom={songsPage.setEditAlbumIsCustom}
                   learntMap={songsPage.learntMap}
+                  learningIds={songsPage.learningIds}
                   userEmail={session.user?.email}
                   togglingIds={songsPage.togglingIds}
                   isUploadingAudio={songsPage.uploadingAudioIds.has(song._id)}
                   isUploadingImage={songsPage.uploadingImageIds.has(song._id)}
                   onToggleLearnt={songsPage.handleToggleLearnt}
+                  onToggleLearning={songsPage.handleToggleLearning}
                   onMoveSong={songsPage.handleMoveSong}
                   onStartEditing={songsPage.startEditing}
                   onSaveEdit={songsPage.handleSaveEdit}

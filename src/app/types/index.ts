@@ -248,6 +248,13 @@ export interface User {
   musicApp?: MusicApp | null;
 }
 
+// the privacy toggles on the user's own profile, all off by default
+export type PrivacySetting =
+  | "availabilityPrivate"
+  | "learntSongsPrivate"
+  | "learningSongsPrivate";
+export type PrivacySettings = Record<PrivacySetting, boolean>;
+
 // the current user's own name and picture, as shown and edited on their profile
 export interface OwnProfile {
   name: string;
@@ -326,6 +333,9 @@ export type DayAvailabilityRemoveScope = "this" | "future";
 export type CalendarChoiceAction = "edit" | "delete" | "calendar";
 export type CalendarEditMode = "all" | "this";
 
+// a song on the user's profile is either learnt or still being learnt
+export type ProfileSongList = "learnt" | "learning";
+
 export interface ProfileLearntSong {
   id: string;
   songId: string;
@@ -349,11 +359,15 @@ export interface PublicUserProfile {
     name: string;
     image?: string;
   };
-  isPrivate: boolean;
-  // the viewed user's songs, empty when their profile is private
+  isLearntPrivate: boolean;
+  isLearningPrivate: boolean;
+  // the viewed user's learnt and learning songs, each empty when kept private
   songs: ProfileLearntSong[];
+  learningSongs: ProfileLearntSong[];
   // the current user's songs, for comparison
   mySongs: ProfileLearntSong[];
+  // songs the current user is learning, for their Learning buttons
+  myLearningSongIds: string[];
   // bands the current user can invite the viewed user to
   inviteBands: ProfileInviteBand[];
 }

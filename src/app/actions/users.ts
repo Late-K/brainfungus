@@ -10,8 +10,8 @@ import {
 import { deleteBlobsQuietly } from "@/app/lib/server/blobStorage";
 import { isMusicApp } from "@/app/lib/musicAppUtils";
 import { runAction, UserError } from "@/app/lib/actionResult";
-import { readBoolean, readDisplayName } from "@/app/lib/validate";
-import { MusicApp } from "@/app/types";
+import { readBoolean, readDisplayName, readOneOf } from "@/app/lib/validate";
+import { MusicApp, PrivacySetting, PrivacySettings } from "@/app/types";
 
 // sets one of the current user's own settings
 async function setUserSetting(field: string, value: unknown) {
@@ -24,41 +24,33 @@ async function setUserSetting(field: string, value: unknown) {
     );
 }
 
-// hides the user's day availability from their bandmates and stops it auto
-// marking them available for rehearsals
-export async function getAvailabilityPrivateAction() {
-  return runAction("Failed to load setting", async () => {
+// availabilityPrivate hides the user's day availability from their bandmates
+// and stops it auto marking them available for rehearsals. the song ones hide
+// those lists from other people viewing their profile
+const privacy_settings: readonly PrivacySetting[] = [
+  "availabilityPrivate",
+  "learntSongsPrivate",
+  "learningSongsPrivate",
+];
+
+export async function getPrivacySettingsAction() {
+  return runAction("Failed to load settings", async () => {
     const { user } = await getAuthUser();
-    return {
-      availabilityPrivate: (user.availabilityPrivate as boolean) ?? false,
-    };
+    return Object.fromEntries(
+      privacy_settings.map((setting) => [setting, user[setting] === true]),
+    ) as PrivacySettings;
   });
 }
 
-export async function setAvailabilityPrivateAction(
-  availabilityPrivate: boolean,
+export async function setPrivacySettingAction(
+  setting: PrivacySetting,
+  value: boolean,
 ) {
   return runAction("Failed to save setting", async () => {
-    const value = readBoolean(availabilityPrivate, "setting");
-    await setUserSetting("availabilityPrivate", value);
-    return { availabilityPrivate: value };
-  });
-}
-
-export async function getLearntSongsPrivateAction() {
-  return runAction("Failed to load setting", async () => {
-    const { user } = await getAuthUser();
-    return {
-      learntSongsPrivate: (user.learntSongsPrivate as boolean) ?? false,
-    };
-  });
-}
-
-export async function setLearntSongsPrivateAction(learntSongsPrivate: boolean) {
-  return runAction("Failed to save setting", async () => {
-    const value = readBoolean(learntSongsPrivate, "setting");
-    await setUserSetting("learntSongsPrivate", value);
-    return { learntSongsPrivate: value };
+    const field = readOneOf(setting, privacy_settings, "setting");
+    const checked = readBoolean(value, "setting");
+    await setUserSetting(field, checked);
+    return { [field]: checked };
   });
 }
 

@@ -1,17 +1,25 @@
 import { getAuthUser } from "@/app/lib/server/auth";
-import { serverErrorResponse } from "@/app/lib/server/utils";
-import { getUserLearntSongs } from "@/app/lib/server/learntSongs";
+import { normaliseSongId, serverErrorResponse } from "@/app/lib/server/utils";
+import {
+  getUserLearningSongs,
+  getUserLearntSongs,
+} from "@/app/lib/server/learntSongs";
 import {
   BandDocument,
   getInvitesCollection,
   isAdminOrCreator,
 } from "@/app/lib/server/bands";
 import { isBandMember } from "@/app/lib/server/utils";
-import { ProfileInviteBand, PublicUserProfile } from "@/app/types";
+import {
+  ProfileInviteBand,
+  ProfileLearntSong,
+  PublicUserProfile,
+} from "@/app/types";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
-// fetch another user's public profile, plus the current user's learnt songs for comparison
+// fetch another user's public profile and songs, plus the current user's own
+// learnt and learning songs for comparison
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -24,37 +32,48 @@ export async function GET(
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
     }
 
-    const profileUser = await db
-      .collection("users")
-      .findOne(
-        { _id: new ObjectId(id) },
-        { projection: { name: 1, image: 1, learntSongsPrivate: 1 } },
-      );
+    const profileUser = await db.collection("users").findOne(
+      { _id: new ObjectId(id) },
+      {
+        projection: {
+          name: 1,
+          image: 1,
+          learntSongsPrivate: 1,
+          learningSongsPrivate: 1,
+        },
+      },
+    );
     if (!profileUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const isPrivate = profileUser.learntSongsPrivate === true;
+    const isLearntPrivate = profileUser.learntSongsPrivate === true;
+    const isLearningPrivate = profileUser.learningSongsPrivate === true;
 
-    const [theirSongs, mySongs, myBands] = await Promise.all([
-      isPrivate ? [] : getUserLearntSongs(db, profileUser._id),
-      getUserLearntSongs(db, currentUser._id),
-      db
-        .collection<BandDocument>("bands")
-        .find(
-          { "members.userId": currentUser._id.toString() },
-          { projection: { name: 1, members: 1 } },
-        )
-        .toArray(),
-    ]);
+    const [theirSongs, theirLearning, mySongs, myLearning, myBands] =
+      await Promise.all([
+        isLearntPrivate ? [] : getUserLearntSongs(db, profileUser._id),
+        isLearningPrivate ? [] : getUserLearningSongs(db, profileUser._id),
+        getUserLearntSongs(db, currentUser._id),
+        db
+          .collection("learning_songs")
+          .find({ userId: currentUser._id }, { projection: { songId: 1 } })
+          .toArray(),
+        db
+          .collection<BandDocument>("bands")
+          .find(
+            { "members.userId": currentUser._id.toString() },
+            { projection: { name: 1, members: 1 } },
+          )
+          .toArray(),
+      ]);
 
     // custom song audio and notes belong to a band, so only share them with its members
     const myBandIds = new Set(myBands.map((band) => band._id.toString()));
-    const songs = theirSongs.map((song) =>
+    const shareable = (song: ProfileLearntSong) =>
       song.isCustom && !(song.bandId && myBandIds.has(song.bandId))
         ? { ...song, preview: undefined, notes: undefined }
-        : song,
-    );
+        : song;
 
     // bands the current user admins, and whether this user is already in or invited to each
     const adminBands = myBands.filter((band) =>
@@ -91,9 +110,14 @@ export async function GET(
         name: (profileUser.name as string | null) ?? "Unknown user",
         image: (profileUser.image as string | null) ?? undefined,
       },
-      isPrivate,
-      songs,
+      isLearntPrivate,
+      isLearningPrivate,
+      songs: theirSongs.map(shareable),
+      learningSongs: theirLearning.map(shareable),
       mySongs,
+      myLearningSongIds: myLearning.map((entry) =>
+        normaliseSongId(entry.songId),
+      ),
       inviteBands,
     };
 

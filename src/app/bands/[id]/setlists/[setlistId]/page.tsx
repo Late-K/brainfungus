@@ -82,6 +82,7 @@ export default function SetlistDetailPage({
         setlist={setlistDetailPage.setlist}
         isDeleting={setlistDetailPage.isDeleting}
         learntMap={setlistDetailPage.learntMap}
+        learningIds={setlistDetailPage.learningIds}
         togglingIds={setlistDetailPage.togglingIds}
         coverSongIds={setlistDetailPage.coverSongIds}
         addingCoverIds={setlistDetailPage.addingCoverIds}
@@ -94,6 +95,7 @@ export default function SetlistDetailPage({
         onToggleActive={setlistDetailPage.handleToggleActive}
         onDelete={setlistDetailPage.handleDelete}
         onToggleLearnt={setlistDetailPage.handleToggleLearnt}
+        onToggleLearning={setlistDetailPage.handleToggleLearning}
         onAddToCovers={setlistDetailPage.handleAddToCovers}
       />
     </div>

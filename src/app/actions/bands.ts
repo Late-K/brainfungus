@@ -84,6 +84,7 @@ async function deleteBandCascade(db: Db, oid: ObjectId) {
     db.collection("custom_albums").deleteMany({ bandId: oid }),
     db.collection("covers").deleteMany({ bandId: oid }),
     db.collection("learnt_songs").deleteMany({ bandId: oid }),
+    db.collection("learning_songs").deleteMany({ bandId: oid }),
     db.collection("rehearsals").deleteMany({ bandId: oid }),
     rehearsalIds.length > 0
       ? db.collection("rehearsal_availability").deleteMany({

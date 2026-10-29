@@ -7,11 +7,11 @@ import {
   deleteSetlistAction,
   setActiveSetlistAction,
 } from "@/app/actions/setlists";
-import { toggleLearntSongAction } from "@/app/actions/learntSongs";
 import { addBandCoverAction } from "@/app/actions/covers";
-import { BandCover, Band, LearntMap, Setlist, Song } from "@/app/types";
+import { BandCover, Band, Setlist, Song } from "@/app/types";
 import { getProgress } from "@/app/lib/setlistUtils";
 import { useSetlistEditor } from "@/app/hooks/useSetlistEditor";
+import { useBandLearntStatus } from "@/app/hooks/useBandLearntStatus";
 import { unwrapAction } from "@/app/lib/actionResult";
 
 export function useSetlistDetailPage(
@@ -25,9 +25,14 @@ export function useSetlistDetailPage(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-  const [learntMap, setLearntMap] = useState<LearntMap>({});
   const [memberCount, setMemberCount] = useState(0);
-  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+  const {
+    learntMap,
+    learningIds,
+    togglingIds,
+    handleToggleLearnt,
+    handleToggleLearning,
+  } = useBandLearntStatus(bandId);
   const [coverSongIds, setCoverSongIds] = useState<Set<string>>(new Set());
   const [addingCoverIds, setAddingCoverIds] = useState<Set<string>>(new Set());
 
@@ -58,9 +63,8 @@ export function useSetlistDetailPage(
       setIsLoading(true);
       setError("");
 
-      const [setlistRes, learntRes, bandRes, coversRes] = await Promise.all([
+      const [setlistRes, bandRes, coversRes] = await Promise.all([
         fetch(`/api/setlists/${setlistId}`),
-        fetch(`/api/learnt-songs?bandId=${bandId}`),
         fetch(`/api/bands/${bandId}`),
         fetch(`/api/covers?bandId=${bandId}`),
       ]);
@@ -75,11 +79,6 @@ export function useSetlistDetailPage(
 
       const setlistData = await setlistRes.json();
       setSetlist(setlistData.setlist);
-
-      if (learntRes.ok) {
-        const learntData = await learntRes.json();
-        setLearntMap(learntData.learntMap || {});
-      }
 
       if (bandRes.ok) {
         const bandData = await bandRes.json();
@@ -132,29 +131,6 @@ export function useSetlistDetailPage(
     }
   };
 
-  const handleToggleLearnt = async (songId: string) => {
-    if (!bandId) return;
-    setTogglingIds((prev) => new Set(prev).add(songId));
-    try {
-      unwrapAction(await toggleLearntSongAction(bandId, songId));
-      const learntRes = await fetch(`/api/learnt-songs?bandId=${bandId}`);
-      if (learntRes.ok) {
-        const learntData = await learntRes.json();
-        setLearntMap(learntData.learntMap || {});
-      }
-    } catch (err) {
-      alert(
-        err instanceof Error ? err.message : "Failed to toggle learnt status",
-      );
-    } finally {
-      setTogglingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(songId);
-        return next;
-      });
-    }
-  };
-
   // custom songs aren't covers, so only Deezer songs can be added
   const handleAddToCovers = async (song: Song) => {
     if (!bandId || song.isCustom || addingCoverIds.has(song.id)) return;
@@ -196,6 +172,7 @@ export function useSetlistDetailPage(
     error,
     isDeleting,
     learntMap,
+    learningIds,
     togglingIds,
     coverSongIds,
     addingCoverIds,
@@ -205,6 +182,7 @@ export function useSetlistDetailPage(
     handleDelete,
     handleToggleActive,
     handleToggleLearnt,
+    handleToggleLearning,
     handleAddToCovers,
   };
 }

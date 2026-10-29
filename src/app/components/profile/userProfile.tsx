@@ -3,23 +3,16 @@
 import { useMemo, useState } from "react";
 import AvatarImage from "@/app/components/ui/avatarImage";
 import { useRouter } from "next/navigation";
-import {
-  addPersonalLearntSongAction,
-  removePersonalLearntSongAction,
-} from "@/app/actions/learntSongs";
 import { ProfileLearntSong, PublicUserProfile } from "@/app/types";
-import { formatDuration } from "@/app/lib/setlistUtils";
 import { compareByDate, safeTimestamp } from "@/app/lib/sortUtils";
 import { useFetchData } from "@/app/hooks/useFetchData";
-import SongInfo from "@/app/components/songs/songInfo";
-import SongAudioPlayer from "@/app/components/songs/songAudioPlayer";
-import OpenInMusicAppLink from "@/app/components/songs/openInMusicAppLink";
+import { useMySongStatuses } from "@/app/hooks/useMySongStatuses";
+import ComparableSongRow from "@/app/components/profile/comparableSongRow";
+import SongListPreview from "@/app/components/profile/songListPreview";
 import SortControls from "@/app/components/ui/sortControls";
 import PageLoading from "@/app/components/ui/pageLoading";
 import PageErrorCard from "@/app/components/ui/pageErrorCard";
 import InviteToBand from "@/app/components/profile/inviteToBand";
-import { LearntToggleButton } from "@/app/components/songs/songLearntStatus";
-import { unwrapAction } from "@/app/lib/actionResult";
 
 type CompareFilter = "theirs" | "common" | "onlyThem" | "onlyMe";
 type DateSort = "newest" | "oldest";
@@ -36,19 +29,12 @@ export default function UserProfile({ userId }: { userId: string }) {
   );
   const [filter, setFilter] = useState<CompareFilter>("theirs");
   const [sortBy, setSortBy] = useState<DateSort>("newest");
-  // songs marked / unmarked as learnt on this page since it loaded
-  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
-  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
-  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const { getMyStatus, mySongIds, savingIds, handleToggle } =
+    useMySongStatuses(data);
 
   const theirSongs = useMemo(() => data?.songs ?? [], [data]);
   const mySongs = useMemo(() => data?.mySongs ?? [], [data]);
 
-  const mySongIds = useMemo(() => {
-    const ids = new Set([...mySongs.map((s) => s.songId), ...addedIds]);
-    removedIds.forEach((id) => ids.delete(id));
-    return ids;
-  }, [mySongs, addedIds, removedIds]);
   const theirSongIds = useMemo(
     () => new Set(theirSongs.map((s) => s.songId)),
     [theirSongs],
@@ -75,51 +61,6 @@ export default function UserProfile({ userId }: { userId: string }) {
     ),
   );
 
-  const without = (ids: Set<string>, id: string) => {
-    const next = new Set(ids);
-    next.delete(id);
-    return next;
-  };
-
-  // same Mark as Learnt / ✓ Learnt toggle as the band song lists
-  const handleToggleLearnt = async (song: ProfileLearntSong) => {
-    if (savingIds.has(song.songId)) return;
-    const isLearnt = mySongIds.has(song.songId);
-
-    setSavingIds((prev) => new Set(prev).add(song.songId));
-    try {
-      if (isLearnt) {
-        unwrapAction(await removePersonalLearntSongAction(song.songId));
-        setAddedIds((prev) => without(prev, song.songId));
-        setRemovedIds((prev) => new Set(prev).add(song.songId));
-      } else {
-        unwrapAction(
-          await addPersonalLearntSongAction({
-            id: song.songId,
-            title: song.title,
-            artist: song.artist ?? "",
-            album: song.album ?? "",
-            duration: song.duration ?? 0,
-            preview: song.preview,
-            image: song.image,
-          }),
-        );
-        setRemovedIds((prev) => without(prev, song.songId));
-        setAddedIds((prev) => new Set(prev).add(song.songId));
-      }
-    } catch (err) {
-      alert(
-        err instanceof Error ? err.message : "Failed to update learnt status",
-      );
-    } finally {
-      setSavingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(song.songId);
-        return next;
-      });
-    }
-  };
-
   if (isLoading) {
     return <PageLoading message="Loading profile..." />;
   }
@@ -138,11 +79,16 @@ export default function UserProfile({ userId }: { userId: string }) {
     );
   }
 
-  const { user, isPrivate } = data;
+  const { user, isLearntPrivate, isLearningPrivate } = data;
   const firstName = user.name.split(" ")[0];
   const matchPercent = theirSongs.length
     ? Math.round((commonSongs.length / theirSongs.length) * 100)
     : 0;
+  const songCounts = [
+    !isLearntPrivate &&
+      `${theirSongs.length} learnt ${theirSongs.length === 1 ? "song" : "songs"}`,
+    !isLearningPrivate && `${data.learningSongs.length} learning`,
+  ].filter(Boolean);
 
   const filterTabs: { value: CompareFilter; label: string; count: number }[] = [
     { value: "theirs", label: "All", count: theirSongs.length },
@@ -162,7 +108,17 @@ export default function UserProfile({ userId }: { userId: string }) {
     onlyMe: `${firstName} knows every song you know!`,
   };
 
-  // desktop pins the profile and stats on the left with the song list on the right
+  const renderSong = (song: ProfileLearntSong) => (
+    <ComparableSongRow
+      key={song.id}
+      song={song}
+      myStatus={getMyStatus(song.songId)}
+      isSaving={savingIds.has(song.songId)}
+      onToggle={handleToggle}
+    />
+  );
+
+  // desktop pins the profile and stats on the left with the song lists on the right
   return (
     <div className="detail-layout">
       <div className="card detail-layout-side">
@@ -190,16 +146,15 @@ export default function UserProfile({ userId }: { userId: string }) {
           )}
           <div>
             <h1 className="heading-small">{user.name}</h1>
-            {!isPrivate && (
+            {songCounts.length > 0 && (
               <p className="meta-text meta-text-medium margin-top">
-                {theirSongs.length} learnt{" "}
-                {theirSongs.length === 1 ? "song" : "songs"}
+                {songCounts.join(" · ")}
               </p>
             )}
           </div>
         </div>
 
-        {!isPrivate && (
+        {!isLearntPrivate && (
           <div className="stat-grid profile-stats">
             <div className="stat-card">
               <span className="meta-text text-small">In common</span>
@@ -223,107 +178,67 @@ export default function UserProfile({ userId }: { userId: string }) {
         />
       </div>
 
-      {isPrivate ? (
-        <section className="card">
-          <div className="section-header">
-            <h2>Learnt Songs</h2>
-          </div>
-          <p className="empty-state">
-            {firstName} keeps their learnt songs private.
-          </p>
-        </section>
-      ) : (
-        <section className="card">
-          <div className="section-header">
-            <h2>Compare Learnt Songs</h2>
-          </div>
+      <div>
+        <SongListPreview
+          heading="Currently Learning"
+          songs={data.learningSongs}
+          href={
+            data.learningSongs.length > 0
+              ? `/users/${user._id}/learning-songs`
+              : undefined
+          }
+          emptyMessage={
+            isLearningPrivate ? (
+              <>{firstName} keeps the songs they&apos;re learning private.</>
+            ) : (
+              <>{firstName} isn&apos;t learning any songs right now.</>
+            )
+          }
+        />
 
-          <div className="tab-group compare-tabs">
-            {filterTabs.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                className={`tab ${filter === tab.value ? "tab-active" : ""}`}
-                onClick={() => setFilter(tab.value)}
-              >
-                {tab.label} ({tab.count})
-              </button>
-            ))}
-          </div>
-
-          <SortControls
-            id="user-profile-learnt-sort"
-            value={sortBy}
-            onChange={setSortBy}
-            options={dateSortOptions}
-          />
-
-          {sortedSongs.length === 0 ? (
-            <p className="empty-state">{emptyMessages[filter]}</p>
-          ) : (
-            <div className="list list-top">
-              {sortedSongs.map((song) => {
-                const iKnowIt = mySongIds.has(song.songId);
-
-                return (
-                  <div key={song.id} className="card-item card-item-compact">
-                    <div className="song-row">
-                      <SongInfo
-                        image={song.image}
-                        imageAlt={song.title}
-                        title={song.title}
-                        meta={[song.artist, song.album]
-                          .filter(Boolean)
-                          .join(" — ")}
-                        extra={
-                          song.isCustom ? (
-                            <>
-                              {song.bandName ? (
-                                <>
-                                  Custom song from{" "}
-                                  <strong>{song.bandName}</strong>
-                                </>
-                              ) : (
-                                "Custom song"
-                              )}
-                              {song.notes ? ` - Note: ${song.notes}` : ""}
-                            </>
-                          ) : undefined
-                        }
-                      />
-                      {song.duration ? (
-                        <span className="song-duration">
-                          {formatDuration(song.duration)}
-                        </span>
-                      ) : null}
-                      {/* custom songs can only be added from their band's page */}
-                      {(iKnowIt || !song.isCustom) && (
-                        <LearntToggleButton
-                          isLearnt={iKnowIt}
-                          isToggling={savingIds.has(song.songId)}
-                          onToggle={() => handleToggleLearnt(song)}
-                          className="compare-learnt-button"
-                        />
-                      )}
-                    </div>
-
-                    <SongAudioPlayer
-                      src={song.preview}
-                      deezerTrackId={!song.isCustom ? song.songId : undefined}
-                      unavailableLabel="Audio unavailable"
-                    />
-                    <OpenInMusicAppLink
-                      deezerTrackId={!song.isCustom ? song.songId : undefined}
-                      title={song.title}
-                      artist={song.artist}
-                    />
-                  </div>
-                );
-              })}
+        {isLearntPrivate ? (
+          <section className="card">
+            <div className="section-header">
+              <h2>Learnt Songs</h2>
             </div>
-          )}
-        </section>
-      )}
+            <p className="empty-state">
+              {firstName} keeps their learnt songs private.
+            </p>
+          </section>
+        ) : (
+          <section className="card">
+            <div className="section-header">
+              <h2>Compare Learnt Songs</h2>
+            </div>
+
+            <div className="tab-group compare-tabs">
+              {filterTabs.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  className={`tab ${filter === tab.value ? "tab-active" : ""}`}
+                  onClick={() => setFilter(tab.value)}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
+            </div>
+
+            <SortControls
+              id="user-profile-learnt-sort"
+              value={sortBy}
+              onChange={setSortBy}
+              options={dateSortOptions}
+            />
+
+            {sortedSongs.length === 0 ? (
+              <p className="empty-state">{emptyMessages[filter]}</p>
+            ) : (
+              <div className="list list-top">{sortedSongs.map(renderSong)}</div>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }
