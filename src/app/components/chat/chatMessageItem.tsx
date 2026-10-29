@@ -313,14 +313,22 @@ export default function ChatMessageItem({
       {!isOwn && (
         <div className="chat-row-avatar">
           {showHeader && (
-            <Avatar name={message.userName} image={message.userImage} />
+            <Link
+              href={`/users/${message.userId}`}
+              className="chat-row-profile-link"
+              aria-label={`View ${message.userName}'s profile`}
+            >
+              <Avatar name={message.userName} image={message.userImage} />
+            </Link>
           )}
         </div>
       )}
 
       <div className="chat-row-content">
         {showHeader && !isOwn && (
-          <span className="chat-row-name">{message.userName}</span>
+          <Link href={`/users/${message.userId}`} className="chat-row-name">
+            {message.userName}
+          </Link>
         )}
 
         <div className="chat-bubble-line">

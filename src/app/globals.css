@@ -1700,6 +1700,15 @@ h4 {
   font-weight: 600;
   color: var(--muted);
   margin: 0 0 0.2rem 0.6rem;
+  text-decoration: none;
+}
+.chat-row-name:hover {
+  text-decoration: underline;
+}
+/* avatar and name both link to the sender's profile */
+.chat-row-profile-link {
+  display: block;
+  border-radius: 50%;
 }
 .chat-bubble-line {
   position: relative;
@@ -3085,15 +3094,8 @@ h4 {
   font-size: 0.82rem;
   white-space: nowrap;
 }
-.compare-badge {
+.compare-learnt-button {
   flex-shrink: 0;
-  padding: 0.2rem 0.55rem;
-  border: 1px solid rgba(183, 90, 185, 0.7);
-  border-radius: 999px;
-  background: #351e31;
-  color: #fef4ff;
-  font-size: 0.72rem;
-  font-weight: 500;
   white-space: nowrap;
 }
 .notification-error {

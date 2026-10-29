@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react";
 import AvatarImage from "@/app/components/ui/avatarImage";
 import { useRouter } from "next/navigation";
-import { addPersonalLearntSongAction } from "@/app/actions/learntSongs";
+import {
+  addPersonalLearntSongAction,
+  removePersonalLearntSongAction,
+} from "@/app/actions/learntSongs";
 import { ProfileLearntSong, PublicUserProfile } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import { compareByDate, safeTimestamp } from "@/app/lib/sortUtils";
@@ -15,6 +18,7 @@ import SortControls from "@/app/components/ui/sortControls";
 import PageLoading from "@/app/components/ui/pageLoading";
 import PageErrorCard from "@/app/components/ui/pageErrorCard";
 import InviteToBand from "@/app/components/profile/inviteToBand";
+import { LearntToggleButton } from "@/app/components/songs/songLearntStatus";
 import { unwrapAction } from "@/app/lib/actionResult";
 
 type CompareFilter = "theirs" | "common" | "onlyThem" | "onlyMe";
@@ -32,16 +36,19 @@ export default function UserProfile({ userId }: { userId: string }) {
   );
   const [filter, setFilter] = useState<CompareFilter>("theirs");
   const [sortBy, setSortBy] = useState<DateSort>("newest");
+  // songs marked / unmarked as learnt on this page since it loaded
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
 
   const theirSongs = useMemo(() => data?.songs ?? [], [data]);
   const mySongs = useMemo(() => data?.mySongs ?? [], [data]);
 
-  const mySongIds = useMemo(
-    () => new Set([...mySongs.map((s) => s.songId), ...addedIds]),
-    [mySongs, addedIds],
-  );
+  const mySongIds = useMemo(() => {
+    const ids = new Set([...mySongs.map((s) => s.songId), ...addedIds]);
+    removedIds.forEach((id) => ids.delete(id));
+    return ids;
+  }, [mySongs, addedIds, removedIds]);
   const theirSongIds = useMemo(
     () => new Set(theirSongs.map((s) => s.songId)),
     [theirSongs],
@@ -49,7 +56,9 @@ export default function UserProfile({ userId }: { userId: string }) {
 
   const commonSongs = theirSongs.filter((s) => mySongIds.has(s.songId));
   const onlyThemSongs = theirSongs.filter((s) => !mySongIds.has(s.songId));
-  const onlyMeSongs = mySongs.filter((s) => !theirSongIds.has(s.songId));
+  const onlyMeSongs = mySongs.filter(
+    (s) => mySongIds.has(s.songId) && !theirSongIds.has(s.songId),
+  );
 
   const filteredSongs = {
     theirs: theirSongs,
@@ -66,25 +75,42 @@ export default function UserProfile({ userId }: { userId: string }) {
     ),
   );
 
-  const handleAddSong = async (song: ProfileLearntSong) => {
+  const without = (ids: Set<string>, id: string) => {
+    const next = new Set(ids);
+    next.delete(id);
+    return next;
+  };
+
+  // same Mark as Learnt / ✓ Learnt toggle as the band song lists
+  const handleToggleLearnt = async (song: ProfileLearntSong) => {
     if (savingIds.has(song.songId)) return;
+    const isLearnt = mySongIds.has(song.songId);
 
     setSavingIds((prev) => new Set(prev).add(song.songId));
     try {
-      unwrapAction(
-        await addPersonalLearntSongAction({
-          id: song.songId,
-          title: song.title,
-          artist: song.artist ?? "",
-          album: song.album ?? "",
-          duration: song.duration ?? 0,
-          preview: song.preview,
-          image: song.image,
-        }),
-      );
-      setAddedIds((prev) => new Set(prev).add(song.songId));
+      if (isLearnt) {
+        unwrapAction(await removePersonalLearntSongAction(song.songId));
+        setAddedIds((prev) => without(prev, song.songId));
+        setRemovedIds((prev) => new Set(prev).add(song.songId));
+      } else {
+        unwrapAction(
+          await addPersonalLearntSongAction({
+            id: song.songId,
+            title: song.title,
+            artist: song.artist ?? "",
+            album: song.album ?? "",
+            duration: song.duration ?? 0,
+            preview: song.preview,
+            image: song.image,
+          }),
+        );
+        setRemovedIds((prev) => without(prev, song.songId));
+        setAddedIds((prev) => new Set(prev).add(song.songId));
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to add song");
+      alert(
+        err instanceof Error ? err.message : "Failed to update learnt status",
+      );
     } finally {
       setSavingIds((prev) => {
         const next = new Set(prev);
@@ -237,7 +263,6 @@ export default function UserProfile({ userId }: { userId: string }) {
           ) : (
             <div className="list list-top">
               {sortedSongs.map((song) => {
-                const isTheirs = filter !== "onlyMe";
                 const iKnowIt = mySongIds.has(song.songId);
 
                 return (
@@ -271,18 +296,15 @@ export default function UserProfile({ userId }: { userId: string }) {
                           {formatDuration(song.duration)}
                         </span>
                       ) : null}
-                      {isTheirs &&
-                        (iKnowIt ? (
-                          <span className="compare-badge">You know this</span>
-                        ) : !song.isCustom ? (
-                          <button
-                            onClick={() => handleAddSong(song)}
-                            disabled={savingIds.has(song.songId)}
-                            className="button button-small button-primary"
-                          >
-                            {savingIds.has(song.songId) ? "Adding..." : "Add"}
-                          </button>
-                        ) : null)}
+                      {/* custom songs can only be added from their band's page */}
+                      {(iKnowIt || !song.isCustom) && (
+                        <LearntToggleButton
+                          isLearnt={iKnowIt}
+                          isToggling={savingIds.has(song.songId)}
+                          onToggle={() => handleToggleLearnt(song)}
+                          className="compare-learnt-button"
+                        />
+                      )}
                     </div>
 
                     <SongAudioPlayer

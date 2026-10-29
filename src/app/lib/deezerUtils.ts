@@ -33,17 +33,33 @@ export interface RawDeezerAlbum {
   artist?: { name?: string };
 }
 
+// deezer allows ~50 requests per 5 seconds, which a page of audio players
+// refreshing expired previews at once can go over - wait and try again
+const QUOTA_ERROR_CODE = 4;
+const QUOTA_RETRY_DELAYS_MS = [1500, 3000, 5000];
+
 export async function fetchDeezer<T>(path: string): Promise<T> {
-  const response = await fetch(`${DEEZER_API}${path}`);
-  if (!response.ok) {
-    throw new Error(`Deezer API request failed: ${path}`);
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(`${DEEZER_API}${path}`);
+    if (!response.ok) {
+      throw new Error(`Deezer API request failed: ${path}`);
+    }
+    const data = await response.json();
+    // deezer returns 200 with an error object for bad ids / quota issues
+    if (data?.error) {
+      if (
+        data.error.code === QUOTA_ERROR_CODE &&
+        attempt < QUOTA_RETRY_DELAYS_MS.length
+      ) {
+        // jitter so a burst of retries doesn't all land together again
+        const delay = QUOTA_RETRY_DELAYS_MS[attempt] + Math.random() * 1000;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+      throw new Error(data.error.message || "Deezer API error");
+    }
+    return data as T;
   }
-  const data = await response.json();
-  // deezer returns 200 with an error object for bad ids / quota issues
-  if (data?.error) {
-    throw new Error(data.error.message || "Deezer API error");
-  }
-  return data as T;
 }
 
 export function mapTrack(
@@ -159,7 +175,16 @@ function tokenCoverage(query: string, text: string) {
 const containsPhrase = (text: string, phrase: string) =>
   phrase.length > 0 && ` ${text} `.includes(` ${phrase} `);
 
-const FILLER_WORDS = new Set(["the", "of", "and", "a", "an", "by", "ft", "feat"]);
+const FILLER_WORDS = new Set([
+  "the",
+  "of",
+  "and",
+  "a",
+  "an",
+  "by",
+  "ft",
+  "feat",
+]);
 
 // loose check for whether the rest of the query (after the song title)
 // refers to this artist - "queens", "queen of stone age" and "qotsa" all
@@ -188,7 +213,8 @@ function mentionsArtist(query: string, base: string, artist: string) {
       token.length >= 3 &&
       words.some(
         (word) =>
-          word.startsWith(token) || (word.length >= 3 && token.startsWith(word)),
+          word.startsWith(token) ||
+          (word.length >= 3 && token.startsWith(word)),
       ),
   );
 }
@@ -294,7 +320,10 @@ export function pickArtistsToExpand(items: RawDeezerTrack[], rawQuery: string) {
 }
 
 // keep only top tracks whose title is actually part of the search
-export function filterTracksForQuery(items: RawDeezerTrack[], rawQuery: string) {
+export function filterTracksForQuery(
+  items: RawDeezerTrack[],
+  rawQuery: string,
+) {
   const query = normalize(rawQuery);
   return items.filter((item) => {
     const base = baseTitle(item.title || "");
@@ -321,8 +350,7 @@ function scoreAlbum(item: RawDeezerAlbum, query: string, index: number) {
   // searching just a band name in the albums tab should list their albums
   if (base === query || artist === query || `${artist} ${base}` === query) {
     score += 100;
-  }
-  else if (base && query.includes(base)) score += 40;
+  } else if (base && query.includes(base)) score += 40;
   if (artist && query.includes(artist)) score += 30;
   score += tokenCoverage(query, `${title} ${artist}`) * 40;
   if (item.record_type === "compile") score -= 30;

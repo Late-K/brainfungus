@@ -8,6 +8,29 @@ import ExpandedUserList from "@/app/components/ui/expandedUserList";
 
 const max_visible_avatars = 5;
 
+// the Mark as Learnt / ✓ Learnt toggle, also used on other people's profiles
+export function LearntToggleButton({
+  isLearnt,
+  isToggling,
+  onToggle,
+  className,
+}: {
+  isLearnt: boolean;
+  isToggling: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      disabled={isToggling}
+      className={`button button-small ${isLearnt ? "button-learnt" : "button-tertiary"}${className ? ` ${className}` : ""}`}
+    >
+      {isToggling ? "..." : isLearnt ? "✓ Learnt" : "Mark as Learnt"}
+    </button>
+  );
+}
+
 interface SongLearntStatusProps {
   songId: string;
   learntMap: LearntMap;
@@ -35,13 +58,11 @@ export default function SongLearntStatus({
   return (
     <>
       <div className="learnt-row">
-        <button
-          onClick={() => onToggleLearnt(normalisedSongId)}
-          disabled={isToggling}
-          className={`button button-small ${isLearnt ? "button-learnt" : "button-tertiary"}`}
-        >
-          {isToggling ? "..." : isLearnt ? "✓ Learnt" : "Mark as Learnt"}
-        </button>
+        <LearntToggleButton
+          isLearnt={isLearnt}
+          isToggling={isToggling}
+          onToggle={() => onToggleLearnt(normalisedSongId)}
+        />
 
         {learners.length > 0 && (
           <div className="learnt-avatars">
