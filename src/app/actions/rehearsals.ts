@@ -15,6 +15,7 @@ import {
   toObjectId,
   toObjectIds,
 } from "@/app/lib/server/utils";
+import { BandDocument, canEditBandItem } from "@/app/lib/server/bands";
 import { runAction, UserError } from "@/app/lib/actionResult";
 import {
   readBoolean,
@@ -44,8 +45,12 @@ function readRehearsalFields(
   };
 }
 
-// loads a rehearsal and checks the current user is in its band
-async function requireRehearsal(rehearsalId: unknown) {
+// loads a rehearsal and checks the current user is in its band. changing or
+// cancelling it (manage) is only for whoever scheduled it and band admins
+async function requireRehearsal(
+  rehearsalId: unknown,
+  { manage = false } = {},
+) {
   const rehearsalObjectId = toObjectId(rehearsalId, "rehearsal ID");
   const { db, user } = await getAuthUser();
 
@@ -56,7 +61,16 @@ async function requireRehearsal(rehearsalId: unknown) {
     throw new UserError("Rehearsal not found");
   }
 
-  await requireBandMember(db, user._id.toString(), rehearsal.bandId);
+  const userId = user._id.toString();
+  const { band } = await requireBandMember(db, userId, rehearsal.bandId);
+  if (
+    manage &&
+    !canEditBandItem(band as BandDocument, userId, rehearsal.createdBy)
+  ) {
+    throw new UserError(
+      "Only the person who scheduled this rehearsal or a band admin can change it",
+    );
+  }
   return { db, user, rehearsal, rehearsalObjectId };
 }
 
@@ -263,9 +277,8 @@ export async function getUserRehearsalsAction() {
       .find({ "members.userId": user._id.toString() })
       .project({ name: 1, members: 1 })
       .toArray();
-    const bandNameMap = new Map(
-      bands.map((b) => [b._id.toString(), b.name as string]),
-    );
+    const bandMap = new Map(bands.map((b) => [b._id.toString(), b]));
+    const userId = user._id.toString();
 
     const rehearsals =
       bands.length > 0
@@ -281,13 +294,17 @@ export async function getUserRehearsalsAction() {
     return {
       rehearsals: rehearsals.map((r) => {
         const rid = r._id.toString();
+        const band = bandMap.get(r.bandId.toString());
         return {
           ...r,
           _id: rid,
           bandId: r.bandId.toString(),
           createdBy: r.createdBy.toString(),
           date: rehearsalDateStr(r.date),
-          bandName: bandNameMap.get(r.bandId.toString()) || "Unknown band",
+          bandName: (band?.name as string | undefined) || "Unknown band",
+          canManage:
+            !!band &&
+            canEditBandItem(band as BandDocument, userId, r.createdBy),
           ...rehearsalAvailabilityFields(rid, availability),
         };
       }),
@@ -356,7 +373,7 @@ export async function cancelRehearsalOccurrenceAction(
   return runAction("Failed to cancel rehearsal", async () => {
     const date = readDateStr(occurrenceDate);
     const { db, rehearsal, rehearsalObjectId } =
-      await requireRehearsal(rehearsalId);
+      await requireRehearsal(rehearsalId, { manage: true });
     if (rehearsal.repeatType === "once") {
       throw new UserError("Cannot cancel occurrence of a one-time rehearsal");
     }
@@ -378,7 +395,9 @@ export async function cancelRehearsalOccurrenceAction(
 // delete rehearsal
 export async function deleteRehearsalAction(rehearsalId: string) {
   return runAction("Failed to delete rehearsal", async () => {
-    const { db, rehearsalObjectId } = await requireRehearsal(rehearsalId);
+    const { db, rehearsalObjectId } = await requireRehearsal(rehearsalId, {
+      manage: true,
+    });
     await deleteRehearsal(db, rehearsalObjectId);
   });
 }
@@ -391,7 +410,7 @@ export async function endRehearsalSeriesAction(
   return runAction("Failed to end rehearsal series", async () => {
     const from = readDateStr(fromDate);
     const { db, rehearsal, rehearsalObjectId } =
-      await requireRehearsal(rehearsalId);
+      await requireRehearsal(rehearsalId, { manage: true });
 
     // if the from date is the start date, just delete the whole thing
     if (from <= rehearsalDateStr(rehearsal.date)) {
@@ -429,7 +448,9 @@ export async function updateRehearsalAction(
       endTime,
       notes,
     );
-    const { db, rehearsalObjectId } = await requireRehearsal(rehearsalId);
+    const { db, rehearsalObjectId } = await requireRehearsal(rehearsalId, {
+      manage: true,
+    });
     await db
       .collection("rehearsals")
       .updateOne(
@@ -468,6 +489,11 @@ export async function getBandRehearsalsWithAvailabilityAction(bandId: string) {
           notes: r.notes,
           excludedDates: r.excludedDates ?? [],
           endDate: r.endDate,
+          canManage: canEditBandItem(
+            band as BandDocument,
+            user._id.toString(),
+            r.createdBy,
+          ),
           ...rehearsalAvailabilityFields(rid, availability),
         };
       }),

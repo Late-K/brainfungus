@@ -102,18 +102,22 @@ export default function CalendarRehearsals({
                   available={getAvailabilityForDate(rehearsal, selectedDate)}
                   onClick={() => onToggleAvailability(rehearsal)}
                 />
-                <button
-                  className="button button-small button-tertiary"
-                  onClick={() => onEditRehearsal(rehearsal)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="button button-small button-tertiary button-tertiary-danger"
-                  onClick={() => onDeleteRehearsal(rehearsal)}
-                >
-                  Delete
-                </button>
+                {rehearsal.canManage && (
+                  <>
+                    <button
+                      className="button button-small button-tertiary"
+                      onClick={() => onEditRehearsal(rehearsal)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="button button-small button-tertiary button-tertiary-danger"
+                      onClick={() => onDeleteRehearsal(rehearsal)}
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
                 <button
                   className="button button-small button-tertiary"
                   onClick={() => onAddToCalendar(rehearsal)}

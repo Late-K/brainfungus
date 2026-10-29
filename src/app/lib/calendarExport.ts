@@ -46,13 +46,15 @@ interface CalendarExportOptions {
   now?: Date;
 }
 
-// commas, semicolons, backslashes and newlines have to be escaped in text
+// commas, semicolons, backslashes and newlines have to be escaped in text.
+// a lone \r counts as a newline too, since some calendars end a line on it
+// and the rest of the text would become a line of its own
 function escapeText(text: string) {
   return text
     .replace(/\\/g, "\\\\")
     .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
-    .replace(/\r?\n/g, "\\n");
+    .replace(/\r\n|\r|\n/g, "\\n");
 }
 
 const encoder = new TextEncoder();

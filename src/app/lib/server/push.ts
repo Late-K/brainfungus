@@ -10,6 +10,37 @@ import { NotificationType, PushPayload } from "@/app/types";
 
 let vapidConfigured = false;
 
+// the push services browsers actually hand out subscriptions for (chrome and
+// other chromium browsers, firefox, safari, edge). the server posts to
+// whatever endpoint is saved, so anything else would let a user point it at
+// any url they like
+const PUSH_SERVICE_HOSTS = [
+  "fcm.googleapis.com",
+  "android.googleapis.com",
+  "web.push.apple.com",
+];
+const PUSH_SERVICE_HOST_SUFFIXES = [
+  ".push.services.mozilla.com",
+  ".push.apple.com",
+  ".notify.windows.com",
+];
+
+export function isPushServiceEndpoint(endpoint: unknown) {
+  if (typeof endpoint !== "string" || endpoint.length > 2000) return false;
+  try {
+    const url = new URL(endpoint);
+    const host = url.hostname;
+    return (
+      url.protocol === "https:" &&
+      !url.port &&
+      (PUSH_SERVICE_HOSTS.includes(host) ||
+        PUSH_SERVICE_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix)))
+    );
+  } catch {
+    return false;
+  }
+}
+
 type PushOptions = {
   // for things aimed at one person, like an @mention, that should still
   // reach them when they've muted the band
@@ -63,6 +94,11 @@ export async function sendPushToUsers(
   const expiredIds: ObjectId[] = [];
   await Promise.all(
     subscriptions.map(async (sub) => {
+      // saved before endpoints were checked - drop it rather than post to it
+      if (!isPushServiceEndpoint(sub.endpoint)) {
+        expiredIds.push(sub._id);
+        return;
+      }
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: sub.keys },

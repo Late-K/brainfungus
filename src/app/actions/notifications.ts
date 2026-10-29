@@ -4,6 +4,7 @@ import { getAuthUser } from "@/app/lib/server/auth";
 import { requireBandMemberContext } from "@/app/lib/server/utils";
 import { runAction, UserError } from "@/app/lib/actionResult";
 import { readBoolean, readOneOf, readString } from "@/app/lib/validate";
+import { isPushServiceEndpoint } from "@/app/lib/server/push";
 import { NotificationPrefs, NotificationType } from "@/app/types";
 
 const notificationTypes: NotificationType[] = [
@@ -28,8 +29,7 @@ export async function savePushSubscriptionAction(
     const { endpoint, keys } = subscription ?? {};
     if (
       typeof endpoint !== "string" ||
-      !endpoint.startsWith("https://") ||
-      endpoint.length > 2000 ||
+      !isPushServiceEndpoint(endpoint) ||
       typeof keys?.p256dh !== "string" ||
       typeof keys?.auth !== "string"
     ) {

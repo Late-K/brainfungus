@@ -15,6 +15,7 @@ import {
   validateImageFile,
 } from "@/app/lib/server/customSongImages";
 import { deleteBlobsQuietly } from "@/app/lib/server/blobStorage";
+import { BandDocument, canEditBandItem } from "@/app/lib/server/bands";
 import { runAction, UserError } from "@/app/lib/actionResult";
 import {
   readOptionalString,
@@ -24,8 +25,12 @@ import {
 import { put } from "@vercel/blob";
 import { ObjectId } from "mongodb";
 
-// loads a custom song and checks the current user is in its band
-async function requireSongForMember(songId: unknown) {
+// loads a custom song and checks the current user is in its band. deleting it
+// (manage) is only for whoever added it and band admins
+async function requireSongForMember(
+  songId: unknown,
+  { manage = false } = {},
+) {
   const songObjectId = toObjectId(songId, "song ID");
   const { db, user } = await getAuthUser();
 
@@ -34,7 +39,16 @@ async function requireSongForMember(songId: unknown) {
     .findOne({ _id: songObjectId });
   if (!song) throw new UserError("Song not found");
 
-  await requireBandMember(db, user._id.toString(), song.bandId);
+  const userId = user._id.toString();
+  const { band } = await requireBandMember(db, userId, song.bandId);
+  if (
+    manage &&
+    !canEditBandItem(band as BandDocument, userId, song.creatorId)
+  ) {
+    throw new UserError(
+      "Only the person who added this song or a band admin can delete it",
+    );
+  }
   return { db, song, songObjectId };
 }
 
@@ -95,7 +109,9 @@ export async function createSongAction(
 
 export async function deleteSongAction(songId: string) {
   return runAction("Failed to delete song", async () => {
-    const { db, song, songObjectId } = await requireSongForMember(songId);
+    const { db, song, songObjectId } = await requireSongForMember(songId, {
+      manage: true,
+    });
 
     await deleteBlobsQuietly(
       [song.audioBlobUrl, song.imageBlobUrl],

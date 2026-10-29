@@ -2,7 +2,7 @@
 
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect, useRouter } from "next/navigation";
 import SetlistsPreview from "@/app/components/setlists/setlistsPreview";
@@ -30,33 +30,42 @@ export default function BandDetailsPage({
   // desktop: the sticky chat column is sized to reach the bottom of the screen
   const sideRef = useFitToViewport<HTMLElement>();
 
-  useEffect(() => {
-    fetchBandDetails();
-  }, [bandId]);
+  // signal lets a request for a band you've already left be cancelled, so a
+  // slow reply can't replace the band you're looking at now
+  const fetchBandDetails = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!bandId) return;
+      try {
+        setIsLoading(true);
+        setError("");
 
-  async function fetchBandDetails() {
-    if (!bandId) return;
-    try {
-      setIsLoading(true);
-      setError("");
+        const res = await fetch(`/api/bands/${bandId}`, { signal });
 
-      const res = await fetch(`/api/bands/${bandId}`);
-
-      if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error("Band not found");
+        if (!res.ok) {
+          if (res.status === 404) {
+            throw new Error("Band not found");
+          }
+          throw new Error("Failed to fetch band details");
         }
-        throw new Error("Failed to fetch band details");
-      }
 
-      const data = await res.json();
-      setBand(data.band);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load band");
-    } finally {
-      setIsLoading(false);
-    }
-  }
+        const data = await res.json();
+        if (signal?.aborted) return;
+        setBand(data.band);
+      } catch (err) {
+        if (signal?.aborted) return;
+        setError(err instanceof Error ? err.message : "Failed to load band");
+      } finally {
+        if (!signal?.aborted) setIsLoading(false);
+      }
+    },
+    [bandId],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchBandDetails(controller.signal);
+    return () => controller.abort();
+  }, [fetchBandDetails]);
 
   const handleLeaveBand = () => {
     router.push("/");
@@ -84,7 +93,7 @@ export default function BandDetailsPage({
           <BandManagement
             band={band}
             currentUserEmail={session.user.email}
-            onBandUpdated={fetchBandDetails}
+            onBandUpdated={() => fetchBandDetails()}
             onBandLeft={handleLeaveBand}
           />
         )}

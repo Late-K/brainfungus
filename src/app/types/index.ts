@@ -317,6 +317,9 @@ export interface Rehearsal {
 // haven't given one
 export interface CalendarRehearsal extends Rehearsal {
   bandName?: string;
+  // whether the current user can edit or delete it - whoever scheduled it
+  // and band admins
+  canManage?: boolean;
   available?: boolean;
   occurrenceAvailability?: Record<string, boolean>;
   availableUsersBase?: AvailUser[];

@@ -11,6 +11,7 @@ import { Db, Document, ObjectId } from "mongodb";
 import { Song } from "@/app/types";
 import { toSetlistSong } from "@/app/lib/setlistUtils";
 import { notifyBandMembers } from "@/app/lib/server/push";
+import { BandDocument, canEditBandItem } from "@/app/lib/server/bands";
 import { runAction, UserError } from "@/app/lib/actionResult";
 import { readSongInput, readString } from "@/app/lib/validate";
 import { getSetlistableCustomSongIds } from "@/app/lib/server/customSongAccess";
@@ -117,11 +118,17 @@ export async function createSetlistAction(
 
 export async function deleteSetlistAction(setlistId: string) {
   return runAction("Failed to delete setlist", async () => {
-    const { db, user, setlist } = await requireSetlist(setlistId);
+    const { db, user, band, setlist } = await requireSetlist(setlistId);
 
-    if (setlist.creatorId.toString() !== user._id.toString()) {
+    if (
+      !canEditBandItem(
+        band as BandDocument,
+        user._id.toString(),
+        setlist.creatorId,
+      )
+    ) {
       throw new UserError(
-        "Only the person who made this setlist can delete it",
+        "Only the person who made this setlist or a band admin can delete it",
       );
     }
 
@@ -138,12 +145,8 @@ export async function setActiveSetlistAction(
     const { db, user, band, bandObjectId } =
       await requireBandMemberContext(bandId);
 
-    // deactivate all other setlists in this band
-    await db
-      .collection("setlists")
-      .updateMany({ bandId: bandObjectId }, { $set: { isActive: false } });
-
-    // activate the selected setlist
+    // activate the selected setlist first, so a bad id doesn't leave the
+    // band with no active setlist at all
     const setlist = await db
       .collection("setlists")
       .findOneAndUpdate(
@@ -154,6 +157,14 @@ export async function setActiveSetlistAction(
     if (!setlist) {
       throw new UserError("Setlist not found");
     }
+
+    // then deactivate all the others in this band
+    await db
+      .collection("setlists")
+      .updateMany(
+        { bandId: bandObjectId, _id: { $ne: setlistObjectId } },
+        { $set: { isActive: false } },
+      );
 
     notifyActiveSetlistChange(
       db,

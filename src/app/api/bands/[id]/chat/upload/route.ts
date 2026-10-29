@@ -42,10 +42,11 @@ export async function POST(
     return Response.json(result);
   } catch (error) {
     console.error("Chat upload failed:", error);
-    // most failures here are rejected uploads, so report them as bad requests
+    // most failures here are rejected uploads, so report them as bad requests.
+    // only our own user facing messages reach the browser
     const status = getServerErrorStatus(error);
     return Response.json(
-      { error: error instanceof Error ? error.message : "Upload failed" },
+      { error: error instanceof UserError ? error.message : "Upload failed" },
       { status: status === 500 ? 400 : status },
     );
   }

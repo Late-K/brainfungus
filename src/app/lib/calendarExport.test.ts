@@ -119,6 +119,15 @@ describe("buildRehearsalIcs", () => {
       ]),
     );
   });
+
+  it("never lets notes start a line of their own", () => {
+    const ics = buildRehearsalIcs(
+      rehearsal({ notes: "a\rATTENDEE:x\r\nb\nc" }),
+      { bandName: "B", now },
+    );
+    expect(ics.replace(/\r\n/g, "")).not.toMatch(/[\r\n]/);
+    expect(lines(ics)).toContain("DESCRIPTION:a\\nATTENDEE:x\\nb\\nc");
+  });
 });
 
 describe("calendar file names and links", () => {

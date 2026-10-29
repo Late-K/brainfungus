@@ -17,6 +17,7 @@ import {
   getInvitesCollection,
   isBandCreator,
   readUserId,
+  requireCanManageMember,
   sendBandInvites,
   setMemberBandDataActiveState,
   verifyAdmin,
@@ -248,11 +249,8 @@ export async function deleteBandImageAction(bandId: string) {
 export async function removeMemberAction(bandId: string, memberId: string) {
   return runAction("Failed to remove member", async () => {
     const id = readUserId(memberId);
-    const { db, band, bandObjectId } = await verifyAdmin(bandId);
-
-    if (isBandCreator(band, id)) {
-      throw new UserError("Cannot remove the band creator");
-    }
+    const { db, band, bandObjectId, isCreator } = await verifyAdmin(bandId);
+    requireCanManageMember(band, id, isCreator);
 
     await getBandsCollection(db).updateOne(
       { _id: bandObjectId },
@@ -266,16 +264,8 @@ export async function removeMemberAction(bandId: string, memberId: string) {
 export async function toggleAdminAction(bandId: string, memberId: string) {
   return runAction("Failed to update role", async () => {
     const id = readUserId(memberId);
-    const { db, band, bandObjectId } = await verifyAdmin(bandId);
-
-    if (isBandCreator(band, id)) {
-      throw new UserError("Cannot change the creator's admin role");
-    }
-
-    const entry = band.members.find((m) => m.userId === id);
-    if (!entry) {
-      throw new UserError("User is not a band member");
-    }
+    const { db, band, bandObjectId, isCreator } = await verifyAdmin(bandId);
+    const entry = requireCanManageMember(band, id, isCreator);
 
     const isCurrentlyAdmin = entry.role === "admin";
     const newRole: BandRole = isCurrentlyAdmin ? "member" : "admin";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   getBandRehearsalsWithAvailabilityAction,
   setRehearsalAvailabilityAction,
@@ -38,24 +38,34 @@ export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
   const [dayAvailability, setDayAvailability] =
     useState<DayAvailabilityInfo | null>(null);
 
-  const fetchRehearsals = async () => {
-    try {
-      const data = unwrapAction(
-        await getBandRehearsalsWithAvailabilityAction(bandId),
-      );
-      setRehearsals(data.rehearsals ?? []);
-      setDayAvailability(data.dayAvailability ?? null);
-      if (data.currentUser) setCurrentUser(data.currentUser);
-    } catch {
-      setRehearsals([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // server actions can't be cancelled, so isStale says when the band has
+  // changed since this load started and its result should be thrown away
+  const fetchRehearsals = useCallback(
+    async (isStale: () => boolean = () => false) => {
+      try {
+        const data = unwrapAction(
+          await getBandRehearsalsWithAvailabilityAction(bandId),
+        );
+        if (isStale()) return;
+        setRehearsals(data.rehearsals ?? []);
+        setDayAvailability(data.dayAvailability ?? null);
+        if (data.currentUser) setCurrentUser(data.currentUser);
+      } catch {
+        if (!isStale()) setRehearsals([]);
+      } finally {
+        if (!isStale()) setLoading(false);
+      }
+    },
+    [bandId],
+  );
 
   useEffect(() => {
-    fetchRehearsals();
-  }, [bandId]);
+    let stale = false;
+    fetchRehearsals(() => stale);
+    return () => {
+      stale = true;
+    };
+  }, [fetchRehearsals]);
 
   const upcoming = rehearsals
     .map((r) => ({ rehearsal: r, nextDate: getNextOccurrence(r) }))

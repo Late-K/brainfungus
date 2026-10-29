@@ -68,6 +68,37 @@ export function isBandCreator(band: BandDocument, userId: string) {
   return band.members.some((m) => m.userId === userId && m.role === "creator");
 }
 
+// admins can manage plain members, but only the creator can remove or demote
+// another admin
+export function requireCanManageMember(
+  band: BandDocument,
+  memberId: string,
+  isCreator: boolean,
+) {
+  const entry = band.members.find((m) => m.userId === memberId);
+  if (!entry) throw new UserError("User is not a band member");
+  if (entry.role === "creator") {
+    throw new UserError("Cannot change the band creator");
+  }
+  if (entry.role === "admin" && !isCreator) {
+    throw new UserError("Only the band creator can change other admins");
+  }
+  return entry;
+}
+
+// whether a user can change or delete something in a band - whoever made it,
+// or any of the band's admins
+export function canEditBandItem(
+  band: BandDocument,
+  userId: string,
+  createdBy: unknown,
+) {
+  return (
+    (createdBy != null && String(createdBy) === userId) ||
+    isAdminOrCreator(band, userId)
+  );
+}
+
 export function readUserId(value: unknown) {
   return toObjectId(value, "user ID").toString();
 }

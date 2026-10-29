@@ -22,8 +22,17 @@ export async function GET(request: NextRequest) {
       .collection("custom_songs")
       .find(
         { bandId: bandObjectId },
-        // exclude large binary/base64 fields and the private image blob url
-        { projection: { audioData: 0, audioUrl: 0, imageBlobUrl: 0 } },
+        // exclude large binary/base64 fields and the private blob urls - audio
+        // and images are served by /api/songs/[id]/audio and /image
+        {
+          projection: {
+            audioData: 0,
+            audioUrl: 0,
+            audioBlobUrl: 0,
+            audioBlobPathname: 0,
+            imageBlobUrl: 0,
+          },
+        },
       )
       .sort({ createdAt: 1 })
       .toArray();

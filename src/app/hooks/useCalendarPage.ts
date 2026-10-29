@@ -154,8 +154,8 @@ export function useCalendarPage() {
         await cancelRehearsalOccurrenceAction(choiceTarget._id, selectedDate),
       );
       fetchRehearsals();
-    } catch {
-      // ignore and keep current state
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to cancel rehearsal");
     }
 
     setChoiceTarget(null);
@@ -178,8 +178,8 @@ export function useCalendarPage() {
         unwrapAction(await deleteRehearsalAction(targetRehearsalId));
       }
       fetchRehearsals();
-    } catch {
-      // ignore and keep current state
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete rehearsal");
     }
 
     setChoiceTarget(null);
@@ -280,8 +280,10 @@ export function useCalendarPage() {
       unwrapAction(
         await removeDayAvailabilityAction(selectedDate, scope, bandId),
       );
-    } catch {
-      // ignore and keep current state
+    } catch (err) {
+      alert(
+        err instanceof Error ? err.message : "Failed to remove availability",
+      );
     }
     await fetchRehearsals();
   };

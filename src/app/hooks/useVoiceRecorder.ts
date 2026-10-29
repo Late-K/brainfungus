@@ -47,7 +47,14 @@ export function useVoiceRecorder() {
   }, []);
 
   // let go of the microphone if the chat closes mid-recording
-  useEffect(() => cleanup, [cleanup]);
+  const unmountedRef = useRef(false);
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+      cleanup();
+    };
+  }, [cleanup]);
 
   const start = useCallback(async () => {
     setError("");
@@ -58,6 +65,12 @@ export function useVoiceRecorder() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // the chat closed while the permission prompt was up - nothing will
+      // ever stop this stream, so turn the microphone straight back off
+      if (unmountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       const mimeType = pickMimeType();
       const recorder = new MediaRecorder(
         stream,

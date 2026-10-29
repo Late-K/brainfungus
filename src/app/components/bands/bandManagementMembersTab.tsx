@@ -88,7 +88,10 @@ export default function BandMembersTab({
               </div>
             </div>
 
-            {isAdmin && !member.isCreator && (
+            {/* admins manage members, only the creator manages admins */}
+            {isAdmin &&
+              !member.isCreator &&
+              (isCreator || !member.isAdmin) && (
               <div className="member-actions">
                 {isCreator && (
                   <button
