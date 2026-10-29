@@ -184,7 +184,6 @@ export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
             {r.notes && <p className="rehearsal-summary-notes">{r.notes}</p>}
             <AvailableUsersRow
               users={getAvailUsersForDate(r, nextDate!)}
-              maxVisible={3}
               onShowAll={setExpandedUsers}
             />
             <div className="availability-controls">

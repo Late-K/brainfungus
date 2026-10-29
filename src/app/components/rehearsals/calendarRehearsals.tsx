@@ -87,7 +87,6 @@ export default function CalendarRehearsals({
               )}
               <AvailableUsersRow
                 users={getAvailableUsersForDate(rehearsal, selectedDate)}
-                maxVisible={5}
                 onShowAll={onShowAllUsers}
               />
               <div className="rehearsal-action-row">

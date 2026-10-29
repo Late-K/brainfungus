@@ -1124,10 +1124,13 @@ h4 {
   margin-top: 0.5rem;
   flex-wrap: wrap;
 }
+/* fills the rest of the row; songLearntStatus works out how many fit */
 .learnt-avatars {
   display: flex;
-  flex-wrap: wrap;
   gap: 4px;
+  flex: 1 1 0;
+  min-width: 52px;
+  overflow: hidden;
 }
 .learnt-avatar {
   width: 24px;
@@ -1177,10 +1180,14 @@ h4 {
   color: var(--muted);
   flex-shrink: 0;
 }
+/* fills the rest of the row; availableUsersRow works out how many fit */
 .available-avatars {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
 }
 .available-avatar {
   width: 24px;

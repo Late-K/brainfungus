@@ -5,8 +5,9 @@ import AvatarImage from "@/app/components/ui/avatarImage";
 import { AvailUser, LearntMap } from "@/app/types";
 import { currentUserLearnt } from "@/app/lib/setlistUtils";
 import ExpandedUserList from "@/app/components/ui/expandedUserList";
+import { useFittingCount } from "@/app/hooks/useFittingCount";
 
-const max_visible_avatars = 5;
+const avatar_size_px = 24;
 
 // the Mark as Learnt / ✓ Learnt toggle, also used on other people's profiles
 export function LearntToggleButton({
@@ -54,6 +55,11 @@ export default function SongLearntStatus({
   const learners = learntMap[normalisedSongId] || [];
   const isLearnt = currentUserLearnt(normalisedSongId, learntMap, userEmail);
   const isToggling = togglingIds.has(normalisedSongId);
+  const [setAvatarsEl, fitCount] = useFittingCount<HTMLDivElement>(
+    learners.length,
+    avatar_size_px,
+  );
+  const hiddenCount = learners.length - fitCount;
 
   return (
     <>
@@ -65,8 +71,8 @@ export default function SongLearntStatus({
         />
 
         {learners.length > 0 && (
-          <div className="learnt-avatars">
-            {learners.slice(0, max_visible_avatars).map((learner) => (
+          <div className="learnt-avatars" ref={setAvatarsEl}>
+            {learners.slice(0, fitCount).map((learner) => (
               <div
                 key={learner.userId}
                 className="learnt-avatar"
@@ -87,13 +93,13 @@ export default function SongLearntStatus({
                 )}
               </div>
             ))}
-            {learners.length > max_visible_avatars && (
+            {hiddenCount > 0 && (
               <button
                 className="available-avatar-more"
                 onClick={() => setExpandedLearners(learners)}
                 title="Show all"
               >
-                +{learners.length - max_visible_avatars}
+                +{hiddenCount}
               </button>
             )}
           </div>

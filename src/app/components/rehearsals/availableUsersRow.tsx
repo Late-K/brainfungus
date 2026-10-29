@@ -2,27 +2,32 @@
 
 import AvatarImage from "@/app/components/ui/avatarImage";
 import { AvailUser } from "@/app/types";
+import { useFittingCount } from "@/app/hooks/useFittingCount";
+
+const avatar_size_px = 24;
 
 interface AvailableUsersRowProps {
   users: AvailUser[];
-  maxVisible?: number;
   onShowAll?: (users: AvailUser[]) => void;
 }
 
 export default function AvailableUsersRow({
   users,
-  maxVisible = 5,
   onShowAll,
 }: AvailableUsersRowProps) {
+  const [setAvatarsEl, fitCount] = useFittingCount<HTMLDivElement>(
+    users.length,
+    avatar_size_px,
+  );
   if (users.length === 0) return null;
 
-  const visible = users.slice(0, maxVisible);
-  const extra = users.length - maxVisible;
+  const visible = users.slice(0, fitCount);
+  const extra = users.length - fitCount;
 
   return (
     <div className="avatar-row">
       <span className="avatar-row-label">Available:</span>
-      <div className="available-avatars">
+      <div className="available-avatars" ref={setAvatarsEl}>
         {visible.map((u) => (
           <div key={u.userId} className="available-avatar" title={u.userName}>
             {u.userImage ? (
