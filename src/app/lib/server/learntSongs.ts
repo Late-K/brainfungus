@@ -6,6 +6,7 @@ import {
   albumImageKey,
   getAlbumImages,
 } from "@/app/lib/server/customSongImages";
+import { getSongBands } from "@/app/lib/server/customSongAccess";
 import { ProfileLearntSong } from "@/app/types";
 
 // fetch all learnt songs for a user from the unified learnt_songs collection
@@ -90,18 +91,9 @@ async function getUserSongs(
     ),
   );
 
-  const bands = bandIds.length
-    ? await db
-        .collection("bands")
-        .find(
-          { _id: { $in: bandIds.map((id) => new ObjectId(id)) } },
-          { projection: { name: 1 } },
-        )
-        .toArray()
-    : [];
-
-  const bandNameById = new Map(
-    bands.map((band) => [band._id.toString(), band.name as string]),
+  const songBands = await getSongBands(
+    db,
+    bandIds.map((id) => new ObjectId(id)),
   );
 
   const seen = new Set<string>();
@@ -130,6 +122,7 @@ async function getUserSongs(
     const resolvedPreview = isCustom
       ? customPreview
       : (entry.preview as string | undefined);
+    const songBand = songBands.get(entry.bandId?.toString() ?? "");
 
     songs.push({
       id: entry._id.toString(),
@@ -152,9 +145,8 @@ async function getUserSongs(
         (entry.notes as string | undefined),
       isCustom,
       bandId: entry.bandId?.toString(),
-      bandName:
-        bandNameById.get(entry.bandId?.toString() ?? "") ??
-        (entry.bandName as string | undefined),
+      bandName: songBand?.name ?? (entry.bandName as string | undefined),
+      isPrivate: isCustom ? songBand?.isPrivate : undefined,
       source: entry.bandId ? "band" : "personal",
       createdAt: entry.createdAt?.toISOString?.() ?? new Date().toISOString(),
     });

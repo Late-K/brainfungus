@@ -1,9 +1,15 @@
 ﻿"use client";
 
-import { Song, DeezerResult, BandCover } from "@/app/types";
+import {
+  Song,
+  DeezerResult,
+  BandCover,
+  ProfileLearntSong,
+} from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import CustomSongPicker from "@/app/components/songs/customSongPicker";
 import CoverPicker from "@/app/components/covers/coverPicker";
+import ProfileSongPicker from "@/app/components/setlists/profileSongPicker";
 import DeezerSearch from "@/app/components/songs/deezerSearch";
 
 interface SetlistEditModeProps {
@@ -34,6 +40,7 @@ interface SetlistEditModeProps {
     }>,
   ) => void;
   onToggleCoverSong: (cover: BandCover) => void;
+  onToggleProfileSong: (song: ProfileLearntSong) => void;
   isEditSongSelected: (songId: string) => boolean;
   title?: string;
   saveLabel?: string;
@@ -55,6 +62,7 @@ export default function SetlistEditMode({
   onToggleCustomSong,
   onToggleCustomAlbum,
   onToggleCoverSong,
+  onToggleProfileSong,
   isEditSongSelected,
   title = "Edit Setlist",
   saveLabel = "Save",
@@ -181,6 +189,14 @@ export default function SetlistEditMode({
           defaultOpen={!collapseSongPickers}
           selectedSongs={editSongs}
           onToggleCover={onToggleCoverSong}
+        />
+
+        <ProfileSongPicker
+          bandId={bandId || ""}
+          collapsible={collapseSongPickers}
+          defaultOpen={!collapseSongPickers}
+          selectedSongs={editSongs}
+          onToggleSong={onToggleProfileSong}
         />
 
         <DeezerSearch

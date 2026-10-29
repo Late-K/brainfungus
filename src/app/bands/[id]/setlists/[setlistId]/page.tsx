@@ -68,6 +68,7 @@ export default function SetlistDetailPage({
           onToggleCustomSong={setlistDetailPage.editor.handleToggleCustomSong}
           onToggleCustomAlbum={setlistDetailPage.editor.handleToggleCustomAlbum}
           onToggleCoverSong={setlistDetailPage.editor.handleToggleCoverSong}
+          onToggleProfileSong={setlistDetailPage.editor.handleToggleProfileSong}
           isEditSongSelected={setlistDetailPage.editor.isEditSongSelected}
           saveLabel="Save Changes"
         />
@@ -79,13 +80,12 @@ export default function SetlistDetailPage({
     <div className="page-container">
       <SetlistViewMode
         bandId={setlistDetailPage.bandId!}
+        songsPrivate={setlistDetailPage.band?.customSongsPrivate === true}
         setlist={setlistDetailPage.setlist}
         isDeleting={setlistDetailPage.isDeleting}
         learntMap={setlistDetailPage.learntMap}
         learningIds={setlistDetailPage.learningIds}
         togglingIds={setlistDetailPage.togglingIds}
-        coverSongIds={setlistDetailPage.coverSongIds}
-        addingCoverIds={setlistDetailPage.addingCoverIds}
         userEmail={session.user?.email}
         totalDuration={setlistDetailPage.totalDuration}
         progress={setlistDetailPage.progress}
@@ -96,7 +96,6 @@ export default function SetlistDetailPage({
         onDelete={setlistDetailPage.handleDelete}
         onToggleLearnt={setlistDetailPage.handleToggleLearnt}
         onToggleLearning={setlistDetailPage.handleToggleLearning}
-        onAddToCovers={setlistDetailPage.handleAddToCovers}
       />
     </div>
   );

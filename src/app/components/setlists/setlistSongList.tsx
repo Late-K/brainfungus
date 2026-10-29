@@ -6,8 +6,13 @@ import SongLearntStatus from "@/app/components/songs/songLearntStatus";
 import SongAudioPlayer from "@/app/components/songs/songAudioPlayer";
 import OpenInMusicAppLink from "@/app/components/songs/openInMusicAppLink";
 import SongInfo from "@/app/components/songs/songInfo";
+import AddToSonglist from "@/app/components/songs/addToSonglist";
 
 interface SetlistSongListProps {
+  bandId: string;
+  setlistId: string;
+  // whether the band keeps its custom songs out of other bands' setlists
+  songsPrivate: boolean;
   songs: Song[];
   learntMap: LearntMap;
   learningIds: Set<string>;
@@ -15,12 +20,12 @@ interface SetlistSongListProps {
   togglingIds: Set<string>;
   onToggleLearnt: (songId: string) => void;
   onToggleLearning: (songId: string) => void;
-  coverSongIds?: Set<string>;
-  addingCoverIds?: Set<string>;
-  onAddToCovers?: (song: Song) => void;
 }
 
 export default function SetlistSongList({
+  bandId,
+  setlistId,
+  songsPrivate,
   songs,
   learntMap,
   learningIds,
@@ -28,9 +33,6 @@ export default function SetlistSongList({
   togglingIds,
   onToggleLearnt,
   onToggleLearning,
-  coverSongIds,
-  addingCoverIds,
-  onAddToCovers,
 }: SetlistSongListProps) {
   if (songs.length === 0) {
     return <p className="empty-state">No songs in this setlist</p>;
@@ -61,21 +63,6 @@ export default function SetlistSongList({
                   {formatDuration(song.duration)}
                 </span>
               )}
-              {onAddToCovers &&
-                !song.isCustom &&
-                (coverSongIds?.has(song.id) ? (
-                  <span className="meta-text meta-text-small">✓ Cover</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onAddToCovers(song)}
-                    disabled={addingCoverIds?.has(song.id)}
-                    className="button button-small button-secondary"
-                    title="Add to band covers"
-                  >
-                    {addingCoverIds?.has(song.id) ? "..." : "+ Covers"}
-                  </button>
-                ))}
             </div>
 
             <SongAudioPlayer
@@ -87,6 +74,18 @@ export default function SetlistSongList({
               title={song.title}
               artist={song.artist}
             />
+            <div className="learnt-row">
+              <AddToSonglist
+                song={song}
+                bandId={bandId}
+                excludeSetlistId={setlistId}
+                onlyBandId={
+                  song.isCustom && songsPrivate && song.bandId === bandId
+                    ? bandId
+                    : undefined
+                }
+              />
+            </div>
 
             <SongLearntStatus
               songId={song.id}

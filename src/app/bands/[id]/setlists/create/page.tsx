@@ -47,6 +47,7 @@ export default function CreateSetlistPage({
         onToggleCustomSong={createSetlistPage.handleToggleCustomSong}
         onToggleCustomAlbum={createSetlistPage.handleToggleCustomAlbum}
         onToggleCoverSong={createSetlistPage.handleToggleCoverSong}
+        onToggleProfileSong={createSetlistPage.handleToggleProfileSong}
         isEditSongSelected={createSetlistPage.isSongSelected}
         title="Create New Setlist"
         saveLabel="Create Setlist"

@@ -4,7 +4,7 @@ import { Dispatch, SetStateAction } from "react";
 import { CustomSong, LearntMap } from "@/app/types";
 import SongLearntStatus from "@/app/components/songs/songLearntStatus";
 import SongAlbumPicker from "@/app/components/songs/songAlbumPicker";
-import ActiveSetlistButton from "@/app/components/setlists/activeSetlistButton";
+import AddToSonglist from "@/app/components/songs/addToSonglist";
 import ImageUploadField from "@/app/components/ui/imageUploadField";
 
 interface CustomSongRowProps {
@@ -50,9 +50,8 @@ interface CustomSongRowProps {
   onUploadAlbumImage: (albumName: string, file: File) => void;
   onDeleteAlbumImage: (albumName: string) => void;
   allowReorder?: boolean;
-  isInActiveSetlist?: boolean;
-  isTogglingSetlist?: boolean;
-  onToggleActiveSetlist?: (song: CustomSong) => void;
+  // whether the band keeps its custom songs out of other bands' setlists
+  songsPrivate?: boolean;
 }
 
 export default function CustomSongRow({
@@ -92,9 +91,7 @@ export default function CustomSongRow({
   onUploadAlbumImage,
   onDeleteAlbumImage,
   allowReorder = false,
-  isInActiveSetlist = false,
-  isTogglingSetlist = false,
-  onToggleActiveSetlist,
+  songsPrivate = false,
 }: CustomSongRowProps) {
   if (isEditing) {
     return (
@@ -260,13 +257,18 @@ export default function CustomSongRow({
         </div>
 
         <div className="inline-actions-small">
-          {onToggleActiveSetlist && (
-            <ActiveSetlistButton
-              isInSetlist={isInActiveSetlist}
-              isToggling={isTogglingSetlist}
-              onToggle={() => onToggleActiveSetlist(song)}
-            />
-          )}
+          <AddToSonglist
+            song={{
+              id: song._id,
+              title: song.title,
+              album: song.album,
+              duration: song.duration ?? 0,
+              isCustom: true,
+              bandId: song.bandId,
+            }}
+            bandId={song.bandId}
+            onlyBandId={songsPrivate ? song.bandId : undefined}
+          />
           <button
             onClick={() => onStartEditing(song)}
             className="button button-small button-tertiary"

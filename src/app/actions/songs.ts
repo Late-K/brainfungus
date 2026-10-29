@@ -104,11 +104,13 @@ export async function deleteSongAction(songId: string) {
 
     const normalisedSongId = normaliseSongId(songObjectId);
 
-    // remove all references to this custom song
+    // remove all references to this custom song, including other bands'
+    // setlists and covers it was added to
     await Promise.all([
+      db.collection("covers").deleteMany({ songId: normalisedSongId }),
       db
         .collection("setlists")
-        .updateMany({ bandId: song.bandId, "songs.id": normalisedSongId }, {
+        .updateMany({ "songs.id": normalisedSongId }, {
           $pull: {
             songs: { id: normalisedSongId },
           },

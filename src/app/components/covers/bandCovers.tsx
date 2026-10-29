@@ -6,15 +6,17 @@ import {
   removeBandCoverAction,
 } from "@/app/actions/covers";
 import { BandCover } from "@/app/types";
-import { formatDuration } from "@/app/lib/setlistUtils";
+import {
+  coverToSetlistSong,
+  formatDuration,
+} from "@/app/lib/setlistUtils";
 import SongAudioPlayer from "@/app/components/songs/songAudioPlayer";
 import OpenInMusicAppLink from "@/app/components/songs/openInMusicAppLink";
 import SongLearntStatus from "@/app/components/songs/songLearntStatus";
 import DeezerSearch from "@/app/components/songs/deezerSearch";
 import SongInfo from "@/app/components/songs/songInfo";
 import SortControls from "@/app/components/ui/sortControls";
-import ActiveSetlistButton from "@/app/components/setlists/activeSetlistButton";
-import { useActiveSetlist } from "@/app/hooks/useActiveSetlist";
+import AddToSonglist from "@/app/components/songs/addToSonglist";
 import { useBandLearntStatus } from "@/app/hooks/useBandLearntStatus";
 import {
   compareByDate,
@@ -50,13 +52,6 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
   } = useBandLearntStatus(bandId);
   const [savingCoverIds, setSavingCoverIds] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<KnownSongSort>("newest");
-
-  const {
-    activeSetlist,
-    togglingSetlistIds,
-    isInActiveSetlist,
-    handleToggleActiveSetlist,
-  } = useActiveSetlist(bandId);
 
   const coverSongIds = useMemo(
     () => new Set(covers.map((cover) => cover.songId)),
@@ -197,12 +192,6 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
           options={knownSongSortOptions}
         />
 
-        {!activeSetlist && (
-          <p className="meta-text meta-text-small margin-top">
-            Set a setlist as active to add covers to it from here.
-          </p>
-        )}
-
         {error && <p className="alert alert-error">{error}</p>}
 
         {isLoading ? (
@@ -234,24 +223,11 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
 
                 {/* own row so the title keeps its width in narrow columns */}
                 <div className="inline-actions song-actions">
-                  {activeSetlist && (
-                    <ActiveSetlistButton
-                      isInSetlist={isInActiveSetlist(cover.songId)}
-                      isToggling={togglingSetlistIds.has(cover.songId)}
-                      onToggle={() =>
-                        handleToggleActiveSetlist({
-                          id: cover.songId,
-                          title: cover.title,
-                          artist: cover.artist,
-                          album: cover.album,
-                          duration: cover.duration ?? 0,
-                          preview: cover.preview,
-                          image: cover.image,
-                          isCover: true,
-                        })
-                      }
-                    />
-                  )}
+                  <AddToSonglist
+                    song={coverToSetlistSong(cover)}
+                    bandId={bandId}
+                    excludeCovers
+                  />
                   <button
                     onClick={() => handleRemoveCover(cover.songId)}
                     disabled={savingCoverIds.has(cover.songId)}
@@ -263,10 +239,10 @@ export default function BandCovers({ bandId, userEmail }: BandCoversProps) {
 
                 <SongAudioPlayer
                   src={cover.preview}
-                  deezerTrackId={cover.songId}
+                  deezerTrackId={cover.isCustom ? undefined : cover.songId}
                 />
                 <OpenInMusicAppLink
-                  deezerTrackId={cover.songId}
+                  deezerTrackId={cover.isCustom ? undefined : cover.songId}
                   title={cover.title}
                   artist={cover.artist}
                 />

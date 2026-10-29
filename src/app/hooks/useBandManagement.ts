@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   deleteBandAction,
   updateBandAction,
+  setCustomSongsPrivateAction,
   uploadBandImageAction,
   deleteBandImageAction,
   removeMemberAction,
@@ -38,6 +39,10 @@ export function useBandManagement({
   const [description, setDescription] = useState(band.description || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [customSongsPrivate, setCustomSongsPrivate] = useState(
+    band.customSongsPrivate === true,
+  );
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isFetchingUsers, setIsFetchingUsers] = useState(false);
@@ -68,6 +73,7 @@ export function useBandManagement({
   useEffect(() => {
     setName(band.name);
     setDescription(band.description || "");
+    setCustomSongsPrivate(band.customSongsPrivate === true);
   }, [band]);
 
   const fetchAvailableUsers = async () => {
@@ -158,6 +164,29 @@ export function useBandManagement({
       setError(err instanceof Error ? err.message : "Failed to remove image");
     } finally {
       setIsUploadingImage(false);
+    }
+  };
+
+  // saves straight away like the image
+  const handleToggleCustomSongsPrivate = async () => {
+    const newValue = !customSongsPrivate;
+    setError("");
+    setSuccess("");
+    setCustomSongsPrivate(newValue);
+    setIsSavingPrivacy(true);
+    try {
+      unwrapAction(await setCustomSongsPrivateAction(band._id, newValue));
+      setSuccess(
+        newValue ? "Custom songs are now private" : "Custom songs are now public",
+      );
+      onBandUpdated();
+    } catch (err) {
+      setCustomSongsPrivate(!newValue);
+      setError(
+        err instanceof Error ? err.message : "Failed to update song privacy",
+      );
+    } finally {
+      setIsSavingPrivacy(false);
     }
   };
 
@@ -262,6 +291,8 @@ export function useBandManagement({
     setDescription,
     isSaving,
     isUploadingImage,
+    customSongsPrivate,
+    isSavingPrivacy,
     // users
     availableUsers,
     isFetchingUsers,
@@ -285,6 +316,7 @@ export function useBandManagement({
     handleSaveDetails,
     handleImageSelect,
     handleImageRemove,
+    handleToggleCustomSongsPrivate,
     handleDelete,
     handleLeaveBand,
     handleInviteMember,

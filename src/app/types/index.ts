@@ -8,6 +8,8 @@ export interface Band {
   description: string;
   createdAt: string;
   image?: string;
+  // when on, the band's custom songs only show up for its own members
+  customSongsPrivate?: boolean;
   members?: BandMember[];
   // people invited who haven't accepted yet
   invites?: BandInvitee[];
@@ -53,6 +55,8 @@ export interface Song {
   audioUrl?: string;
   isCustom?: boolean;
   isCover?: boolean;
+  // the band a custom song in a setlist belongs to
+  bandId?: string;
 }
 
 export interface BandCover {
@@ -66,6 +70,9 @@ export interface BandCover {
   image?: string;
   createdAt?: string;
   updatedAt?: string;
+  // another band's custom song, and that band. its preview is the song's audio
+  isCustom?: boolean;
+  songBandId?: string;
 }
 
 export interface DeezerResult {
@@ -119,6 +126,24 @@ export interface Setlist {
   creatorId?: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+// one of the current user's bands with the song lists a song can be added to
+// from the + Songlist menu - its covers and setlists - and the ids of the
+// songs already in each
+export interface UserSonglistBand {
+  _id: string;
+  name: string;
+  image?: string;
+  coverSongIds: string[];
+  setlists: UserSetlist[];
+}
+
+export interface UserSetlist {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  songIds: string[];
 }
 
 export type AvailUser = {
@@ -349,6 +374,8 @@ export interface ProfileLearntSong {
   isCustom: boolean;
   bandId?: string;
   bandName?: string;
+  // custom songs whose band keeps them private
+  isPrivate?: boolean;
   source: "personal" | "band";
   createdAt: string;
 }
@@ -370,6 +397,8 @@ export interface PublicUserProfile {
   myLearningSongIds: string[];
   // bands the current user can invite the viewed user to
   inviteBands: ProfileInviteBand[];
+  // bands both users are in, shown first when adding their songs to a setlist
+  sharedBandIds: string[];
 }
 
 export interface ProfileInviteBand {

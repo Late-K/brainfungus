@@ -2,6 +2,7 @@
   serverErrorResponse,
   requireBandMemberContext,
 } from "@/app/lib/server/utils";
+import { getBandCovers } from "@/app/lib/server/covers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -15,33 +16,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { db, bandObjectId } = await requireBandMemberContext(bandId);
+    const covers = await getBandCovers(db, bandObjectId);
 
-    const covers = await db
-      .collection("covers")
-      .find({ bandId: bandObjectId })
-      .sort({ createdAt: 1 })
-      .toArray();
-
-    const formatted = covers.map((cover) => ({
-      _id: cover._id.toString(),
-      songId: cover.songId,
-      title: cover.title,
-      artist: cover.artist,
-      album: cover.album,
-      duration: cover.duration,
-      preview: cover.preview,
-      image: cover.image,
-      createdAt:
-        cover.createdAt instanceof Date
-          ? cover.createdAt.toISOString()
-          : cover.createdAt,
-      updatedAt:
-        cover.updatedAt instanceof Date
-          ? cover.updatedAt.toISOString()
-          : cover.updatedAt,
-    }));
-
-    return NextResponse.json({ covers: formatted }, { status: 200 });
+    return NextResponse.json({ covers }, { status: 200 });
   } catch (error) {
     return serverErrorResponse(error, "Failed to fetch covers");
   }

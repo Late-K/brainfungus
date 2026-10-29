@@ -6,6 +6,7 @@ import { getAuthUser } from "@/app/lib/server/auth";
 import { UserError } from "@/app/lib/actionResult";
 import { serverErrorResponse } from "@/app/lib/server/utils";
 import { streamPrivateBlob } from "@/app/lib/server/blobStorage";
+import { canAccessBandSongs } from "@/app/lib/server/customSongAccess";
 
 // custom song, album, band and profile images live in private blob storage
 // like song audio, and are served through /api/songs/[id]/image,
@@ -97,26 +98,30 @@ export function streamBlobImage(blobUrl: string, mimeType?: string) {
 
 // the GET handler for a custom song or album image. any signed in user can
 // view these, since custom songs also show up on other people's learnt songs
+// and other bands' setlists - unless the band keeps its songs private
 export async function streamStoredImage(
   collection: "custom_songs" | "custom_albums",
   id: string,
 ) {
   try {
-    const { db } = await getAuthUser();
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Image not found" }, { status: 404 });
-    }
+    const { db, user } = await getAuthUser();
+    const notFound = () =>
+      NextResponse.json({ error: "Image not found" }, { status: 404 });
+    if (!ObjectId.isValid(id)) return notFound();
 
     const doc = await db
       .collection(collection)
       .findOne(
         { _id: new ObjectId(id) },
-        { projection: { imageBlobUrl: 1, imageMimeType: 1 } },
+        { projection: { imageBlobUrl: 1, imageMimeType: 1, bandId: 1 } },
       );
 
     const blobUrl = doc?.imageBlobUrl as string | undefined;
-    if (!blobUrl) {
-      return NextResponse.json({ error: "Image not found" }, { status: 404 });
+    if (
+      !blobUrl ||
+      !(await canAccessBandSongs(db, user._id.toString(), doc?.bandId))
+    ) {
+      return notFound();
     }
 
     return streamBlobImage(blobUrl, doc?.imageMimeType as string | undefined);

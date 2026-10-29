@@ -23,6 +23,7 @@ import {
 } from "@/app/lib/server/bands";
 import { BandRole } from "@/app/types";
 import {
+  readBoolean,
   readOptionalString,
   readString,
   readStringArray,
@@ -55,13 +56,16 @@ async function deleteBandCascade(db: Db, oid: ObjectId) {
   ).flatMap((m) =>
     (m.attachments as { blobUrl: string }[]).map((a) => a.blobUrl),
   );
-  const songBlobUrls = (
-    await db
-      .collection("custom_songs")
-      .find({ bandId: oid })
-      .project({ audioBlobUrl: 1, imageBlobUrl: 1 })
-      .toArray()
-  ).flatMap((s) => [s.audioBlobUrl, s.imageBlobUrl]);
+  const customSongs = await db
+    .collection("custom_songs")
+    .find({ bandId: oid })
+    .project({ audioBlobUrl: 1, imageBlobUrl: 1 })
+    .toArray();
+  const songBlobUrls = customSongs.flatMap((s) => [
+    s.audioBlobUrl,
+    s.imageBlobUrl,
+  ]);
+  const customSongIds = customSongs.map((s) => s._id.toString());
   const albumBlobUrls = (
     await db
       .collection("custom_albums")
@@ -80,6 +84,18 @@ async function deleteBandCascade(db: Db, oid: ObjectId) {
     db.collection("band_messages").deleteMany({ bandId: oid }),
     db.collection("band_chat_typing").deleteMany({ bandId: oid }),
     db.collection("setlists").deleteMany({ bandId: oid }),
+    // the band's songs can also be in other bands' setlists and covers
+    customSongIds.length > 0
+      ? db.collection("covers").deleteMany({ songId: { $in: customSongIds } })
+      : null,
+    customSongIds.length > 0
+      ? db.collection("setlists").updateMany(
+          { "songs.id": { $in: customSongIds } },
+          {
+            $pull: { songs: { id: { $in: customSongIds } } },
+          } as Record<string, unknown>,
+        )
+      : null,
     db.collection("custom_songs").deleteMany({ bandId: oid }),
     db.collection("custom_albums").deleteMany({ bandId: oid }),
     db.collection("covers").deleteMany({ bandId: oid }),
@@ -161,6 +177,23 @@ export async function updateBandAction(
     await getBandsCollection(db).updateOne(
       { _id: bandObjectId },
       { $set: { name: bandName, description: bandDescription } },
+    );
+  });
+}
+
+// private custom songs only show up for the band's own members. otherwise
+// their audio can be played from members' profiles and other bands' setlists
+export async function setCustomSongsPrivateAction(
+  bandId: string,
+  isPrivate: boolean,
+) {
+  return runAction("Failed to update song privacy", async () => {
+    const customSongsPrivate = readBoolean(isPrivate, "privacy setting");
+    const { db, bandObjectId } = await verifyAdmin(bandId);
+
+    await getBandsCollection(db).updateOne(
+      { _id: bandObjectId },
+      { $set: { customSongsPrivate } },
     );
   });
 }

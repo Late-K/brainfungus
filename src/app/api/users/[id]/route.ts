@@ -68,12 +68,15 @@ export async function GET(
           .toArray(),
       ]);
 
-    // custom song audio and notes belong to a band, so only share them with its members
+    // custom songs belong to a band. other people only see them when the band
+    // hasn't made its songs private, and only its members see their notes
     const myBandIds = new Set(myBands.map((band) => band._id.toString()));
+    const inMyBand = (song: ProfileLearntSong) =>
+      Boolean(song.bandId && myBandIds.has(song.bandId));
+    const isVisible = (song: ProfileLearntSong) =>
+      !song.isCustom || !song.isPrivate || inMyBand(song);
     const shareable = (song: ProfileLearntSong) =>
-      song.isCustom && !(song.bandId && myBandIds.has(song.bandId))
-        ? { ...song, preview: undefined, notes: undefined }
-        : song;
+      song.isCustom && !inMyBand(song) ? { ...song, notes: undefined } : song;
 
     // bands the current user admins, and whether this user is already in or invited to each
     const adminBands = myBands.filter((band) =>
@@ -112,13 +115,16 @@ export async function GET(
       },
       isLearntPrivate,
       isLearningPrivate,
-      songs: theirSongs.map(shareable),
-      learningSongs: theirLearning.map(shareable),
+      songs: theirSongs.filter(isVisible).map(shareable),
+      learningSongs: theirLearning.filter(isVisible).map(shareable),
       mySongs,
       myLearningSongIds: myLearning.map((entry) =>
         normaliseSongId(entry.songId),
       ),
       inviteBands,
+      sharedBandIds: myBands
+        .filter((band) => isBandMember(band, id))
+        .map((band) => band._id!.toString()),
     };
 
     return NextResponse.json(profile, { status: 200 });

@@ -7,8 +7,7 @@ import {
   deleteSetlistAction,
   setActiveSetlistAction,
 } from "@/app/actions/setlists";
-import { addBandCoverAction } from "@/app/actions/covers";
-import { BandCover, Band, Setlist, Song } from "@/app/types";
+import { Band, Setlist } from "@/app/types";
 import { getProgress } from "@/app/lib/setlistUtils";
 import { useSetlistEditor } from "@/app/hooks/useSetlistEditor";
 import { useBandLearntStatus } from "@/app/hooks/useBandLearntStatus";
@@ -33,8 +32,6 @@ export function useSetlistDetailPage(
     handleToggleLearnt,
     handleToggleLearning,
   } = useBandLearntStatus(bandId);
-  const [coverSongIds, setCoverSongIds] = useState<Set<string>>(new Set());
-  const [addingCoverIds, setAddingCoverIds] = useState<Set<string>>(new Set());
 
   const editor = useSetlistEditor({
     onSaveSuccess: (name, songs) => {
@@ -63,10 +60,9 @@ export function useSetlistDetailPage(
       setIsLoading(true);
       setError("");
 
-      const [setlistRes, bandRes, coversRes] = await Promise.all([
+      const [setlistRes, bandRes] = await Promise.all([
         fetch(`/api/setlists/${setlistId}`),
         fetch(`/api/bands/${bandId}`),
-        fetch(`/api/covers?bandId=${bandId}`),
       ]);
 
       if (!setlistRes.ok) {
@@ -83,12 +79,6 @@ export function useSetlistDetailPage(
       if (bandRes.ok) {
         const bandData = await bandRes.json();
         setMemberCount(bandData.band?.members?.length || 0);
-      }
-
-      if (coversRes.ok) {
-        const coversData = await coversRes.json();
-        const covers: BandCover[] = coversData.covers || [];
-        setCoverSongIds(new Set(covers.map((cover) => cover.songId)));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load setlist");
@@ -131,34 +121,6 @@ export function useSetlistDetailPage(
     }
   };
 
-  // custom songs aren't covers, so only Deezer songs can be added
-  const handleAddToCovers = async (song: Song) => {
-    if (!bandId || song.isCustom || addingCoverIds.has(song.id)) return;
-    setAddingCoverIds((prev) => new Set(prev).add(song.id));
-    try {
-      unwrapAction(
-        await addBandCoverAction(bandId, {
-          id: song.id,
-          title: song.title,
-          artist: song.artist || "",
-          album: song.album || "",
-          duration: song.duration,
-          preview: song.preview,
-          image: song.image,
-        }),
-      );
-      setCoverSongIds((prev) => new Set(prev).add(song.id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to add cover");
-    } finally {
-      setAddingCoverIds((prev) => {
-        const next = new Set(prev);
-        next.delete(song.id);
-        return next;
-      });
-    }
-  };
-
   const totalDuration =
     setlist?.songs.reduce((sum, song) => sum + (song.duration || 0), 0) || 0;
   const progress = setlist ? getProgress(setlist, learntMap, memberCount) : 0;
@@ -174,8 +136,6 @@ export function useSetlistDetailPage(
     learntMap,
     learningIds,
     togglingIds,
-    coverSongIds,
-    addingCoverIds,
     totalDuration,
     progress,
     editor,
@@ -183,6 +143,5 @@ export function useSetlistDetailPage(
     handleToggleActive,
     handleToggleLearnt,
     handleToggleLearning,
-    handleAddToCovers,
   };
 }

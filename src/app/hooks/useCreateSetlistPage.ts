@@ -3,8 +3,17 @@
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSetlistAction } from "@/app/actions/setlists";
-import { DeezerResult, Song, BandCover } from "@/app/types";
+import {
+  DeezerResult,
+  Song,
+  BandCover,
+  ProfileLearntSong,
+} from "@/app/types";
 import { unwrapAction } from "@/app/lib/actionResult";
+import {
+  coverToSetlistSong,
+  profileSongToSetlistSong,
+} from "@/app/lib/setlistUtils";
 
 export function useCreateSetlistPage(params: Promise<{ id: string }>) {
   const router = useRouter();
@@ -143,20 +152,17 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
       if (prev.some((song) => song.id === cover.songId)) {
         return prev.filter((song) => song.id !== cover.songId);
       }
-
-      const song: Song = {
-        id: cover.songId,
-        title: cover.title,
-        artist: cover.artist,
-        album: cover.album,
-        duration: cover.duration ?? 0,
-        preview: cover.preview,
-        image: cover.image,
-        isCover: true,
-      };
-
-      return [...prev, song];
+      return [...prev, coverToSetlistSong(cover)];
     });
+  };
+
+  const handleToggleProfileSong = (profileSong: ProfileLearntSong) => {
+    const song = profileSongToSetlistSong(profileSong);
+    setSelectedSongs((prev) =>
+      prev.some((s) => s.id === song.id)
+        ? prev.filter((s) => s.id !== song.id)
+        : [...prev, song],
+    );
   };
 
   return {
@@ -174,6 +180,7 @@ export function useCreateSetlistPage(params: Promise<{ id: string }>) {
     handleRemoveSelectedSong,
     handleToggleCustomAlbum,
     handleToggleCoverSong,
+    handleToggleProfileSong,
     handleCancel: () => router.push(`/bands/${bandId}/setlists`),
   };
 }

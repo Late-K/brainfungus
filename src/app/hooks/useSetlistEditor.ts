@@ -3,8 +3,17 @@
 "use client";
 
 import { useState } from "react";
-import { Song, DeezerResult, BandCover } from "@/app/types";
+import {
+  Song,
+  DeezerResult,
+  BandCover,
+  ProfileLearntSong,
+} from "@/app/types";
 import { updateSetlistAction } from "@/app/actions/setlists";
+import {
+  coverToSetlistSong,
+  profileSongToSetlistSong,
+} from "@/app/lib/setlistUtils";
 import { unwrapAction } from "@/app/lib/actionResult";
 
 interface UseSetlistEditorOptions {
@@ -132,16 +141,11 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
   };
 
   const handleToggleCoverSong = (cover: BandCover) => {
-    toggleSong({
-      id: cover.songId,
-      title: cover.title,
-      artist: cover.artist,
-      album: cover.album,
-      duration: cover.duration ?? 0,
-      preview: cover.preview,
-      image: cover.image,
-      isCover: true,
-    });
+    toggleSong(coverToSetlistSong(cover));
+  };
+
+  const handleToggleProfileSong = (song: ProfileLearntSong) => {
+    toggleSong(profileSongToSetlistSong(song));
   };
 
   const isEditSongSelected = (songId: string) =>
@@ -162,6 +166,7 @@ export function useSetlistEditor(options?: UseSetlistEditorOptions) {
     handleToggleCustomSong,
     handleToggleCustomAlbum,
     handleToggleCoverSong,
+    handleToggleProfileSong,
     isEditSongSelected,
   };
 }

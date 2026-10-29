@@ -13,6 +13,7 @@ import { toSetlistSong } from "@/app/lib/setlistUtils";
 import { notifyBandMembers } from "@/app/lib/server/push";
 import { runAction, UserError } from "@/app/lib/actionResult";
 import { readSongInput, readString } from "@/app/lib/validate";
+import { getSetlistableCustomSongIds } from "@/app/lib/server/customSongAccess";
 
 // tell the rest of the band their active setlist changed.
 // one tag per band so a burst of edits replaces the previous notification
@@ -38,11 +39,21 @@ function readSetlistName(name: unknown) {
   return trimmed;
 }
 
-function readSetlistSongs(songs: unknown) {
+// custom songs can be the band's own or another band's that isn't private.
+// any others - deleted, or since made private - are dropped
+async function readSetlistSongs(db: Db, bandId: ObjectId, songs: unknown) {
   if (!Array.isArray(songs) || songs.length > 500) {
     throw new UserError("Invalid songs");
   }
-  return songs.map((song) => toSetlistSong(readSongInput(song)));
+  const inputs = songs.map(readSongInput);
+  const allowedCustomIds = await getSetlistableCustomSongIds(
+    db,
+    bandId,
+    inputs.filter((song) => song.isCustom).map((song) => song.id),
+  );
+  return inputs
+    .filter((song) => !song.isCustom || allowedCustomIds.has(song.id))
+    .map(toSetlistSong);
 }
 
 // loads a setlist and checks the current user is in its band
@@ -70,9 +81,9 @@ export async function createSetlistAction(
 ) {
   return runAction("Failed to create setlist", async () => {
     const setlistName = readSetlistName(name);
-    const setlistSongs = readSetlistSongs(songs);
     const { db, user, band, bandObjectId } =
       await requireBandMemberContext(bandId);
+    const setlistSongs = await readSetlistSongs(db, bandObjectId, songs);
 
     // deactivate any currently active setlist for this band
     await db
@@ -161,8 +172,8 @@ export async function updateSetlistAction(
 ) {
   return runAction("Failed to update setlist", async () => {
     const setlistName = readSetlistName(name);
-    const setlistSongs = readSetlistSongs(songs);
     const { db, user, band, setlist } = await requireSetlist(setlistId);
+    const setlistSongs = await readSetlistSongs(db, setlist.bandId, songs);
 
     await db.collection("setlists").updateOne(
       { _id: setlist._id },
@@ -208,30 +219,26 @@ export async function deactivateSetlistAction(
   });
 }
 
-// add a single song to the band's active setlist (used from covers and custom songs lists)
-export async function addSongToActiveSetlistAction(bandId: string, song: Song) {
+// add a single song to any of the user's setlists, unless it's already in it
+// (used from every song list through the + Songlist menu)
+export async function addSongToSetlistAction(setlistId: string, song: Song) {
   return runAction("Failed to add song to setlist", async () => {
     const input = readSongInput(song);
-    const { db, user, band, bandObjectId } =
-      await requireBandMemberContext(bandId);
+    const { db, user, band, setlist } = await requireSetlist(setlistId);
 
-    const setlist = await db
-      .collection("setlists")
-      .findOne({ bandId: bandObjectId, isActive: true });
-    if (!setlist) throw new UserError("No active setlist");
-
-    // custom songs must belong to this band
-    if (input.isCustom) {
-      if (!ObjectId.isValid(input.id)) throw new UserError("Song not found");
-      const customSong = await db
-        .collection("custom_songs")
-        .findOne({ _id: new ObjectId(input.id), bandId: bandObjectId });
-      if (!customSong) throw new UserError("Song not found");
+    // custom songs must be this band's, or another band's that isn't private
+    if (
+      input.isCustom &&
+      !(
+        await getSetlistableCustomSongIds(db, setlist.bandId, [input.id])
+      ).has(input.id)
+    ) {
+      throw new UserError("Song not found");
     }
 
     const existingSongs: Array<{ id: unknown }> = setlist.songs || [];
     if (existingSongs.some((s) => normaliseSongId(s.id) === input.id)) {
-      return { alreadyExists: true, setlistId: setlist._id.toString() };
+      return { alreadyExists: true };
     }
 
     await db.collection("setlists").updateOne({ _id: setlist._id }, {
@@ -239,41 +246,39 @@ export async function addSongToActiveSetlistAction(bandId: string, song: Song) {
       $set: { updatedAt: new Date() },
     } as Record<string, unknown>);
 
-    notifyActiveSetlistChange(
-      db,
-      band,
-      user,
-      setlist._id.toString(),
-      `added ${input.title} to ${setlist.name}`,
-    );
+    if (setlist.isActive) {
+      notifyActiveSetlistChange(
+        db,
+        band,
+        user,
+        setlist._id.toString(),
+        `added ${input.title} to ${setlist.name}`,
+      );
+    }
 
-    return { alreadyExists: false, setlistId: setlist._id.toString() };
+    return { alreadyExists: false };
   });
 }
 
-export async function removeSongFromActiveSetlistAction(
-  bandId: string,
+export async function removeSongFromSetlistAction(
+  setlistId: string,
   songId: string,
 ) {
   return runAction("Failed to remove song from setlist", async () => {
     const id = readString(songId, "song", 100);
-    const { db, user, band, bandObjectId } =
-      await requireBandMemberContext(bandId);
-
-    // returns the setlist from before the pull, so the removed song's title is still there
-    const setlist = await db
-      .collection("setlists")
-      .findOneAndUpdate({ bandId: bandObjectId, isActive: true }, {
-        $pull: { songs: { id } },
-        $set: { updatedAt: new Date() },
-      } as Record<string, unknown>);
-
-    if (!setlist) throw new UserError("No active setlist");
+    const { db, user, band, setlist } = await requireSetlist(setlistId);
 
     const removedSong = (
       (setlist.songs ?? []) as Array<{ id: unknown; title?: string }>
     ).find((s) => normaliseSongId(s.id) === id);
-    if (removedSong) {
+    if (!removedSong) return;
+
+    await db.collection("setlists").updateOne({ _id: setlist._id }, {
+      $pull: { songs: { id } },
+      $set: { updatedAt: new Date() },
+    } as Record<string, unknown>);
+
+    if (setlist.isActive) {
       notifyActiveSetlistChange(
         db,
         band,

@@ -77,7 +77,11 @@ export default function CoverPicker({
                   image={cover.image}
                   imageAlt={cover.title}
                   title={cover.title}
-                  meta={`${cover.artist}${cover.album ? ` - ${cover.album}` : ""}`}
+                  meta={
+                    cover.isCustom
+                      ? `Custom song from ${cover.artist}`
+                      : `${cover.artist}${cover.album ? ` - ${cover.album}` : ""}`
+                  }
                   containerClassName="song-details"
                   metaClassName="meta-text meta-text-small margin-top"
                 />

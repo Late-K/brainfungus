@@ -87,6 +87,8 @@ export default function UserLearningSongs({ userId }: { userId: string }) {
                   myStatus={getMyStatus(song.songId)}
                   isSaving={savingIds.has(song.songId)}
                   onToggle={handleToggle}
+                  showAddToSonglist
+                  sharedBandIds={data.sharedBandIds}
                 />
               ))}
             </div>

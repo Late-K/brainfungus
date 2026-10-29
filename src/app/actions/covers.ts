@@ -3,14 +3,33 @@
 import { requireBandMemberContext } from "@/app/lib/server/utils";
 import { runAction, UserError } from "@/app/lib/actionResult";
 import { readSongInput, readString } from "@/app/lib/validate";
-import { DeezerResult } from "@/app/types";
+import { getSetlistableCustomSongIds } from "@/app/lib/server/customSongAccess";
+import { DeezerResult, Song } from "@/app/types";
 
-export async function addBandCoverAction(bandId: string, song: DeezerResult) {
+// a deezer song, or another band's custom song that isn't private. a band's
+// own custom songs can't be its covers
+export async function addBandCoverAction(
+  bandId: string,
+  song: DeezerResult | Song,
+) {
   return runAction("Failed to add cover", async () => {
     const input = readSongInput(song);
     if (!input.title) throw new UserError("Song title is required");
 
     const { db, user, bandObjectId } = await requireBandMemberContext(bandId);
+
+    if (
+      input.isCustom &&
+      !(
+        await getSetlistableCustomSongIds(db, bandObjectId, [input.id], {
+          allowOwnBand: false,
+        })
+      ).has(input.id)
+    ) {
+      throw new UserError(
+        "That song can't be a cover - it's your band's own or kept private",
+      );
+    }
 
     const existing = await db.collection("covers").findOne({
       bandId: bandObjectId,
@@ -25,19 +44,31 @@ export async function addBandCoverAction(bandId: string, song: DeezerResult) {
     }
 
     const now = new Date();
-    const result = await db.collection("covers").insertOne({
-      bandId: bandObjectId,
-      creatorId: user._id,
-      songId: input.id,
-      title: input.title,
-      artist: input.artist ?? "",
-      album: input.album ?? "",
-      duration: input.duration,
-      preview: input.preview ?? "",
-      image: input.image ?? "",
-      createdAt: now,
-      updatedAt: now,
-    });
+    const result = await db.collection("covers").insertOne(
+      input.isCustom
+        ? // the rest is looked up from the song when covers are read
+          {
+            bandId: bandObjectId,
+            creatorId: user._id,
+            songId: input.id,
+            isCustom: true,
+            createdAt: now,
+            updatedAt: now,
+          }
+        : {
+            bandId: bandObjectId,
+            creatorId: user._id,
+            songId: input.id,
+            title: input.title,
+            artist: input.artist ?? "",
+            album: input.album ?? "",
+            duration: input.duration,
+            preview: input.preview ?? "",
+            image: input.image ?? "",
+            createdAt: now,
+            updatedAt: now,
+          },
+    );
 
     return {
       alreadyExists: false,

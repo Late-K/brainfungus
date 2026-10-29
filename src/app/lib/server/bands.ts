@@ -20,6 +20,7 @@ export type BandDocument = {
   image?: string;
   imageBlobUrl?: string;
   imageMimeType?: string;
+  customSongsPrivate?: boolean;
 };
 
 // a pending invite - deleted once it's accepted, declined or cancelled

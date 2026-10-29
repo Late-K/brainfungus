@@ -2,6 +2,7 @@
 
 import { Band } from "@/app/types";
 import ImageUploadField from "@/app/components/ui/imageUploadField";
+import SettingToggle from "@/app/components/ui/settingToggle";
 
 interface BandDetailsTabProps {
   band: Band;
@@ -9,6 +10,8 @@ interface BandDetailsTabProps {
   description: string;
   isSaving: boolean;
   isUploadingImage: boolean;
+  customSongsPrivate: boolean;
+  isSavingPrivacy: boolean;
   isCreator: boolean;
   showDeleteConfirm: boolean;
   showLeaveConfirm: boolean;
@@ -19,6 +22,7 @@ interface BandDetailsTabProps {
   onSave: () => void;
   onImageSelect: (file: File) => void;
   onImageRemove: () => void;
+  onToggleCustomSongsPrivate: () => void;
   onDelete: () => void;
   onLeave: () => void;
   onShowDeleteConfirm: (show: boolean) => void;
@@ -31,6 +35,8 @@ export default function BandDetailsTab({
   description,
   isSaving,
   isUploadingImage,
+  customSongsPrivate,
+  isSavingPrivacy,
   isCreator,
   showDeleteConfirm,
   showLeaveConfirm,
@@ -41,6 +47,7 @@ export default function BandDetailsTab({
   onSave,
   onImageSelect,
   onImageRemove,
+  onToggleCustomSongsPrivate,
   onDelete,
   onLeave,
   onShowDeleteConfirm,
@@ -94,6 +101,21 @@ export default function BandDetailsTab({
         >
           {isSaving ? "Saving..." : "Save Changes"}
         </button>
+      </div>
+
+      {/* saves straight away, separate from the details form */}
+      <div className="settings-list">
+        <SettingToggle
+          label="Keep custom songs private"
+          hint={
+            customSongsPrivate
+              ? "Only members of this band can see and play its custom songs. They can't be added to other bands' setlists."
+              : "Anyone can play this band's custom songs from members' profiles, and members can add them to their other bands' setlists."
+          }
+          checked={customSongsPrivate}
+          onChange={onToggleCustomSongsPrivate}
+          disabled={isSavingPrivacy}
+        />
       </div>
 
       <div

@@ -1,28 +1,39 @@
 "use client";
 
 import { ProfileLearntSong } from "@/app/types";
-import { formatDuration } from "@/app/lib/setlistUtils";
+import {
+  formatDuration,
+  privateSongBandId,
+  profileSongToSetlistSong,
+} from "@/app/lib/setlistUtils";
 import { MySongStatus } from "@/app/hooks/useMySongStatuses";
 import SongInfo from "@/app/components/songs/songInfo";
 import SongAudioPlayer from "@/app/components/songs/songAudioPlayer";
 import OpenInMusicAppLink from "@/app/components/songs/openInMusicAppLink";
+import AddToSonglist from "@/app/components/songs/addToSonglist";
 import {
   LearningToggleButton,
   LearntToggleButton,
 } from "@/app/components/songs/songLearntStatus";
 
 // one of another user's songs, with the current user's own Learning / Learnt
-// toggles
+// toggles, and on full song lists a button to add it to their own songlists
 export default function ComparableSongRow({
   song,
   myStatus,
   isSaving,
   onToggle,
+  showAddToSonglist = false,
+  sharedBandIds,
 }: {
   song: ProfileLearntSong;
   myStatus: MySongStatus;
   isSaving: boolean;
   onToggle: (song: ProfileLearntSong, target: "learnt" | "learning") => void;
+  // off where the row is part of a preview
+  showAddToSonglist?: boolean;
+  // bands the current user shares with the person whose profile it is
+  sharedBandIds?: string[];
 }) {
   return (
     <div className="card-item card-item-compact">
@@ -82,6 +93,15 @@ export default function ComparableSongRow({
         title={song.title}
         artist={song.artist}
       />
+      {showAddToSonglist && (
+        <div className="learnt-row">
+          <AddToSonglist
+            song={profileSongToSetlistSong(song)}
+            onlyBandId={privateSongBandId(song)}
+            sharedBandIds={sharedBandIds}
+          />
+        </div>
+      )}
     </div>
   );
 }

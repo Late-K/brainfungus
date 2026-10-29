@@ -9,7 +9,11 @@ import {
   removePersonalLearntSongAction,
 } from "@/app/actions/learntSongs";
 import { ProfileLearntSong, ProfileSongList } from "@/app/types";
-import { formatDuration } from "@/app/lib/setlistUtils";
+import {
+  formatDuration,
+  privateSongBandId,
+  profileSongToSetlistSong,
+} from "@/app/lib/setlistUtils";
 import DeezerSearch from "@/app/components/songs/deezerSearch";
 import SongInfo from "@/app/components/songs/songInfo";
 import SongAudioPlayer from "@/app/components/songs/songAudioPlayer";
@@ -19,6 +23,7 @@ import {
   LearntToggleButton,
 } from "@/app/components/songs/songLearntStatus";
 import SortControls from "@/app/components/ui/sortControls";
+import AddToSonglist from "@/app/components/songs/addToSonglist";
 import { compareByDate, safeTimestamp } from "@/app/lib/sortUtils";
 import { unwrapAction } from "@/app/lib/actionResult";
 
@@ -267,6 +272,13 @@ export default function AllProfileSongs({ list }: { list: ProfileSongList }) {
                       onToggle={() => handleMoveSong(song)}
                     />
                   )}
+                </div>
+
+                <div className="learnt-row">
+                  <AddToSonglist
+                    song={profileSongToSetlistSong(song)}
+                    onlyBandId={privateSongBandId(song)}
+                  />
                 </div>
               </div>
             ))}

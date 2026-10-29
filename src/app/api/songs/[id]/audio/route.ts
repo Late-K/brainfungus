@@ -1,10 +1,13 @@
 import { getAuthUser } from "@/app/lib/server/auth";
-import { requireBandMember, serverErrorResponse } from "@/app/lib/server/utils";
+import { serverErrorResponse } from "@/app/lib/server/utils";
 import { streamPrivateBlob } from "@/app/lib/server/blobStorage";
+import { canAccessBandSongs } from "@/app/lib/server/customSongAccess";
+import { UserError } from "@/app/lib/actionResult";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
-// stream a custom song's audio to a member of its band
+// stream a custom song's audio - to anyone, unless its band keeps its songs
+// private, then only to the band's members
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -24,7 +27,9 @@ export async function GET(
       );
     if (!song) return notFound();
 
-    await requireBandMember(db, user._id.toString(), song.bandId);
+    if (!(await canAccessBandSongs(db, user._id.toString(), song.bandId))) {
+      throw new UserError("Not a member of this band");
+    }
 
     const blobUrl = song.audioBlobUrl as string | undefined;
     if (!blobUrl) return notFound();

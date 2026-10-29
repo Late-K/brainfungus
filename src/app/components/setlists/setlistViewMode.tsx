@@ -1,19 +1,19 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { Setlist, LearntMap, Song } from "@/app/types";
+import { Setlist, LearntMap } from "@/app/types";
 import { formatDuration } from "@/app/lib/setlistUtils";
 import SetlistSongList from "@/app/components/setlists/setlistSongList";
 
 interface SetlistViewModeProps {
   bandId: string;
+  // whether the band keeps its custom songs out of other bands' setlists
+  songsPrivate: boolean;
   setlist: Setlist;
   isDeleting: boolean;
   learntMap: LearntMap;
   learningIds: Set<string>;
   togglingIds: Set<string>;
-  coverSongIds: Set<string>;
-  addingCoverIds: Set<string>;
   userEmail: string | null | undefined;
   totalDuration: number;
   progress: number;
@@ -22,18 +22,16 @@ interface SetlistViewModeProps {
   onDelete: () => void;
   onToggleLearnt: (songId: string) => void;
   onToggleLearning: (songId: string) => void;
-  onAddToCovers: (song: Song) => void;
 }
 
 export default function SetlistViewMode({
   bandId,
+  songsPrivate,
   setlist,
   isDeleting,
   learntMap,
   learningIds,
   togglingIds,
-  coverSongIds,
-  addingCoverIds,
   userEmail,
   totalDuration,
   progress,
@@ -42,7 +40,6 @@ export default function SetlistViewMode({
   onDelete,
   onToggleLearnt,
   onToggleLearning,
-  onAddToCovers,
 }: SetlistViewModeProps) {
   return (
     <div className="detail-layout">
@@ -115,6 +112,9 @@ export default function SetlistViewMode({
         <h2 className="heading">Songs</h2>
 
         <SetlistSongList
+          bandId={bandId}
+          setlistId={setlist._id}
+          songsPrivate={songsPrivate}
           songs={setlist.songs}
           learntMap={learntMap}
           learningIds={learningIds}
@@ -122,9 +122,6 @@ export default function SetlistViewMode({
           togglingIds={togglingIds}
           onToggleLearnt={onToggleLearnt}
           onToggleLearning={onToggleLearning}
-          coverSongIds={coverSongIds}
-          addingCoverIds={addingCoverIds}
-          onAddToCovers={onAddToCovers}
         />
       </div>
     </div>

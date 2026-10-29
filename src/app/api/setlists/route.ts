@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     const enrichedSetlists = bandSetlists.map((setlist) => ({
       ...setlist,
-      songs: (setlist.songs || []).map(enrich),
+      songs: enrich(setlist.songs || []),
     }));
 
     return NextResponse.json({ setlists: enrichedSetlists }, { status: 200 });

@@ -5,12 +5,10 @@
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useBandSongsPage } from "@/app/hooks/useBandSongsPage";
-import { useActiveSetlist } from "@/app/hooks/useActiveSetlist";
 import CustomSongCreateForm from "@/app/components/songs/customSongCreateForm";
 import CustomSongRow from "@/app/components/songs/customSongRow";
 import BandSubpageHeader from "@/app/components/bands/bandSubpageHeader";
 import SortControls from "@/app/components/ui/sortControls";
-import { CustomSong } from "@/app/types";
 
 const knownSongSortOptions = [
   { value: "newest", label: "Newest" },
@@ -26,18 +24,7 @@ export default function SongsPage({
 }) {
   const { data: session, status } = useSession();
   const songsPage = useBandSongsPage(params);
-  const setlist = useActiveSetlist(songsPage.bandId);
-
-  const toggleActiveSetlist = setlist.activeSetlist
-    ? (song: CustomSong) =>
-        setlist.handleToggleActiveSetlist({
-          id: song._id,
-          title: song.title,
-          album: song.album,
-          duration: song.duration ?? 0,
-          isCustom: true,
-        })
-    : undefined;
+  const songsPrivate = songsPage.band?.customSongsPrivate === true;
 
   if (status === "loading") return null;
   if (!session) redirect("/login");
@@ -69,12 +56,6 @@ export default function SongsPage({
             onChange={songsPage.setSortBy}
             options={knownSongSortOptions}
           />
-
-          {!setlist.activeSetlist && (
-            <p className="meta-text meta-text-small margin-top">
-              Set a setlist as active to add songs to it from here.
-            </p>
-          )}
 
           {songsPage.error && (
             <p className="alert alert-error">{songsPage.error}</p>
@@ -192,11 +173,7 @@ export default function SongsPage({
                             onUploadAlbumImage={songsPage.handleUploadAlbumImage}
                             onDeleteAlbumImage={songsPage.handleDeleteAlbumImage}
                             allowReorder
-                            isInActiveSetlist={setlist.isInActiveSetlist(song._id)}
-                            isTogglingSetlist={setlist.togglingSetlistIds.has(
-                              song._id,
-                            )}
-                            onToggleActiveSetlist={toggleActiveSetlist}
+                            songsPrivate={songsPrivate}
                           />
                         ))}
                       </div>
@@ -242,9 +219,7 @@ export default function SongsPage({
                   )}
                   onUploadAlbumImage={songsPage.handleUploadAlbumImage}
                   onDeleteAlbumImage={songsPage.handleDeleteAlbumImage}
-                  isInActiveSetlist={setlist.isInActiveSetlist(song._id)}
-                  isTogglingSetlist={setlist.togglingSetlistIds.has(song._id)}
-                  onToggleActiveSetlist={toggleActiveSetlist}
+                  songsPrivate={songsPrivate}
                 />
               ))}
             </div>

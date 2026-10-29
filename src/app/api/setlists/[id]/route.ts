@@ -31,7 +31,7 @@ export async function GET(
     const enrich = await getSetlistSongEnricher(db, bandObjectId, songs);
 
     return NextResponse.json(
-      { setlist: { ...setlist, songs: songs.map(enrich) } },
+      { setlist: { ...setlist, songs: enrich(songs) } },
       { status: 200 },
     );
   } catch (error) {

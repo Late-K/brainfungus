@@ -8,15 +8,18 @@ import {
 import { Db, ObjectId } from "mongodb";
 import { runAction, UserError } from "@/app/lib/actionResult";
 import { readOneOf, readSongInput, readString } from "@/app/lib/validate";
+import { getSongBands } from "@/app/lib/server/customSongAccess";
 
 async function getSongMetadataForBand(
   db: Db,
   bandObjectId: ObjectId,
   songId: string,
 ) {
+  // custom song covers only store the song's id, so they're looked up below
   const cover = await db.collection("covers").findOne({
     bandId: bandObjectId,
     songId: songId,
+    isCustom: { $ne: true },
   });
 
   if (cover) {
@@ -30,15 +33,23 @@ async function getSongMetadataForBand(
     };
   }
 
+  // the band's own custom songs, or another band's that's in its setlists.
+  // either way the song is saved with the band it belongs to
   if (ObjectId.isValid(songId)) {
     const customSong = await db
       .collection("custom_songs")
-      .findOne({ _id: new ObjectId(songId), bandId: bandObjectId });
+      .findOne({ _id: new ObjectId(songId) });
+    const songBandId = customSong?.bandId as ObjectId | undefined;
+    const songBand = songBandId
+      ? (await getSongBands(db, [songBandId])).get(songBandId.toString())
+      : undefined;
 
-    if (customSong) {
-      const band = await db
-        .collection("bands")
-        .findOne({ _id: bandObjectId }, { projection: { name: 1 } });
+    if (
+      customSong &&
+      songBandId &&
+      songBand &&
+      (songBandId.equals(bandObjectId) || !songBand.isPrivate)
+    ) {
       return {
         title: customSong.title,
         album: customSong.album,
@@ -50,8 +61,8 @@ async function getSongMetadataForBand(
         image: customSong.image,
         notes: customSong.notes as string | undefined,
         isCustom: true,
-        bandId: bandObjectId,
-        bandName: band?.name as string | undefined,
+        bandId: songBandId,
+        bandName: songBand.name,
       };
     }
   }

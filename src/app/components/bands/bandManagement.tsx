@@ -29,6 +29,8 @@ export default function BandManagement({
     setDescription,
     isSaving,
     isUploadingImage,
+    customSongsPrivate,
+    isSavingPrivacy,
     availableUsers,
     isFetchingUsers,
     actionLoading,
@@ -47,6 +49,7 @@ export default function BandManagement({
     handleSaveDetails,
     handleImageSelect,
     handleImageRemove,
+    handleToggleCustomSongsPrivate,
     handleDelete,
     handleLeaveBand,
     handleInviteMember,
@@ -128,6 +131,8 @@ export default function BandManagement({
                 description={description}
                 isSaving={isSaving}
                 isUploadingImage={isUploadingImage}
+                customSongsPrivate={customSongsPrivate}
+                isSavingPrivacy={isSavingPrivacy}
                 isCreator={isCreator}
                 showDeleteConfirm={showDeleteConfirm}
                 showLeaveConfirm={showLeaveConfirm}
@@ -138,6 +143,7 @@ export default function BandManagement({
                 onSave={handleSaveDetails}
                 onImageSelect={handleImageSelect}
                 onImageRemove={handleImageRemove}
+                onToggleCustomSongsPrivate={handleToggleCustomSongsPrivate}
                 onDelete={handleDelete}
                 onLeave={handleLeaveBand}
                 onShowDeleteConfirm={setShowDeleteConfirm}
