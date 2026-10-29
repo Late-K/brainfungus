@@ -7,45 +7,36 @@ import {
 } from "@/app/actions/rehearsals";
 import {
   toDateStr,
+  getMyRehearsalAvailability,
   getNextOccurrence,
+  getRehearsalAvailableUsers,
   updateRehearsalAvatars,
 } from "@/app/lib/rehearsalUtils";
 import { formatShortDate } from "@/app/lib/utils";
-import { AvailUser } from "@/app/types";
+import { AvailUser, CalendarRehearsal, DayAvailabilityInfo } from "@/app/types";
 import ExpandedUserList from "@/app/components/ui/expandedUserList";
 import AvailableUsersRow from "@/app/components/rehearsals/availableUsersRow";
 import AvailabilityToggleButton from "@/app/components/rehearsals/availabilityToggleButton";
+import CalendarModalDialog from "@/app/components/rehearsals/calendarModalDialog";
 import { unwrapAction } from "@/app/lib/actionResult";
-
-interface RehearsalWithAvailability {
-  _id: string;
-  bandId: string;
-  createdBy: string;
-  date: string;
-  startTime?: string;
-  endTime?: string;
-  repeatType: "once" | "weekly" | "biweekly";
-  notes?: string;
-  excludedDates?: string[];
-  endDate?: string;
-  myAvailability: {
-    available: boolean;
-    alwaysAvailable: boolean;
-  };
-  occurrenceAvailability?: Record<string, boolean>;
-  availableUsersBase?: AvailUser[];
-  availableUsersOcc?: Record<string, AvailUser[]>;
-}
+import { addRehearsalToCalendar } from "@/app/lib/calendarExport";
 
 interface BandRehearsalsProps {
   bandId: string;
 }
 
 export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
-  const [rehearsals, setRehearsals] = useState<RehearsalWithAvailability[]>([]);
+  const [rehearsals, setRehearsals] = useState<CalendarRehearsal[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedUsers, setExpandedUsers] = useState<AvailUser[] | null>(null);
   const [currentUser, setCurrentUser] = useState<AvailUser | null>(null);
+  // a repeating rehearsal being added to a calendar, while asking how much of it
+  const [calendarChoice, setCalendarChoice] = useState<{
+    rehearsal: CalendarRehearsal;
+    date: string;
+  } | null>(null);
+  const [dayAvailability, setDayAvailability] =
+    useState<DayAvailabilityInfo | null>(null);
 
   const fetchRehearsals = async () => {
     try {
@@ -53,6 +44,7 @@ export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
         await getBandRehearsalsWithAvailabilityAction(bandId),
       );
       setRehearsals(data.rehearsals ?? []);
+      setDayAvailability(data.dayAvailability ?? null);
       if (data.currentUser) setCurrentUser(data.currentUser);
     } catch {
       setRehearsals([]);
@@ -71,40 +63,31 @@ export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
     .sort((a, b) => a.nextDate!.getTime() - b.nextDate!.getTime())
     .slice(0, 1);
 
-  const getAvailForDate = (
-    r: RehearsalWithAvailability,
-    date: Date,
-  ): boolean => {
-    if (r.repeatType !== "once") {
-      const ds = toDateStr(date);
-      if (r.occurrenceAvailability?.[ds] !== undefined)
-        return r.occurrenceAvailability[ds];
-      return r.myAvailability.available;
-    }
-    return r.myAvailability.available;
-  };
+  const getAvailForDate = (r: CalendarRehearsal, date: Date): boolean =>
+    getMyRehearsalAvailability(
+      r,
+      toDateStr(date),
+      currentUser?.userId,
+      dayAvailability,
+    );
 
-  const getAvailUsersForDate = (
-    r: RehearsalWithAvailability,
-    date: Date,
-  ): AvailUser[] => {
-    if (r.repeatType !== "once") {
-      return r.availableUsersOcc?.[toDateStr(date)] ?? [];
-    }
-    return r.availableUsersBase ?? [];
-  };
+  const getAvailUsersForDate = (r: CalendarRehearsal, date: Date) =>
+    getRehearsalAvailableUsers(
+      r,
+      toDateStr(date),
+      currentUser?.userId,
+      dayAvailability,
+    );
 
   const handleAvailabilityToggle = async (
-    r: RehearsalWithAvailability,
+    r: CalendarRehearsal,
     nextDate: Date,
   ) => {
     const dateStr = toDateStr(nextDate);
     const currentVal = getAvailForDate(r, nextDate);
     const newVal = !currentVal;
 
-    const applyUpdate = (
-      rr: RehearsalWithAvailability,
-    ): RehearsalWithAvailability =>
+    const applyUpdate = (rr: CalendarRehearsal): CalendarRehearsal =>
       currentUser
         ? updateRehearsalAvatars(rr, dateStr, currentUser, newVal)
         : rr;
@@ -125,12 +108,7 @@ export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
       );
       try {
         unwrapAction(
-          await setRehearsalAvailabilityAction(
-            r._id,
-            newVal,
-            undefined,
-            dateStr,
-          ),
+          await setRehearsalAvailabilityAction(r._id, newVal, dateStr),
         );
       } catch {
         fetchRehearsals();
@@ -138,12 +116,7 @@ export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
     } else {
       setRehearsals((prev) =>
         prev.map((rr) =>
-          rr._id === r._id
-            ? applyUpdate({
-                ...rr,
-                myAvailability: { ...rr.myAvailability, available: newVal },
-              })
-            : rr,
+          rr._id === r._id ? applyUpdate({ ...rr, available: newVal }) : rr,
         ),
       );
       try {
@@ -191,10 +164,42 @@ export default function BandRehearsals({ bandId }: BandRehearsalsProps) {
                 available={getAvailForDate(r, nextDate!)}
                 onClick={() => handleAvailabilityToggle(r, nextDate!)}
               />
+              <button
+                className="button button-small button-tertiary"
+                onClick={() =>
+                  r.repeatType === "once"
+                    ? addRehearsalToCalendar(r._id)
+                    : setCalendarChoice({
+                        rehearsal: r,
+                        date: toDateStr(nextDate!),
+                      })
+                }
+              >
+                Add to calendar
+              </button>
             </div>
           </div>
         ))}
       </div>
+
+      {calendarChoice && (
+        <CalendarModalDialog
+          target={calendarChoice.rehearsal}
+          action="calendar"
+          onClose={() => setCalendarChoice(null)}
+          onChooseThis={() => {
+            addRehearsalToCalendar(
+              calendarChoice.rehearsal._id,
+              calendarChoice.date,
+            );
+            setCalendarChoice(null);
+          }}
+          onChooseAll={() => {
+            addRehearsalToCalendar(calendarChoice.rehearsal._id);
+            setCalendarChoice(null);
+          }}
+        />
+      )}
 
       {/* Expanded available users modal */}
       {expandedUsers && (

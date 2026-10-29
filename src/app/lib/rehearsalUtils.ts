@@ -1,4 +1,11 @@
-import { Rehearsal, AvailUser } from "@/app/types";
+import {
+  AvailUser,
+  CalendarRehearsal,
+  DayAvailability,
+  DayAvailabilityInfo,
+  Rehearsal,
+  RepeatSchedule,
+} from "@/app/types";
 
 interface HasAvailUsers {
   repeatType: string;
@@ -34,6 +41,14 @@ export function updateRehearsalAvatars<T extends HasAvailUsers>(
   }
 }
 
+// older rehearsals have their date stored as a Date rather than YYYY-MM-DD,
+// so it is always turned into a string before use or before going to the browser
+export function rehearsalDateStr(date: unknown) {
+  return date instanceof Date
+    ? date.toISOString().slice(0, 10)
+    : String(date).slice(0, 10);
+}
+
 export function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -58,8 +73,9 @@ export function getNextOccurrence(rehearsal: Rehearsal): Date | null {
   return null;
 }
 
+// also used for day availability, which repeats the same way
 export function doesRehearsalOccurOnDate(
-  rehearsal: Rehearsal,
+  rehearsal: RepeatSchedule,
   date: Date,
 ): boolean {
   // check excluded dates
@@ -81,9 +97,12 @@ export function doesRehearsalOccurOnDate(
   } else if (rehearsal.repeatType === "weekly") {
     return rehearsalDate.getDay() === date.getDay() && rehearsalDate <= date;
   } else if (rehearsal.repeatType === "biweekly") {
-    const diffInWeeks = Math.floor(
-      (date.getTime() - rehearsalDate.getTime()) / (7 * 24 * 60 * 60 * 1000),
+    // whole days first, so a clock change between the two dates can't knock
+    // the week count down by one
+    const diffInDays = Math.round(
+      (date.getTime() - rehearsalDate.getTime()) / (24 * 60 * 60 * 1000),
     );
+    const diffInWeeks = Math.floor(diffInDays / 7);
     return (
       rehearsalDate.getDay() === date.getDay() &&
       diffInWeeks >= 0 &&
@@ -118,4 +137,111 @@ export function addDaysToDateStr(dateStr: string, days: number) {
   const d = new Date(dateStr + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+// whether any of a user's day availability covers the date (YYYY-MM-DD)
+export function isAvailableOnDay(
+  schedules: DayAvailability[],
+  dateStr: string,
+): boolean {
+  const date = new Date(dateStr + "T12:00:00");
+  return schedules.some((s) => doesRehearsalOccurOnDate(s, date));
+}
+
+// a user's day availability for one band
+export function getBandSchedules(schedules: DayAvailability[], bandId: string) {
+  return schedules.filter((s) => s.bandId === bandId);
+}
+
+// members of the band who are free that day for it, leaving out the current
+// user if they've made theirs private
+export function getDayAvailableUsers(
+  info: DayAvailabilityInfo | null,
+  bandId: string,
+  dateStr: string,
+): AvailUser[] {
+  if (!info) return [];
+  const memberIds = new Set(info.bandMemberIds[bandId] ?? []);
+  return info.users
+    .filter(
+      (u) =>
+        memberIds.has(u.userId) &&
+        !u.paused &&
+        isAvailableOnDay(getBandSchedules(u.schedules, bandId), dateStr),
+    )
+    .map(({ userId, userName, userEmail, userImage }) => ({
+      userId,
+      userName,
+      userEmail,
+      userImage,
+    }));
+}
+
+// the current user's own answer for a rehearsal on a date, if they gave one
+function getMyRehearsalAnswer(
+  rehearsal: CalendarRehearsal,
+  dateStr: string,
+): boolean | undefined {
+  return rehearsal.repeatType === "once"
+    ? rehearsal.available
+    : rehearsal.occurrenceAvailability?.[dateStr];
+}
+
+// an answer always wins - without one, being available that day counts as
+// being available for the rehearsal
+export function getMyRehearsalAvailability(
+  rehearsal: CalendarRehearsal,
+  dateStr: string,
+  currentUserId: string | undefined,
+  info: DayAvailabilityInfo | null,
+): boolean {
+  return (
+    getMyRehearsalAnswer(rehearsal, dateStr) ??
+    getDayAvailableUsers(info, rehearsal.bandId, dateStr).some(
+      (u) => u.userId === currentUserId,
+    )
+  );
+}
+
+// everyone who said they're available, plus anyone free that day who hasn't
+// answered
+export function getRehearsalAvailableUsers(
+  rehearsal: CalendarRehearsal,
+  dateStr: string,
+  currentUserId: string | undefined,
+  info: DayAvailabilityInfo | null,
+): AvailUser[] {
+  const once = rehearsal.repeatType === "once";
+  const answeredYes =
+    (once
+      ? rehearsal.availableUsersBase
+      : rehearsal.availableUsersOcc?.[dateStr]) ?? [];
+  const answeredNo = new Set(
+    (once
+      ? rehearsal.unavailableUserIdsBase
+      : rehearsal.unavailableUserIdsOcc?.[dateStr]) ?? [],
+  );
+  const myAnswer = getMyRehearsalAnswer(rehearsal, dateStr);
+
+  const fromDays = getDayAvailableUsers(info, rehearsal.bandId, dateStr).filter(
+    (u) =>
+      !answeredNo.has(u.userId) &&
+      !answeredYes.some((a) => a.userId === u.userId) &&
+      !(u.userId === currentUserId && myAnswer !== undefined),
+  );
+  return [...answeredYes, ...fromDays];
+}
+
+// "Just this day", "Every Tuesday" or "Every other Tuesday"
+export function repeatLabel(
+  repeatType: Rehearsal["repeatType"],
+  dateStr: string,
+) {
+  const dayName = new Date(dateStr + "T12:00:00").toLocaleDateString("en-GB", {
+    weekday: "long",
+    timeZone: "Europe/London",
+  });
+  if (repeatType === "weekly") return `Every ${dayName}`;
+  if (repeatType === "biweekly") return `Every other ${dayName}`;
+  return "Just this day";
 }

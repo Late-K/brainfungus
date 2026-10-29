@@ -8,6 +8,10 @@ import {
 } from "@/app/actions/rehearsals";
 import { Band, Rehearsal, RehearsalRepeatType } from "@/app/types";
 import { unwrapAction } from "@/app/lib/actionResult";
+import RepeatOptions from "@/app/components/rehearsals/repeatOptions";
+import BandSelect, {
+  getOnlyBand,
+} from "@/app/components/rehearsals/bandSelect";
 
 interface RehearsalFormProps {
   selectedDate: string;
@@ -28,6 +32,7 @@ export default function RehearsalForm({
   const isEditThis = isEditing && editMode === "this";
 
   const [bands, setBands] = useState<Band[]>([]);
+  const [bandsLoaded, setBandsLoaded] = useState(false);
   const [selectedBandId, setSelectedBandId] = useState(
     editRehearsal?.bandId ?? "",
   );
@@ -50,10 +55,15 @@ export default function RehearsalForm({
       } catch (error) {
         console.error("Error fetching bands:", error);
         setBands([]);
+      } finally {
+        setBandsLoaded(true);
       }
     }
     fetchBands();
   }, [isEditing]);
+
+  const onlyBand = isEditing ? null : getOnlyBand(bands);
+  const bandId = selectedBandId || onlyBand?._id || "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,14 +102,14 @@ export default function RehearsalForm({
         );
       } else {
         // create new rehearsal
-        if (!selectedBandId) {
+        if (!bandId) {
           setError("Please select a band");
           setIsSubmitting(false);
           return;
         }
         unwrapAction(
           await createRehearsalAction(
-            selectedBandId,
+            bandId,
             selectedDate,
             repeatType,
             startTime || undefined,
@@ -117,13 +127,6 @@ export default function RehearsalForm({
       setIsSubmitting(false);
     }
   };
-
-  const dayName = selectedDate
-    ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-GB", {
-        weekday: "long",
-        timeZone: "Europe/London",
-      })
-    : "";
 
   const title = isEditThis
     ? "Edit This Rehearsal"
@@ -149,6 +152,7 @@ export default function RehearsalForm({
           {isEditing && editRehearsal?.bandName && (
             <strong>{editRehearsal.bandName} · </strong>
           )}
+          {onlyBand && <strong>{onlyBand.name} · </strong>}
           {selectedDate
             ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-GB", {
                 weekday: "long",
@@ -170,70 +174,20 @@ export default function RehearsalForm({
         {error && <div className="alert alert-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          {!isEditing && (
-            <div className="form-group">
-              <label className="label">Band</label>
-              <select
-                className="input"
-                value={selectedBandId}
-                onChange={(e) => setSelectedBandId(e.target.value)}
-              >
-                <option value="">Select a band</option>
-                {bands.map((band) => (
-                  <option key={band._id} value={band._id}>
-                    {band.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {!isEditing && bandsLoaded && (
+            <BandSelect
+              bands={bands}
+              value={selectedBandId}
+              onChange={setSelectedBandId}
+            />
           )}
 
-          {!isEditing && (
-            <div className="form-group">
-              <label className="label">Repeat</label>
-              <div className="rehearsal-repeat-options">
-                {(
-                  [
-                    { value: "once", label: "Just this day" },
-                    { value: "weekly", label: `Every ${dayName}` },
-                    { value: "biweekly", label: `Every other ${dayName}` },
-                  ] as { value: RehearsalRepeatType; label: string }[]
-                ).map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`button button-small ${repeatType === option.value ? "button-primary" : "button-tertiary"}`}
-                    onClick={() => setRepeatType(option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isEditing && !isEditThis && (
-            <div className="form-group">
-              <label className="label">Repeat</label>
-              <div className="rehearsal-repeat-options">
-                {(
-                  [
-                    { value: "once", label: "Just this day" },
-                    { value: "weekly", label: `Every ${dayName}` },
-                    { value: "biweekly", label: `Every other ${dayName}` },
-                  ] as { value: RehearsalRepeatType; label: string }[]
-                ).map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`button button-small ${repeatType === option.value ? "button-primary" : "button-tertiary"}`}
-                    onClick={() => setRepeatType(option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {!isEditThis && (
+            <RepeatOptions
+              date={selectedDate}
+              value={repeatType}
+              onChange={setRepeatType}
+            />
           )}
 
           <div className="form-group rehearsal-time-row">

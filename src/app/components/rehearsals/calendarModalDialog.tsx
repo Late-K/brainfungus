@@ -2,6 +2,27 @@
 
 import { CalendarChoiceAction, CalendarRehearsal } from "@/app/types";
 
+const copy: Record<
+  CalendarChoiceAction,
+  { title: string; question: string; all: string }
+> = {
+  edit: {
+    title: "Edit Rehearsal",
+    question: "Would you like to edit just this date or all occurrences?",
+    all: "All occurrences",
+  },
+  delete: {
+    title: "Delete Rehearsal",
+    question: "Would you like to delete just this date or the entire series?",
+    all: "Entire series",
+  },
+  calendar: {
+    title: "Add to Calendar",
+    question: "Would you like to add just this date or the entire series?",
+    all: "Entire series",
+  },
+};
+
 interface CalendarModalDialogProps {
   target: CalendarRehearsal;
   action: CalendarChoiceAction;
@@ -21,17 +42,14 @@ export default function CalendarModalDialog({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(event) => event.stopPropagation()}>
         <div className="section-header">
-          <h3>{action === "edit" ? "Edit Rehearsal" : "Delete Rehearsal"}</h3>
+          <h3>{copy[action].title}</h3>
           <button className="button button-small" onClick={onClose}>
             ✕
           </button>
         </div>
         <p className="dialog-description">
           This is a {target.repeatType} rehearsal for{" "}
-          <strong>{target.bandName}</strong>.{" "}
-          {action === "edit"
-            ? "Would you like to edit just this date or all occurrences?"
-            : "Would you like to delete just this date or the entire series?"}
+          <strong>{target.bandName}</strong>. {copy[action].question}
         </p>
         <div className="choice-dialog-actions">
           <button
@@ -44,7 +62,7 @@ export default function CalendarModalDialog({
             className={`button ${action === "delete" ? "button-danger" : "button-primary"}`}
             onClick={onChooseAll}
           >
-            {action === "edit" ? "All occurrences" : "Entire series"}
+            {copy[action].all}
           </button>
         </div>
       </div>

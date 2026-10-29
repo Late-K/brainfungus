@@ -9,11 +9,13 @@ const avatar_size_px = 24;
 interface AvailableUsersRowProps {
   users: AvailUser[];
   onShowAll?: (users: AvailUser[]) => void;
+  label?: string;
 }
 
 export default function AvailableUsersRow({
   users,
   onShowAll,
+  label = "Available:",
 }: AvailableUsersRowProps) {
   const [setAvatarsEl, fitCount] = useFittingCount<HTMLDivElement>(
     users.length,
@@ -26,7 +28,7 @@ export default function AvailableUsersRow({
 
   return (
     <div className="avatar-row">
-      <span className="avatar-row-label">Available:</span>
+      <span className="avatar-row-label">{label}</span>
       <div className="available-avatars" ref={setAvatarsEl}>
         {visible.map((u) => (
           <div key={u.userId} className="available-avatar" title={u.userName}>

@@ -9,6 +9,9 @@ import RehearsalForm from "@/app/components/rehearsals/rehearsalForm";
 import ExpandedUserList from "@/app/components/ui/expandedUserList";
 import CalendarRehearsals from "@/app/components/rehearsals/calendarRehearsals";
 import CalendarModalDialog from "@/app/components/rehearsals/calendarModalDialog";
+import DayAvailabilityPanel from "@/app/components/rehearsals/dayAvailabilityPanel";
+import DayAvailabilityForm from "@/app/components/rehearsals/dayAvailabilityForm";
+import DayAvailabilityRemoveDialog from "@/app/components/rehearsals/dayAvailabilityRemoveDialog";
 import { useCalendarPage } from "@/app/hooks/useCalendarPage";
 
 export default function CalendarPage() {
@@ -35,9 +38,24 @@ export default function CalendarPage() {
     handleDeleteThis,
     handleDeleteAll,
     closeChoice,
+    handleAddToCalendarClick,
+    handleAddToCalendarThis,
+    handleAddToCalendarAll,
     getAvailabilityForDate,
     getAvailableUsersForDate,
     handleAvailabilityToggle,
+    bands,
+    dayAvailability,
+    myDayAvailability,
+    isMyAvailableDay,
+    addableDayBands,
+    showDayForm,
+    setShowDayForm,
+    dayRemoveTarget,
+    setDayRemoveTarget,
+    handleAddDayAvailability,
+    handleRemoveDayAvailability,
+    removeDayAvailability,
   } = useCalendarPage();
 
   if (status === "loading") return null;
@@ -65,6 +83,7 @@ export default function CalendarPage() {
             rehearsals={rehearsals}
             selectedDate={selectedDate}
             onSelectDate={handleSelectDate}
+            isAvailableDay={isMyAvailableDay}
           />
         </div>
 
@@ -75,10 +94,23 @@ export default function CalendarPage() {
             onCreateRehearsal={openCreateForm}
             onEditRehearsal={handleEditClick}
             onDeleteRehearsal={handleDeleteClick}
+            onAddToCalendar={handleAddToCalendarClick}
             onToggleAvailability={handleAvailabilityToggle}
             getAvailabilityForDate={getAvailabilityForDate}
             getAvailableUsersForDate={getAvailableUsersForDate}
             onShowAllUsers={setExpandedUsers}
+            dayAvailability={
+              <DayAvailabilityPanel
+                selectedDate={selectedDate}
+                me={myDayAvailability}
+                bands={bands}
+                dayAvailability={dayAvailability}
+                canAdd={addableDayBands.length > 0}
+                onAdd={() => setShowDayForm(true)}
+                onRemove={handleRemoveDayAvailability}
+                onShowAllUsers={setExpandedUsers}
+              />
+            }
           />
         )}
       </div>
@@ -89,10 +121,18 @@ export default function CalendarPage() {
           action={choiceAction}
           onClose={closeChoice}
           onChooseThis={
-            choiceAction === "edit" ? handleEditThis : handleDeleteThis
+            {
+              edit: handleEditThis,
+              delete: handleDeleteThis,
+              calendar: handleAddToCalendarThis,
+            }[choiceAction]
           }
           onChooseAll={
-            choiceAction === "edit" ? handleEditAll : () => handleDeleteAll()
+            {
+              edit: handleEditAll,
+              delete: () => handleDeleteAll(),
+              calendar: handleAddToCalendarAll,
+            }[choiceAction]
           }
         />
       )}
@@ -104,6 +144,28 @@ export default function CalendarPage() {
           onCancel={closeForm}
           editRehearsal={editRehearsal ?? undefined}
           editMode={editMode ?? undefined}
+        />
+      )}
+
+      {showDayForm && selectedDate && (
+        <DayAvailabilityForm
+          selectedDate={selectedDate}
+          bands={addableDayBands}
+          onSubmit={handleAddDayAvailability}
+          onCancel={() => setShowDayForm(false)}
+        />
+      )}
+
+      {dayRemoveTarget && (
+        <DayAvailabilityRemoveDialog
+          schedule={dayRemoveTarget}
+          bandName={
+            bands.find((b) => b._id === dayRemoveTarget.bandId)?.name ?? ""
+          }
+          onClose={() => setDayRemoveTarget(null)}
+          onChoose={(scope) =>
+            removeDayAvailability(dayRemoveTarget.bandId, scope)
+          }
         />
       )}
 

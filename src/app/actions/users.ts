@@ -24,18 +24,24 @@ async function setUserSetting(field: string, value: unknown) {
     );
 }
 
-export async function getAlwaysAvailableAction() {
+// hides the user's day availability from their bandmates and stops it auto
+// marking them available for rehearsals
+export async function getAvailabilityPrivateAction() {
   return runAction("Failed to load setting", async () => {
     const { user } = await getAuthUser();
-    return { alwaysAvailable: (user.alwaysAvailable as boolean) ?? false };
+    return {
+      availabilityPrivate: (user.availabilityPrivate as boolean) ?? false,
+    };
   });
 }
 
-export async function setAlwaysAvailableUserAction(alwaysAvailable: boolean) {
+export async function setAvailabilityPrivateAction(
+  availabilityPrivate: boolean,
+) {
   return runAction("Failed to save setting", async () => {
-    const value = readBoolean(alwaysAvailable, "setting");
-    await setUserSetting("alwaysAvailable", value);
-    return { alwaysAvailable: value };
+    const value = readBoolean(availabilityPrivate, "setting");
+    await setUserSetting("availabilityPrivate", value);
+    return { availabilityPrivate: value };
   });
 }
 

@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { ReactNode } from "react";
 import AvailableUsersRow from "@/app/components/rehearsals/availableUsersRow";
 import AvailabilityToggleButton from "@/app/components/rehearsals/availabilityToggleButton";
 import { doesRehearsalOccurOnDate } from "@/app/lib/rehearsalUtils";
@@ -12,6 +13,7 @@ interface CalendarRehearsalsProps {
   onCreateRehearsal: () => void;
   onEditRehearsal: (rehearsal: CalendarRehearsal) => void;
   onDeleteRehearsal: (rehearsal: CalendarRehearsal) => void;
+  onAddToCalendar: (rehearsal: CalendarRehearsal) => void;
   onToggleAvailability: (rehearsal: CalendarRehearsal) => void | Promise<void>;
   getAvailabilityForDate: (
     rehearsal: CalendarRehearsal,
@@ -22,6 +24,8 @@ interface CalendarRehearsalsProps {
     date: string,
   ) => AvailUser[];
   onShowAllUsers: (users: AvailUser[]) => void;
+  // the day availability panel, shown above the day's rehearsals
+  dayAvailability?: ReactNode;
 }
 
 export default function CalendarRehearsals({
@@ -30,10 +34,12 @@ export default function CalendarRehearsals({
   onCreateRehearsal,
   onEditRehearsal,
   onDeleteRehearsal,
+  onAddToCalendar,
   onToggleAvailability,
   getAvailabilityForDate,
   getAvailableUsersForDate,
   onShowAllUsers,
+  dayAvailability,
 }: CalendarRehearsalsProps) {
   const rehearsalsForDate = rehearsals.filter((rehearsal) =>
     doesRehearsalOccurOnDate(rehearsal, new Date(selectedDate + "T12:00:00")),
@@ -60,6 +66,8 @@ export default function CalendarRehearsals({
           + Rehearsal
         </button>
       </div>
+
+      {dayAvailability}
 
       {rehearsalsForDate.length === 0 ? (
         <p className="empty-state">No rehearsals on this day</p>
@@ -105,6 +113,12 @@ export default function CalendarRehearsals({
                   onClick={() => onDeleteRehearsal(rehearsal)}
                 >
                   Delete
+                </button>
+                <button
+                  className="button button-small button-tertiary"
+                  onClick={() => onAddToCalendar(rehearsal)}
+                >
+                  Add to calendar
                 </button>
               </div>
             </div>

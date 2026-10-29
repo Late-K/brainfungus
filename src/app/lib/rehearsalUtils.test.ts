@@ -3,9 +3,17 @@ import {
   addDaysToDateStr,
   doesRehearsalOccurOnDate,
   formatRehearsalTimes,
+  getMyRehearsalAvailability,
+  getRehearsalAvailableUsers,
+  isAvailableOnDay,
   toDateStr,
 } from "@/app/lib/rehearsalUtils";
-import { Rehearsal } from "@/app/types";
+import {
+  AvailUser,
+  CalendarRehearsal,
+  DayAvailabilityInfo,
+  Rehearsal,
+} from "@/app/types";
 
 // 2026-10-05 is a monday
 const rehearsal = (fields: Partial<Rehearsal>) =>
@@ -49,6 +57,124 @@ describe("doesRehearsalOccurOnDate", () => {
     expect(doesRehearsalOccurOnDate(r, day("2026-10-12"))).toBe(false);
     expect(doesRehearsalOccurOnDate(r, day("2026-10-19"))).toBe(true);
     expect(doesRehearsalOccurOnDate(r, day("2026-10-26"))).toBe(false);
+  });
+
+  it("biweekly rehearsals keep their weeks across the clocks going forward", () => {
+    // 2027-03-28 is when uk clocks go forward
+    const r = rehearsal({ date: "2027-03-15", repeatType: "biweekly" });
+    expect(doesRehearsalOccurOnDate(r, day("2027-03-29"))).toBe(true);
+    expect(doesRehearsalOccurOnDate(r, day("2027-04-05"))).toBe(false);
+  });
+});
+
+const person = (userId: string): AvailUser => ({
+  userId,
+  userName: userId,
+  userEmail: "",
+});
+
+// me and sam are free every monday from 2026-10-05 for band b1. sam is free
+// for b2 too, but isn't in it
+const dayInfo = (paused = false): DayAvailabilityInfo => ({
+  users: [
+    {
+      ...person("me"),
+      paused,
+      schedules: [
+        { _id: "d1", bandId: "b1", date: "2026-10-05", repeatType: "weekly" },
+      ],
+    },
+    {
+      ...person("sam"),
+      schedules: [
+        { _id: "d2", bandId: "b1", date: "2026-10-05", repeatType: "weekly" },
+        { _id: "d3", bandId: "b2", date: "2026-10-05", repeatType: "weekly" },
+      ],
+    },
+  ],
+  bandMemberIds: { b1: ["me", "sam", "alex"], b2: ["me"] },
+});
+
+const weekly = (fields: Partial<CalendarRehearsal> = {}) =>
+  rehearsal({ repeatType: "weekly", ...fields }) as CalendarRehearsal;
+
+const ids = (users: AvailUser[]) => users.map((u) => u.userId);
+
+describe("day availability", () => {
+  it("covers repeating days but not cancelled ones", () => {
+    const schedules = [
+      {
+        _id: "d1",
+        bandId: "b1",
+        date: "2026-10-05",
+        repeatType: "biweekly" as const,
+        excludedDates: ["2026-10-19"],
+      },
+    ];
+    expect(isAvailableOnDay(schedules, "2026-10-05")).toBe(true);
+    expect(isAvailableOnDay(schedules, "2026-10-12")).toBe(false);
+    expect(isAvailableOnDay(schedules, "2026-10-19")).toBe(false);
+    expect(isAvailableOnDay(schedules, "2026-11-02")).toBe(true);
+  });
+
+  it("marks band members free that day as available", () => {
+    const r = weekly();
+    expect(
+      ids(getRehearsalAvailableUsers(r, "2026-10-12", "me", dayInfo())),
+    ).toEqual(["me", "sam"]);
+    expect(getMyRehearsalAvailability(r, "2026-10-12", "me", dayInfo())).toBe(
+      true,
+    );
+    expect(
+      getRehearsalAvailableUsers(r, "2026-10-13", "me", dayInfo()),
+    ).toEqual([]);
+  });
+
+  it("only counts days set for the rehearsal's band, by its members", () => {
+    const r = weekly({ bandId: "b2" });
+    expect(
+      getRehearsalAvailableUsers(r, "2026-10-12", "me", dayInfo()),
+    ).toEqual([]);
+    expect(getMyRehearsalAvailability(r, "2026-10-12", "me", dayInfo())).toBe(
+      false,
+    );
+  });
+
+  it("lets an answer override being free", () => {
+    const r = weekly({
+      occurrenceAvailability: { "2026-10-12": false },
+      unavailableUserIdsOcc: { "2026-10-12": ["me", "sam"] },
+    });
+    expect(
+      getRehearsalAvailableUsers(r, "2026-10-12", "me", dayInfo()),
+    ).toEqual([]);
+    expect(getMyRehearsalAvailability(r, "2026-10-12", "me", dayInfo())).toBe(
+      false,
+    );
+    // other weeks still use the day availability
+    expect(getMyRehearsalAvailability(r, "2026-10-19", "me", dayInfo())).toBe(
+      true,
+    );
+  });
+
+  it("doesn't list someone twice when they also answered yes", () => {
+    const r = rehearsal({
+      date: "2026-10-12",
+      availableUsersBase: [person("sam")],
+    } as Partial<CalendarRehearsal>) as CalendarRehearsal;
+    expect(
+      ids(getRehearsalAvailableUsers(r, "2026-10-12", "me", dayInfo())),
+    ).toEqual(["sam", "me"]);
+  });
+
+  it("ignores the current user's days while they're private", () => {
+    const r = weekly();
+    expect(
+      getMyRehearsalAvailability(r, "2026-10-12", "me", dayInfo(true)),
+    ).toBe(false);
+    expect(
+      ids(getRehearsalAvailableUsers(r, "2026-10-12", "me", dayInfo(true))),
+    ).toEqual(["sam"]);
   });
 });
 

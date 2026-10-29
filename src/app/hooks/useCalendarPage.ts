@@ -8,14 +8,30 @@ import {
   getUserRehearsalsAction,
   setRehearsalAvailabilityAction,
 } from "@/app/actions/rehearsals";
-import { updateRehearsalAvatars, toDateStr } from "@/app/lib/rehearsalUtils";
+import {
+  addDayAvailabilityAction,
+  removeDayAvailabilityAction,
+} from "@/app/actions/availability";
+import {
+  getBandSchedules,
+  getMyRehearsalAvailability,
+  getRehearsalAvailableUsers,
+  isAvailableOnDay,
+  updateRehearsalAvatars,
+  toDateStr,
+} from "@/app/lib/rehearsalUtils";
 import { AvailUser } from "@/app/types";
 import {
   CalendarChoiceAction,
   CalendarEditMode,
   CalendarRehearsal,
+  DayAvailability,
+  DayAvailabilityInfo,
+  DayAvailabilityRemoveScope,
+  RehearsalRepeatType,
 } from "@/app/types";
 import { unwrapAction } from "@/app/lib/actionResult";
+import { addRehearsalToCalendar } from "@/app/lib/calendarExport";
 
 export function useCalendarPage() {
   const [rehearsals, setRehearsals] = useState<CalendarRehearsal[]>([]);
@@ -33,11 +49,20 @@ export function useCalendarPage() {
   );
   const [expandedUsers, setExpandedUsers] = useState<AvailUser[] | null>(null);
   const [currentUser, setCurrentUser] = useState<AvailUser | null>(null);
+  const [bands, setBands] = useState<{ _id: string; name: string }[]>([]);
+  const [dayAvailability, setDayAvailability] =
+    useState<DayAvailabilityInfo | null>(null);
+  const [showDayForm, setShowDayForm] = useState(false);
+  // the repeating availability being removed, while asking how much of it
+  const [dayRemoveTarget, setDayRemoveTarget] =
+    useState<DayAvailability | null>(null);
 
   const fetchRehearsals = async () => {
     try {
       const data = unwrapAction(await getUserRehearsalsAction());
       setRehearsals((data.rehearsals ?? []) as CalendarRehearsal[]);
+      setBands(data.bands ?? []);
+      setDayAvailability(data.dayAvailability ?? null);
       if (data.currentUser) {
         setCurrentUser(data.currentUser);
       }
@@ -166,29 +191,112 @@ export function useCalendarPage() {
     setChoiceAction(null);
   };
 
+  // one-off rehearsals are added straight away, a series asks how much of it
+  const handleAddToCalendarClick = (rehearsal: CalendarRehearsal) => {
+    if (rehearsal.repeatType !== "once") {
+      setChoiceTarget(rehearsal);
+      setChoiceAction("calendar");
+      return;
+    }
+
+    addRehearsalToCalendar(rehearsal._id);
+  };
+
+  const handleAddToCalendarThis = () => {
+    if (!choiceTarget) {
+      return;
+    }
+
+    addRehearsalToCalendar(choiceTarget._id, selectedDate);
+    closeChoice();
+  };
+
+  const handleAddToCalendarAll = () => {
+    if (!choiceTarget) {
+      return;
+    }
+
+    addRehearsalToCalendar(choiceTarget._id);
+    closeChoice();
+  };
+
   const getAvailabilityForDate = (
     rehearsal: CalendarRehearsal,
     date: string,
-  ): boolean => {
-    if (
-      rehearsal.repeatType !== "once" &&
-      rehearsal.occurrenceAvailability?.[date] !== undefined
-    ) {
-      return rehearsal.occurrenceAvailability[date];
-    }
-
-    return rehearsal.available ?? false;
-  };
+  ): boolean =>
+    getMyRehearsalAvailability(
+      rehearsal,
+      date,
+      currentUser?.userId,
+      dayAvailability,
+    );
 
   const getAvailableUsersForDate = (
     rehearsal: CalendarRehearsal,
     date: string,
-  ): AvailUser[] => {
-    if (rehearsal.repeatType !== "once") {
-      return rehearsal.availableUsersOcc?.[date] ?? [];
-    }
+  ): AvailUser[] =>
+    getRehearsalAvailableUsers(
+      rehearsal,
+      date,
+      currentUser?.userId,
+      dayAvailability,
+    );
 
-    return rehearsal.availableUsersBase ?? [];
+  const myDayAvailability = dayAvailability?.users.find(
+    (u) => u.userId === currentUser?.userId,
+  );
+
+  // free that day for any band, for the calendar grid
+  const isMyAvailableDay = (date: string) =>
+    isAvailableOnDay(myDayAvailability?.schedules ?? [], date);
+
+  // bands the current user isn't already free for on the selected day
+  const addableDayBands = bands.filter(
+    (band) =>
+      !isAvailableOnDay(
+        getBandSchedules(myDayAvailability?.schedules ?? [], band._id),
+        selectedDate,
+      ),
+  );
+
+  // throws so the form can show the error
+  const handleAddDayAvailability = async (
+    repeatType: RehearsalRepeatType,
+    bandId: string,
+  ) => {
+    unwrapAction(
+      await addDayAvailabilityAction(selectedDate, repeatType, bandId),
+    );
+    setShowDayForm(false);
+    await fetchRehearsals();
+  };
+
+  const removeDayAvailability = async (
+    bandId: string,
+    scope: DayAvailabilityRemoveScope,
+  ) => {
+    setDayRemoveTarget(null);
+    try {
+      unwrapAction(
+        await removeDayAvailabilityAction(selectedDate, scope, bandId),
+      );
+    } catch {
+      // ignore and keep current state
+    }
+    await fetchRehearsals();
+  };
+
+  // repeating availability asks whether to remove just this day
+  const handleRemoveDayAvailability = (
+    bandId: string,
+    covering: DayAvailability[],
+  ) => {
+    const repeating = covering.find((s) => s.repeatType !== "once");
+    if (repeating) {
+      setDayRemoveTarget(repeating);
+      return;
+    }
+    void removeDayAvailability(bandId, "this");
   };
 
   const handleAvailabilityToggle = async (rehearsal: CalendarRehearsal) => {
@@ -220,7 +328,6 @@ export function useCalendarPage() {
           await setRehearsalAvailabilityAction(
             rehearsal._id,
             nextValue,
-            undefined,
             selectedDate,
           ),
         );
@@ -269,8 +376,23 @@ export function useCalendarPage() {
     handleDeleteThis,
     handleDeleteAll,
     closeChoice,
+    handleAddToCalendarClick,
+    handleAddToCalendarThis,
+    handleAddToCalendarAll,
     getAvailabilityForDate,
     getAvailableUsersForDate,
     handleAvailabilityToggle,
+    bands,
+    dayAvailability,
+    myDayAvailability,
+    isMyAvailableDay,
+    addableDayBands,
+    showDayForm,
+    setShowDayForm,
+    dayRemoveTarget,
+    setDayRemoveTarget,
+    handleAddDayAvailability,
+    handleRemoveDayAvailability,
+    removeDayAvailability,
   };
 }

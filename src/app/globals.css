@@ -2903,6 +2903,85 @@ h4 {
 .calendar-day.selected .rehearsal-marker {
   background: #fff;
 }
+/* days the current user is free get a bar along the bottom */
+.calendar-day.free::after,
+.calendar-legend-free {
+  content: "";
+  height: 3px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+.calendar-day.free::after {
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 6px;
+}
+.calendar-day.selected.free::after {
+  background: #fff;
+}
+
+.calendar-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.calendar-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.calendar-legend-free {
+  display: inline-block;
+  width: 14px;
+}
+
+/* DAY AVAILABILITY (calendar detail) */
+.day-availability {
+  margin-bottom: 0.75rem;
+}
+.day-availability-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.day-availability-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.day-availability-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.day-availability-status {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.day-availability-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.day-availability-note a {
+  color: var(--primary);
+}
+.day-availability-band {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+.day-availability-band-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 
 /* CALENDAR DETAIL (below calendar) */
 .calendar-detail {
@@ -2950,6 +3029,7 @@ h4 {
 }
 .rehearsal-action-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.25rem;
 }

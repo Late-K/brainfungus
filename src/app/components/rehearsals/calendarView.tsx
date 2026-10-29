@@ -9,6 +9,8 @@ interface CalendarViewProps {
   rehearsals: Rehearsal[];
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  // days the current user has said they're free
+  isAvailableDay?: (date: string) => boolean;
 }
 
 const day_headers = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -17,6 +19,7 @@ export default function CalendarView({
   rehearsals,
   selectedDate,
   onSelectDate,
+  isAvailableDay,
 }: CalendarViewProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -128,11 +131,12 @@ export default function CalendarView({
             const rehearsalsForDate = getRehearsalsForDate(date);
             const isToday = dateString === todayStr;
             const isSelected = selectedDate === dateString;
+            const isFree = isAvailableDay?.(dateString) ?? false;
 
             return (
               <div
                 key={idx}
-                className={`calendar-day${isSelected ? " selected" : ""}${isToday ? " today" : ""}`}
+                className={`calendar-day${isSelected ? " selected" : ""}${isToday ? " today" : ""}${isFree ? " free" : ""}`}
                 onClick={() => handleDateClick(dateString)}
               >
                 <span className="calendar-day-number">{date.getDate()}</span>
@@ -148,6 +152,15 @@ export default function CalendarView({
           })}
         </div>
       ))}
+
+      <div className="calendar-legend">
+        <span className="calendar-legend-item">
+          <span className="rehearsal-marker" /> Rehearsal
+        </span>
+        <span className="calendar-legend-item">
+          <span className="calendar-legend-free" /> You&apos;re free
+        </span>
+      </div>
     </div>
   );
 }

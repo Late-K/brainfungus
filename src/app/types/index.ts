@@ -244,7 +244,6 @@ export interface User {
   _id: string;
   name: string;
   image?: string;
-  alwaysAvailable?: boolean;
   learntSongsPrivate?: boolean;
   musicApp?: MusicApp | null;
 }
@@ -280,15 +279,51 @@ export interface Rehearsal {
   updatedAt?: string;
 }
 
+// a rehearsal with everyone's answers. "base" answers are for one-off
+// rehearsals, "occ" ones are per date of a repeating one. available and
+// occurrenceAvailability are the current user's own answers, missing when they
+// haven't given one
 export interface CalendarRehearsal extends Rehearsal {
   bandName?: string;
   available?: boolean;
   occurrenceAvailability?: Record<string, boolean>;
   availableUsersBase?: AvailUser[];
   availableUsersOcc?: Record<string, AvailUser[]>;
+  unavailableUserIdsBase?: string[];
+  unavailableUserIdsOcc?: Record<string, string[]>;
 }
 
-export type CalendarChoiceAction = "edit" | "delete";
+// the date, repeat, cancelled dates and end shared by rehearsals and day
+// availability
+export type RepeatSchedule = Pick<
+  Rehearsal,
+  "date" | "repeatType" | "excludedDates" | "endDate"
+>;
+
+// a day (or repeating day) a user has said they're free for one of their bands
+export interface DayAvailability extends RepeatSchedule {
+  _id: string;
+  bandId: string;
+}
+
+export interface DayAvailabilityUser extends AvailUser {
+  schedules: DayAvailability[];
+  // only ever set on the current user, when they've made theirs private -
+  // they still see their own days but aren't auto marked available
+  paused?: boolean;
+}
+
+export interface DayAvailabilityInfo {
+  // the current user and any bandmates who haven't made theirs private
+  users: DayAvailabilityUser[];
+  // member ids of each band the current user is in
+  bandMemberIds: Record<string, string[]>;
+}
+
+// "this" removes just the one date, "future" that date and every one after it
+export type DayAvailabilityRemoveScope = "this" | "future";
+
+export type CalendarChoiceAction = "edit" | "delete" | "calendar";
 export type CalendarEditMode = "all" | "this";
 
 export interface ProfileLearntSong {
@@ -330,11 +365,7 @@ export interface ProfileInviteBand {
 }
 
 export type NotificationType =
-  | "rehearsals"
-  | "chat"
-  | "mentions"
-  | "setlists"
-  | "invites";
+  "rehearsals" | "chat" | "mentions" | "setlists" | "invites";
 
 export type NotificationPrefs = Record<NotificationType, boolean>;
 
